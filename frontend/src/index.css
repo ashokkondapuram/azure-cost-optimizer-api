@@ -1,6 +1,5 @@
-/* Azure FinOps — Global Styles v5
-   Class names match App.js exactly:
-   .sidebar, .nav-item, .sidebar-section, .main-content, .topbar-label
+/* Azure FinOps — Global Styles v5.1
+   All class names match App.js + page components exactly.
 */
 
 *, *::before, *::after {
@@ -13,6 +12,7 @@
   --bg:        #0f1117;
   --bg2:       #161b27;
   --bg3:       #1e2535;
+  --surface:   #1e2535;
   --border:    #2a3349;
   --text:      #e2e8f0;
   --text2:     #94a3b8;
@@ -45,7 +45,7 @@ body {
 a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
-/* ── Layout ───────────────────────────────────────────────── */
+/* ── Layout ──────────────────────────────────────────────── */
 
 .sidebar {
   width: var(--sidebar-w);
@@ -71,7 +71,7 @@ a:hover { text-decoration: underline; }
   overflow-x: hidden;
 }
 
-/* ── Sidebar internals ────────────────────────────────────── */
+/* ── Sidebar internals ──────────────────────────────────── */
 
 .sidebar-logo {
   padding: 1.25rem 1.25rem 1rem;
@@ -119,17 +119,59 @@ a:hover { text-decoration: underline; }
   white-space: nowrap;
   overflow: hidden;
 }
-.nav-item:hover {
-  background: var(--bg3);
-  color: var(--text);
-  text-decoration: none;
-}
-.nav-item.active {
-  background: rgba(59,130,246,0.15);
-  color: var(--primary);
+.nav-item:hover { background: var(--bg3); color: var(--text); text-decoration: none; }
+.nav-item.active { background: rgba(59,130,246,0.15); color: var(--primary); }
+
+/* ── Stat cards (Dashboard KPI row) ─────────────────────── */
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
 }
 
-/* ── Cards ────────────────────────────────────────────────── */
+.stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.stat-card.success::before { background: var(--success); }
+.stat-card.danger::before  { background: var(--danger); }
+.stat-card.warning::before { background: var(--warning); }
+.stat-card.accent::before  { background: var(--primary); }
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text3);
+}
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.15;
+}
+.stat-sub {
+  font-size: 0.75rem;
+  color: var(--text3);
+}
+
+/* ── Generic cards ─────────────────────────────────────────── */
 
 .card {
   background: var(--bg2);
@@ -158,13 +200,23 @@ a:hover { text-decoration: underline; }
   margin-top: 0.2rem;
 }
 
-/* ── Stat grid ────────────────────────────────────────────── */
+/* ── Grid helpers ──────────────────────────────────────────── */
 
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
 }
 
 /* ── Page header ──────────────────────────────────────────── */
@@ -188,7 +240,7 @@ a:hover { text-decoration: underline; }
   margin-top: 3px;
 }
 
-/* ── Badges ───────────────────────────────────────────────── */
+/* ── Badges ──────────────────────────────────────────────── */
 
 .badge {
   display: inline-block;
@@ -226,7 +278,7 @@ a:hover { text-decoration: underline; }
 .btn-ghost:hover { color: var(--text); border-color: var(--text3); }
 .btn-danger  { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
 
-/* ── Form elements ────────────────────────────────────────── */
+/* ── Form elements ─────────────────────────────────────────── */
 
 input, select, textarea {
   background: var(--bg3);
@@ -248,15 +300,8 @@ select option { background: var(--bg2); }
 
 /* ── Tables ───────────────────────────────────────────────── */
 
-.table-wrap {
-  overflow-x: auto;
-  border-radius: var(--radius);
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
-}
+.table-wrap { overflow-x: auto; border-radius: var(--radius); }
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 th {
   background: var(--bg3);
   color: var(--text3);
@@ -317,11 +362,7 @@ tr:hover td { background: rgba(255,255,255,0.02); }
   overflow-y: auto;
   box-shadow: var(--shadow);
 }
-.modal-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text);
-}
+.modal-title { font-size: 1.1rem; font-weight: 700; color: var(--text); }
 
 /* ── Empty / loading states ───────────────────────────────── */
 
@@ -361,16 +402,17 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .flex { display: flex; }
 .items-center { align-items: center; }
 .justify-between { justify-content: space-between; }
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 .mt-1 { margin-top: 0.5rem; }
 .mt-2 { margin-top: 1rem; }
 .mt-3 { margin-top: 1.5rem; }
 .mb-1 { margin-bottom: 0.5rem; }
 .mb-2 { margin-bottom: 1rem; }
 
+@media (max-width: 1024px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
 @media (max-width: 768px) {
   :root { --sidebar-w: 200px; }
-  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
   .main-content { padding: 1.25rem; }
 }
