@@ -1,100 +1,137 @@
-import React, { useState } from 'react';
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import Dashboard   from './pages/Dashboard';
-import Resources   from './pages/Resources';
-import K8sPage     from './pages/K8sPage';
-import CostHistory from './pages/CostHistory';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard, Cpu, HardDrive, Network, Database,
+  Shield, DollarSign, Settings, Search, Activity,
+  ChevronDown, Bell, RefreshCw, Boxes, CloudCog
+} from 'lucide-react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fetchSubscriptions } from './api/azure';
 
-const PAGES = {
-  '/':          { title:'Cost Dashboard',        sub:'Subscription spend overview' },
-  '/resources': { title:'Resource Inventory',    sub:'All Azure resources & optimization' },
-  '/k8s':       { title:'Kubernetes Clusters',   sub:'AKS node & pod utilization' },
-  '/history':   { title:'Cost Query History',    sub:'PostgreSQL audit log' },
-};
+import Dashboard     from './pages/Dashboard';
+import CostExplorer  from './pages/CostExplorer';
+import Findings      from './pages/Findings';
+import VirtualMachines from './pages/VirtualMachines';
+import AKSClusters   from './pages/AKSClusters';
+import AllResources  from './pages/AllResources';
+import EngineConfig  from './pages/EngineConfig';
+import RunHistory    from './pages/RunHistory';
 
-function Topbar({ sub }) {
-  const { pathname } = useLocation();
-  const info = PAGES[pathname] || PAGES['/'];
-  const now  = new Date().toLocaleString('en-CA', { dateStyle:'medium', timeStyle:'short' });
+const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: 1 } } });
+export const AppCtx = createContext({});
+
+function Shell() {
+  const { subscription, setSubscription, subscriptions, loading } = useContext(AppCtx);
+  const nav = useNavigate();
+
+  const links = [
+    { section: 'Overview' },
+    { to: '/',           icon: <LayoutDashboard size={16} />, label: 'Dashboard' },
+    { to: '/costs',      icon: <DollarSign size={16} />,     label: 'Cost Explorer' },
+    { to: '/findings',   icon: <Activity size={16} />,       label: 'Findings' },
+    { section: 'Resources' },
+    { to: '/vms',        icon: <Cpu size={16} />,            label: 'Virtual Machines' },
+    { to: '/aks',        icon: <Boxes size={16} />,          label: 'AKS Clusters' },
+    { to: '/resources',  icon: <HardDrive size={16} />,      label: 'All Resources' },
+    { section: 'Engine' },
+    { to: '/engine',     icon: <CloudCog size={16} />,       label: 'Engine Config' },
+    { to: '/history',    icon: <Search size={16} />,         label: 'Run History' },
+  ];
+
   return (
-    <div className="topbar">
-      <div className="topbar-left">
-        <div className="topbar-title">{info.title}</div>
-        <div className="topbar-sub">{info.sub}</div>
-      </div>
-      <div className="topbar-right">
-        <span className="tb-chip chip-gray">🕐 {now}</span>
-        {sub && <span className="tb-chip chip-blue">🔗 {sub.slice(0,8)}…</span>}
-        <span className="tb-chip chip-green"><span className="pulse" />Live</span>
-      </div>
+    <div style={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Sidebar */}
+      <nav className="sidebar">
+        <div className="sidebar-logo">
+          <CloudCog size={18} color="#2563eb" />
+          Azure<span>FinOps</span>
+        </div>
+
+        {/* Subscription selector */}
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)' }}>
+          <div className="topbar-label" style={{ marginBottom: 6 }}>Subscription</div>
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text3)', fontSize: '0.8rem' }}>
+              <div className="spin" style={{ width: 14, height: 14 }} /> Loading...
+            </div>
+          ) : (
+            <select
+              value={subscription}
+              onChange={e => setSubscription(e.target.value)}
+              style={{ width: '100%', fontSize: '0.78rem', padding: '6px 8px' }}
+            >
+              <option value="">-- Select --</option>
+              {subscriptions.map(s => (
+                <option key={s.subscriptionId} value={s.subscriptionId}>
+                  {s.displayName || s.subscriptionId}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0' }}>
+          {links.map((l, i) =>
+            l.section ? (
+              <div key={i} className="sidebar-section">{l.section}</div>
+            ) : (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end={l.to === '/'}
+                className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+              >
+                {l.icon} {l.label}
+              </NavLink>
+            )
+          )}
+        </div>
+
+        <div style={{ padding: '1rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text3)' }}>
+          v5.0 · AzureFinOps
+        </div>
+      </nav>
+
+      {/* Main */}
+      <main className="main-content">
+        <Routes>
+          <Route path="/"          element={<Dashboard />} />
+          <Route path="/costs"     element={<CostExplorer />} />
+          <Route path="/findings"  element={<Findings />} />
+          <Route path="/vms"       element={<VirtualMachines />} />
+          <Route path="/aks"       element={<AKSClusters />} />
+          <Route path="/resources" element={<AllResources />} />
+          <Route path="/engine"    element={<EngineConfig />} />
+          <Route path="/history"   element={<RunHistory />} />
+        </Routes>
+      </main>
     </div>
   );
 }
 
 export default function App() {
-  const [sub, setSub] = useState(localStorage.getItem('subscriptionId') || '');
-  const handleSub = e => { setSub(e.target.value); localStorage.setItem('subscriptionId', e.target.value); };
+  const [subscription, setSubscription] = useState('');
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSubscriptions()
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data?.value || []);
+        setSubscriptions(list);
+        if (list.length > 0 && !subscription) setSubscription(list[0].subscriptionId);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
-    <BrowserRouter>
-      <div className="app">
-        <nav className="sidebar">
-          <div className="sidebar-brand">
-            <div className="brand-logo">
-              <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Microsoft_Azure.svg"
-                alt="Azure" width={22} height={22} style={{ filter:'brightness(0) invert(1)' }} />
-            </div>
-            <div>
-              <div className="brand-name">Azure Cost Optimizer</div>
-              <div className="brand-ver">FinOps Platform · v2.0</div>
-            </div>
-          </div>
-
-          <div className="sidebar-section-label">Subscription</div>
-          <div className="sidebar-sub-input">
-            <input placeholder="Paste subscription ID…" value={sub} onChange={handleSub} />
-          </div>
-
-          <div className="sidebar-section-label">Navigation</div>
-          <div className="sidebar-nav">
-            <NavLink to="/" end>
-              <span className="nav-icon">📊</span><span>Dashboard</span>
-            </NavLink>
-            <NavLink to="/resources">
-              <span className="nav-icon">🗂</span><span>Resources</span>
-            </NavLink>
-            <NavLink to="/k8s">
-              <span className="nav-icon">⎈</span><span>Kubernetes</span>
-            </NavLink>
-            <NavLink to="/history">
-              <span className="nav-icon">📜</span><span>Cost History</span>
-            </NavLink>
-          </div>
-
-          <div className="sidebar-divider" />
-          <div className="sidebar-footer">
-            <div className="footer-user">
-              <div className="avatar">AZ</div>
-              <div>
-                <div className="footer-name">FinOps Admin</div>
-                <div className="footer-role">Cost Management</div>
-              </div>
-            </div>
-          </div>
-        </nav>
-
-        <div className="main">
-          <Topbar sub={sub} />
-          <div className="page-content">
-            <Routes>
-              <Route path="/"          element={<Dashboard   sub={sub} />} />
-              <Route path="/resources" element={<Resources />} />
-              <Route path="/k8s"       element={<K8sPage />} />
-              <Route path="/history"   element={<CostHistory />} />
-            </Routes>
-          </div>
-        </div>
-      </div>
-    </BrowserRouter>
+    <QueryClientProvider client={qc}>
+      <AppCtx.Provider value={{ subscription, setSubscription, subscriptions, loading }}>
+        <BrowserRouter>
+          <Shell />
+        </BrowserRouter>
+      </AppCtx.Provider>
+    </QueryClientProvider>
   );
 }
