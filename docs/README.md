@@ -1,41 +1,44 @@
-# Azure Cost Optimizer API
+# Documentation Index
 
-A minimal FastAPI backend for Azure cost visibility using Managed Identity and least-privilege RBAC.
+This directory contains detailed documentation for the Azure Cost Optimizer Platform.
 
-## Prerequisites
-- Python 3.11+
-- Azure subscription with Cost Management data access
-- Managed Identity enabled on the hosting resource (App Service, Container Apps, VM, AKS workload identity, etc.)
-- RBAC role assignment: `Cost Management Reader`
+## Documents
 
-## Local development
-Local development can use Azure CLI authentication through `DefaultAzureCredential`.
+### architecture.md
+Complete architecture description, logical components, runtime interactions, and scaling considerations.
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+### backend.md
+Detailed backend explanation including modules, responsibilities, request lifecycle, persistence behavior, and extension model.
 
-Test the API:
-```bash
-curl "http://127.0.0.1:8000/costs?subscription_id=<subscription-id>"
-curl "http://127.0.0.1:8000/costs/resource-group?subscription_id=<subscription-id>&resource_group=<rg-name>"
-```
+### frontend.md
+Detailed frontend explanation including routes, components, user flow, state handling, API integration, and UI hardening recommendations.
 
-## Azure deployment
-1. Deploy the FastAPI app to Azure App Service, Azure Container Apps, or AKS.
-2. Enable a system-assigned or user-assigned managed identity.
-3. Assign `Cost Management Reader` at the smallest required scope.
-4. Verify the app can request a token for `https://management.azure.com/.default`.
-5. Call the `/costs` endpoints from your frontend or internal systems.
+### api-reference.md
+Detailed endpoint-by-endpoint API contract documentation including method, parameters, behavior, expected responses, and operational notes.
 
-## Endpoints
-- `GET /health` - health check.
-- `GET /costs` - subscription-level costs.
-- `GET /costs/resource-group` - resource-group-level costs.
+### database.md
+Schema-level documentation for PostgreSQL tables, expected data flow, retention guidance, indexing strategy, and future data model improvements.
 
-## Notes
-- Cost Management API availability can vary by account type and permissions.
-- Add pagination, richer filters, and stronger auth before production use.
+### security.md
+Managed Identity, least privilege RBAC, application-layer security expectations, secrets guidance, network hardening, and compliance-focused recommendations.
+
+### kubernetes-agent.md
+Explains the lightweight Kubernetes collector, required RBAC, metrics-server dependency, poll cycle, resource footprint, and production considerations.
+
+### operations.md
+Runbook-oriented guidance for monitoring, logging, health checks, incident handling, backups, maintenance, and change management.
+
+### deployment-manual.md
+Step-by-step manual deployment guide for environments where infrastructure is created outside this repository.
+
+### production-readiness.md
+Enterprise-grade hardening checklist and gap analysis guide for selling or deploying the platform to large enterprises.
+
+## Suggested order
+1. architecture.md
+2. backend.md
+3. frontend.md
+4. api-reference.md
+5. security.md
+6. operations.md
+7. production-readiness.md

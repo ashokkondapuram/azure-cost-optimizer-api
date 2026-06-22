@@ -1,73 +1,70 @@
-# Azure Cost Optimizer API - Architecture
+# Architecture
 
-## Overview
-FastAPI backend deployed as an Azure Web App, backed by Azure Database for PostgreSQL Flexible Server. A lightweight Kubernetes agent pod pushes node and pod utilization data to the API periodically.
+## Objective
+The platform provides a centralized operational application that combines Azure cost retrieval, Azure resource inventory, Kubernetes utilization collection, and historical persistence into a single full-stack system.
 
-## Components
+## High-level components
 
-### Azure Web App
-- Hosts the FastAPI application on Linux App Service Plan (B1 or higher).
-- System-assigned Managed Identity enabled - no client secrets needed.
-- `DATABASE_URL` is injected as an App Setting (not in code).
+### 1. React frontend
+The frontend provides the operator interface. It collects the Azure subscription identifier from the user, invokes backend APIs, and renders cost charts, resource tables, Kubernetes metrics, and historical records.
 
-### Azure Database for PostgreSQL Flexible Server
-- Stores cost records and Kubernetes utilization records.
-- Tables: `cost_records`, `k8s_utilization`.
-- Connection uses SSL (`sslmode=require`).
-- Firewall restricted to the Web App outbound IPs.
+### 2. FastAPI backend
+The backend acts as the orchestration and integration layer. It authenticates to Azure using Managed Identity, calls Azure control-plane APIs, processes response payloads, and stores selected operational data in PostgreSQL.
 
-### Kubernetes Utilization Agent
-- A single lightweight Deployment in the `monitoring` namespace.
-- Uses `python:3.11-alpine` for minimal image size.
-- Runs with a dedicated `ServiceAccount` bound to a `ClusterRole` that only allows `get` and `list` on `nodes` and `pods` resources - least privilege.
-- Calls metrics-server to collect CPU and memory usage.
-- Pushes data to the FastAPI `/k8s/utilization` endpoint every 60 seconds.
-- Resource limits: 100m CPU, 128Mi memory.
+### 3. PostgreSQL database
+The database stores cost query records and Kubernetes utilization snapshots. PostgreSQL provides durable persistence and can later be extended for tenancy, user preferences, optimization recommendations, and reporting aggregates.
 
-## Managed Identity and RBAC
-- Web App Managed Identity should be assigned `Cost Management Reader` at subscription or resource group scope.
-- No other Azure roles are needed for basic cost fetching.
-- Kubernetes RBAC is enforced through ClusterRole with minimal verbs.
+### 4. Kubernetes utilization agent
+The Kubernetes polling agent runs as a lightweight pod and gathers node and pod resource usage from the Kubernetes metrics API. It forwards that data to the backend at a configurable interval.
 
-## Deployment steps
+### 5. Azure platform dependencies
+The application expects:
+- Azure Web App or equivalent hosting for the backend,
+- PostgreSQL database created externally,
+- Managed Identity enabled on the backend host,
+- Azure RBAC assigned to the Managed Identity,
+- metrics-server installed in Kubernetes clusters where telemetry is collected.
 
-### 1. Deploy Azure infrastructure
-```bash
-az group create --name cost-optimizer-rg --location canadacentral
-az deployment group create \
-  --resource-group cost-optimizer-rg \
-  --template-file infra/webapp.bicep \
-  --parameters postgresAdminPassword=<strong-password>
-```
+## Request flow
 
-### 2. Assign Cost Management Reader to Web App Managed Identity
-```bash
-WEBAPP_PRINCIPAL=$(az webapp identity show --name azure-cost-optimizer --resource-group cost-optimizer-rg --query principalId -o tsv)
-az role assignment create \
-  --assignee $WEBAPP_PRINCIPAL \
-  --role "Cost Management Reader" \
-  --scope /subscriptions/<subscription-id>
-```
+### Cost request flow
+1. User enters a subscription ID in the frontend.
+2. Frontend calls backend `/costs` endpoint.
+3. Backend obtains an Azure access token using Managed Identity.
+4. Backend calls Azure Cost Management query API.
+5. Backend stores metadata / raw response as configured.
+6. Backend returns data to the frontend.
+7. Frontend renders chart and summary.
 
-### 3. Deploy FastAPI app to Web App
-```bash
-zip -r app.zip app/ requirements.txt
-az webapp deployment source config-zip \
-  --resource-group cost-optimizer-rg \
-  --name azure-cost-optimizer \
-  --src app.zip
-```
+### Resource inventory flow
+1. User selects a resource category.
+2. Frontend calls the corresponding `/resources/*` endpoint.
+3. Backend authenticates with Azure ARM.
+4. Backend fetches resource metadata.
+5. Frontend renders the table view.
 
-### 4. Deploy Kubernetes agent
-```bash
-kubectl create namespace monitoring
-# Update API_URL in k8s/utilization-agent.yaml to your Web App URL
-kubectl apply -f k8s/utilization-agent.yaml
-```
+### Kubernetes telemetry flow
+1. Agent polls metrics API.
+2. Agent formats node and pod usage records.
+3. Agent posts the data to `/k8s/utilization`.
+4. Backend writes the records into PostgreSQL.
+5. Frontend reads `/k8s/utilization` and renders the latest entries.
 
-## Security notes
-- PostgreSQL credentials are passed at deploy time and stored as Web App settings, not in code.
-- No secrets in the repository.
-- Kubernetes agent uses in-cluster service account token only - no external credentials.
-- Consider Azure Private Link for PostgreSQL in production.
-- Add API key or Azure AD authentication in front of the FastAPI endpoints for production use.
+## Design principles
+- Identity-based access, not secrets-based application auth.
+- Least privilege RBAC.
+- Lightweight Kubernetes collection rather than full observability dependency.
+- Clear module boundaries.
+- Manual infrastructure compatibility.
+- Extensibility for enterprise-grade productization.
+
+## Production evolution path
+For large-enterprise adoption, the platform should evolve toward:
+- tenant-aware architecture,
+- authentication and authorization layer,
+- optimization recommendations engine,
+- asynchronous job execution,
+- caching layer,
+- richer reporting schema,
+- CI/CD and release governance,
+- stronger auditability.
