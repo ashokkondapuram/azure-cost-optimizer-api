@@ -1,30 +1,28 @@
-from sqlalchemy import Column, String, Float, DateTime, func
-from app.database import Base
+from sqlalchemy import Column, String, DateTime, Text, Float
+from sqlalchemy.ext.declarative import declarative_base
+from datetime import datetime, timezone
+
+Base = declarative_base()
 
 
 class CostRecord(Base):
     __tablename__ = "cost_records"
-
-    id = Column(String, primary_key=True)  # UUID
-    subscription_id = Column(String, nullable=False)
-    resource_group = Column(String, nullable=True)
-    timeframe = Column(String, nullable=False)
-    granularity = Column(String, nullable=False)
-    pretax_cost = Column(Float, nullable=True)
-    currency = Column(String, nullable=True)
-    billing_period = Column(String, nullable=True)
-    raw_response = Column(String, nullable=True)  # JSON string
-    created_at = Column(DateTime, server_default=func.now())
+    id                = Column(String, primary_key=True)
+    subscription_id   = Column(String, nullable=False, index=True)
+    resource_group    = Column(String, nullable=True)
+    timeframe         = Column(String)
+    granularity       = Column(String)
+    raw_response      = Column(Text)
+    created_at        = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class K8sUtilization(Base):
     __tablename__ = "k8s_utilization"
-
-    id = Column(String, primary_key=True)  # UUID
-    cluster_name = Column(String, nullable=True)
-    node_name = Column(String, nullable=False)
-    pod_name = Column(String, nullable=True)
-    namespace = Column(String, nullable=True)
-    cpu_usage = Column(String, nullable=True)
-    memory_usage = Column(String, nullable=True)
-    recorded_at = Column(DateTime, server_default=func.now())
+    id            = Column(String, primary_key=True)
+    cluster_name  = Column(String, index=True)
+    node_name     = Column(String)
+    pod_name      = Column(String, nullable=True)
+    namespace     = Column(String, nullable=True)
+    cpu_usage     = Column(String)
+    memory_usage  = Column(String)
+    recorded_at   = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
