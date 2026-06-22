@@ -13,11 +13,12 @@
     "lucide-react": "^0.395.0",
     "clsx": "^2.1.1",
     "http-proxy-middleware": "^3.0.0",
-    "@csstools/normalize.css": "^12.1.1"
+    "@csstools/normalize.css": "^12.1.1",
+    "sanitize.css": "^13.0.0"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test"
   },
   "browserslist": {
