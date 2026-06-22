@@ -38,8 +38,9 @@ const fetchAllResources = (sub) => Promise.allSettled([
   api.get('/resources/appgateways',    { params: { subscription_id: sub } }).then(r => r.data),
 ]);
 
+// Guard: result may be undefined during initial render (before useQuery resolves)
 const count = (result) => {
-  if (result.status !== 'fulfilled') return 0;
+  if (!result || result.status !== 'fulfilled') return 0;
   const d = result.value;
   if (Array.isArray(d)) return d.length;
   if (d?.value && Array.isArray(d.value)) return d.value.length;
@@ -118,7 +119,7 @@ export default function Dashboard() {
       .slice(0, 8);
   })();
 
-  // Resource category tiles
+  // Resource category tiles — safe: count() handles undefined gracefully
   const [vms, disks, aks, storage, ips, sql, kv, apps, lbs, cosmos, pg, nsgs, acr, agw] = resources || [];
   const resourceCategories = [
     {
@@ -216,7 +217,7 @@ export default function Dashboard() {
 
       {subscription && (
         <>
-          {/* KPI row — all from live findings summary API */}
+          {/* KPI row */}
           <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
             <div className="stat-card success">
               <div className="stat-label">Est. Monthly Savings</div>
@@ -242,7 +243,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Resource category tiles — live counts from Azure ARM APIs */}
+          {/* Resource category tiles */}
           <div style={{ marginBottom: '1.5rem' }}>
             <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.85rem', color: 'var(--text2)' }}>
               Azure Resources by Category
@@ -315,7 +316,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Cost by Azure service — live from Cost Management API */}
+          {/* Cost by Azure service */}
           {svcData.length > 0 && (
             <div className="card" style={{ marginBottom: '1.5rem' }}>
               <div style={{ fontWeight: 600, marginBottom: '1rem', fontSize: '0.9rem' }}>MTD Cost by Azure Service (live)</div>
@@ -336,7 +337,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Savings trend across runs — live */}
+          {/* Savings trend */}
           {runsData.length > 0 && (
             <div className="card">
               <div style={{ fontWeight: 600, marginBottom: '1rem', fontSize: '0.9rem' }}>Savings Trend Across Analysis Runs (live)</div>
