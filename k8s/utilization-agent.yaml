@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: utilization-agent
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: utilization-agent-role
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]           # read-only, least privilege
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: utilization-agent-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: utilization-agent-role
+subjects:
+  - kind: ServiceAccount
+    name: utilization-agent
+    namespace: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: utilization-agent-config
+  namespace: monitoring
+data:
+  API_URL: "https://<your-webapp-url>/k8s/utilization"   # replace with your Azure Web App URL
+  CLUSTER_NAME: "my-aks-cluster"
+  POLL_INTERVAL: "60"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: utilization-agent
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: utilization-agent
+  template:
+    metadata:
+      labels:
+        app: utilization-agent
+    spec:
+      serviceAccountName: utilization-agent
+      containers:
+        - name: agent
+          image: python:3.11-alpine           # lightweight base
+          command: ["sh", "-c"]
+          args:
+            - |
+              pip install requests kubernetes --quiet
+              python /app/agent.py
+          envFrom:
+            - configMapRef:
+                name: utilization-agent-config
+          volumeMounts:
+            - name: agent-script
+              mountPath: /app
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+      volumes:
+        - name: agent-script
+          configMap:
+            name: utilization-agent-script
