@@ -44,7 +44,7 @@ export default function Findings() {
       <div className="page-header">
         <div>
           <div className="page-title">Findings</div>
-          <div className="page-sub">{findings.length} findings · real Azure data · no mocks</div>
+          <div className="page-sub">{findings.length} findings &middot; real Azure data &middot; no mocks</div>
         </div>
       </div>
 
@@ -52,7 +52,9 @@ export default function Findings() {
       <div style={{ display: 'flex', gap: 10, marginBottom: '1.25rem', flexWrap: 'wrap' }}>
         <select value={sevFilter} onChange={e => setSevFilter(e.target.value)}>
           <option value="">All Severities</option>
-          {['CRITICAL','HIGH','MEDIUM','LOW','INFO'].map(s => <option key={s} value={s}>{s}</option>)}
+          {['CRITICAL','HIGH','MEDIUM','LOW','INFO'].map(s => (
+            <option key={s} value={s}>{s}</option>
+          ))}
         </select>
         <select value={catFilter} onChange={e => setCatFilter(e.target.value)}>
           <option value="">All Categories</option>
@@ -94,30 +96,71 @@ export default function Findings() {
                 {findings.map(f => (
                   <tr key={f.id} className="finding-row" onClick={() => setSelected(f)}>
                     <td><span className={SEV_MAP[f.severity] || 'badge'}>{f.severity}</span></td>
-                    <td style={{ color: 'var(--text)', fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.rule_name}</td>
+                    <td style={{ color: 'var(--text)', fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {f.rule_name}
+                    </td>
                     <td style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span title={f.resource_id}>{f.resource_name || f.resource_id?.split('/').pop()}</span>
-                      {f.resource_group && <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>{f.resource_group}</div>}
+                      <span title={f.resource_id}>{f.resource_name || (f.resource_id || '').split('/').pop()}</span>
+                      {f.resource_group && (
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>{f.resource_group}</div>
+                      )}
                     </td>
                     <td><span className="badge badge-info">{f.category}</span></td>
                     <td style={{ color: f.estimated_savings_usd > 0 ? 'var(--success)' : 'var(--text3)', fontWeight: 600 }}>
-                      {f.estimated_savings_usd > 0 ? `$${f.estimated_savings_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
+                      {f.estimated_savings_usd > 0
+                        ? '$' + f.estimated_savings_usd.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                        : '\u2014'}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <div className="progress-bar-bg" style={{ width: 60 }}>
-                          <div className="progress-bar-fill" style={{ width: `${f.waste_score || 0}%`, background: f.waste_score > 75 ? 'var(--danger)' : f.waste_score > 50 ? 'var(--warning)' : 'var(--success)' }} />
+                          <div
+                            className="progress-bar-fill"
+                            style={{
+                              width: (f.waste_score || 0) + '%',
+                              background: f.waste_score > 75
+                                ? 'var(--danger)'
+                                : f.waste_score > 50
+                                  ? 'var(--warning)'
+                                  : 'var(--success)',
+                            }}
+                          />
                         </div>
                         <span style={{ fontSize: '0.78rem' }}>{f.waste_score}</span>
                       </div>
                     </td>
-                    <td><span className={`badge ${f.status === 'resolved' ? 'badge-low' : f.status === 'acknowledged' ? 'badge-medium' : f.status === 'ignored' ? 'badge-info' : 'badge-high'}`}>{f.status}</span></td>
+                    <td>
+                      <span className={
+                        'badge ' +
+                        (f.status === 'resolved'
+                          ? 'badge-low'
+                          : f.status === 'acknowledged'
+                          ? 'badge-medium'
+                          : f.status === 'ignored'
+                          ? 'badge-info'
+                          : 'badge-high')
+                      }>
+                        {f.status}
+                      </span>
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: 6 }} onClick={e => e.stopPropagation()}>
                         {f.status === 'open' && (
                           <>
-                            <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '0.72rem' }} onClick={() => mut.mutate({ id: f.id, status: 'acknowledged' })}>Ack</button>
-                            <button className="btn btn-ghost" style={{ padding: '4px 8px', fontSize: '0.72rem' }} onClick={() => mut.mutate({ id: f.id, status: 'resolved' })}>Resolve</button>
+                            <button
+                              className="btn btn-ghost"
+                              style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                              onClick={() => mut.mutate({ id: f.id, status: 'acknowledged' })}
+                            >
+                              Ack
+                            </button>
+                            <button
+                              className="btn btn-ghost"
+                              style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                              onClick={() => mut.mutate({ id: f.id, status: 'resolved' })}
+                            >
+                              Resolve
+                            </button>
                           </>
                         )}
                       </div>
@@ -141,9 +184,151 @@ export default function Findings() {
                 {' '}
                 <span className="badge badge-info">{selected.category}</span>
               </div>
-              <button className="btn btn-ghost" style={{ padding: '4px 8px' }} onClick={() => setSelected(null)}>✕</button>
+              <button className="btn btn-ghost" style={{ padding: '4px 8px' }} onClick={() => setSelected(null)}>&#x2715;</button>
             </div>
+
             <div style={{ display: 'grid', gap: '0.75rem', fontSize: '0.86rem' }}>
-              <div><strong>Resource</strong><br /><span style={{ color: 'var(--text2)', wordBreak: 'break-all' }}>{selected.resource_id}</span></div>
-              <div><strong>Detail</strong><br /><span style={{ color: 'var(--text2)' }}>{selected.detail}</span></div>
-              <div style={{ background: 'rgba(37,99,235,0.0
+              <div>
+                <strong>Resource</strong>
+                <br />
+                <span style={{ color: 'var(--text2)', wordBreak: 'break-all' }}>{selected.resource_id}</span>
+              </div>
+
+              <div>
+                <strong>Detail</strong>
+                <br />
+                <span style={{ color: 'var(--text2)' }}>{selected.detail}</span>
+              </div>
+
+              <div style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 8, padding: '0.75rem' }}>
+                <strong style={{ color: 'var(--primary)' }}>Recommendation</strong>
+                <br />
+                <span style={{ color: 'var(--text2)' }}>{selected.recommendation}</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text3)', marginBottom: 2 }}>Est. Monthly Savings</div>
+                  <div style={{ fontWeight: 700, color: selected.estimated_savings_usd > 0 ? 'var(--success)' : 'var(--text3)' }}>
+                    {selected.estimated_savings_usd > 0
+                      ? '$' + selected.estimated_savings_usd.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                      : 'N/A'}
+                  </div>
+                </div>
+                <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text3)', marginBottom: 2 }}>Waste Score</div>
+                  <div style={{ fontWeight: 700, color: selected.waste_score > 75 ? 'var(--danger)' : selected.waste_score > 50 ? 'var(--warning)' : 'var(--success)' }}>
+                    {selected.waste_score} / 100
+                  </div>
+                </div>
+                <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '0.6rem 0.75rem' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text3)', marginBottom: 2 }}>Status</div>
+                  <div style={{ fontWeight: 700 }}>{selected.status}</div>
+                </div>
+              </div>
+
+              {selected.resource_group && (
+                <div>
+                  <strong>Resource Group</strong>
+                  <br />
+                  <span style={{ color: 'var(--text2)' }}>{selected.resource_group}</span>
+                </div>
+              )}
+
+              {selected.location && (
+                <div>
+                  <strong>Location</strong>
+                  <br />
+                  <span style={{ color: 'var(--text2)' }}>{selected.location}</span>
+                </div>
+              )}
+
+              {selected.annualized_savings_usd > 0 && (
+                <div style={{ background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.18)', borderRadius: 8, padding: '0.75rem' }}>
+                  <strong style={{ color: 'var(--success)' }}>Annualized Savings</strong>
+                  <br />
+                  <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--success)' }}>
+                    {'$' + selected.annualized_savings_usd.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' / year'}
+                  </span>
+                </div>
+              )}
+
+              {selected.confidence_score != null && (
+                <div>
+                  <strong>Confidence</strong>
+                  <br />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <div className="progress-bar-bg" style={{ width: 120 }}>
+                      <div className="progress-bar-fill" style={{ width: selected.confidence_score + '%', background: 'var(--primary)' }} />
+                    </div>
+                    <span style={{ fontSize: '0.82rem' }}>{selected.confidence_score}%</span>
+                  </div>
+                </div>
+              )}
+
+              {selected.action_priority && (
+                <div>
+                  <strong>Action Priority</strong>
+                  {' '}
+                  <span className="badge badge-medium">{selected.action_priority}</span>
+                </div>
+              )}
+
+              {selected.impact && (
+                <div>
+                  <strong>Impact</strong>
+                  <br />
+                  <span style={{ color: 'var(--text2)' }}>{selected.impact}</span>
+                </div>
+              )}
+
+              {selected.evidence && Object.keys(selected.evidence).length > 0 && (
+                <div>
+                  <strong>Evidence</strong>
+                  <pre style={{
+                    background: 'var(--bg3)',
+                    borderRadius: 7,
+                    padding: '0.65rem 0.9rem',
+                    fontSize: '0.78rem',
+                    color: 'var(--text2)',
+                    overflowX: 'auto',
+                    marginTop: 6,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all',
+                  }}>
+                    {JSON.stringify(selected.evidence, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, marginTop: '0.5rem' }}>
+                {selected.status === 'open' && (
+                  <>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => { mut.mutate({ id: selected.id, status: 'acknowledged' }); setSelected(null); }}
+                    >
+                      <Eye size={14} /> Acknowledge
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => { mut.mutate({ id: selected.id, status: 'resolved' }); setSelected(null); }}
+                    >
+                      <CheckCircle size={14} /> Mark Resolved
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => { mut.mutate({ id: selected.id, status: 'ignored' }); setSelected(null); }}
+                    >
+                      <XCircle size={14} /> Ignore
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
