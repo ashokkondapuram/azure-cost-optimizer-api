@@ -25,6 +25,8 @@ from app.models import (
 )
 from app.optimizer.rules import DEFAULT_RULES, Category, Severity
 from app.optimizer.engine import OptimizationEngine
+from app.optimizer.advanced_rules import ADVANCED_RULES
+from app.optimizer.extended_engine import ExtendedOptimizationEngine
 from app.optimizer.engine_config import get_effective_config, upsert_rule_config, delete_rule_config
 
 Base.metadata.create_all(bind=engine)
@@ -77,6 +79,7 @@ class RuleConfigIn(BaseModel):
 class AnalyzeRequest(BaseModel):
     subscription_id:  str
     profile:          str  = Field("default", description="Engine config profile name")
+    engine_version:   str  = Field("standard", description="standard | extended")
     rule_overrides:   dict = Field(
         default_factory=dict,
         description="Per-rule runtime overrides: {\"VM_IDLE\": {\"cpu_idle_pct\": 3.0}}"
@@ -477,26 +480,54 @@ def run_analysis(req: AnalyzeRequest, db: Session = Depends(get_db)):
     # 5. Build engine with DB profile + runtime overrides merged
     db_overrides      = get_effective_config(db, req.profile)
     merged_overrides  = {**db_overrides, **req.rule_overrides}
-    eng = OptimizationEngine(rule_overrides=merged_overrides)
+    engine_version = req.engine_version.lower()
+    if engine_version not in {"standard", "extended"}:
+        raise HTTPException(400, "engine_version must be 'standard' or 'extended'")
+    eng = (
+        ExtendedOptimizationEngine(rule_overrides=merged_overrides)
+        if engine_version == "extended"
+        else OptimizationEngine(rule_overrides=merged_overrides)
+    )
 
     # 6. Run analysis
-    result = eng.analyze(
-        vms=fetched.get("vms", []),
-        disks=fetched.get("disks", []),
-        snapshots=fetched.get("snapshots", []),
-        aks_clusters=clusters,
-        aks_node_pools=aks_node_pools,
-        storage=fetched.get("storage", []),
-        public_ips=fetched.get("public_ips", []),
-        load_balancers=fetched.get("load_balancers", []),
-        app_gateways=fetched.get("app_gateways", []),
-        sql_servers=fetched.get("sql_servers", []),
-        cosmosdb=fetched.get("cosmosdb", []),
-        keyvaults=fetched.get("keyvaults", []),
-        vm_metrics=vm_metrics,
-        cost_by_resource=cost_by_resource,
-        budgets=fetched.get("budgets", []),
-    )
+    if engine_version == "extended":
+        result = eng.analyze(
+            subscription_id=sub,
+            vms=fetched.get("vms", []),
+            disks=fetched.get("disks", []),
+            snapshots=fetched.get("snapshots", []),
+            aks_clusters=clusters,
+            aks_node_pools=aks_node_pools,
+            storage=fetched.get("storage", []),
+            public_ips=fetched.get("public_ips", []),
+            load_balancers=fetched.get("load_balancers", []),
+            app_gateways=fetched.get("app_gateways", []),
+            sql_databases=[],
+            cosmosdb=fetched.get("cosmosdb", []),
+            keyvaults=fetched.get("keyvaults", []),
+            vm_metrics=vm_metrics,
+            cost_by_resource=cost_by_resource,
+            budgets=fetched.get("budgets", []),
+        )
+    else:
+        result = eng.analyze(
+            vms=fetched.get("vms", []),
+            disks=fetched.get("disks", []),
+            snapshots=fetched.get("snapshots", []),
+            aks_clusters=clusters,
+            aks_node_pools=aks_node_pools,
+            storage=fetched.get("storage", []),
+            public_ips=fetched.get("public_ips", []),
+            load_balancers=fetched.get("load_balancers", []),
+            app_gateways=fetched.get("app_gateways", []),
+            sql_servers=fetched.get("sql_servers", []),
+            cosmosdb=fetched.get("cosmosdb", []),
+            keyvaults=fetched.get("keyvaults", []),
+            vm_metrics=vm_metrics,
+            cost_by_resource=cost_by_resource,
+            budgets=fetched.get("budgets", []),
+        )
+        result["engine_version"] = "standard"
 
     # 7. Persist run
     run_id = str(uuid.uuid4())
@@ -583,6 +614,7 @@ def get_run(run_id: str = Path(...), db: Session = Depends(get_db)):
          summary="List all available rules with default thresholds")
 def list_rules():
     """Returns the full catalogue of built-in rules and their configurable thresholds."""
+    rules = list(DEFAULT_RULES.values()) + list(ADVANCED_RULES.values())
     return [
         {
             "id":          r.id,
@@ -599,11 +631,22 @@ def list_rules():
                     "cluster_dev_hours", "storage_days_unused",
                     "db_dtu_idle_pct", "budget_warn_pct", "budget_crit_pct",
                     "reserved_savings_threshold", "rightsizing_memory_buffer",
+                    "evaluation_window_days", "min_monthly_savings_usd",
+                    "memory_idle_pct", "node_cpu_idle_pct", "node_memory_idle_pct",
+                    "max_unattached_disk_days", "snapshot_retention_days",
+                    "public_ip_idle_days", "min_rightsize_savings_pct",
+                    "min_reserved_coverage_hours", "nonprod_shutdown_hours_per_day",
+                    "require_tags", "prod_tag_values", "nonprod_tag_values",
+                    "spot_allowed_envs", "aks_min_system_nodes",
+                    "aks_max_idle_node_ratio", "storage_cool_after_days",
+                    "storage_archive_after_days", "sql_serverless_candidate_cpu_pct",
+                    "cosmos_autoscale_candidate_utilization_pct",
+                    "vm_uptime_hours_candidate",
                 ]
                 if hasattr(r, k)
             },
         }
-        for r in DEFAULT_RULES.values()
+        for r in rules
     ]
 
 
@@ -630,8 +673,9 @@ def upsert_config(
     body:    RuleConfigIn = ...,
     db: Session = Depends(get_db),
 ):
-    if body.rule_id not in DEFAULT_RULES:
-        raise HTTPException(400, f"Unknown rule_id '{body.rule_id}'. Valid: {list(DEFAULT_RULES.keys())}")
+    known_rules = set(DEFAULT_RULES) | set(ADVANCED_RULES)
+    if body.rule_id not in known_rules:
+        raise HTTPException(400, f"Unknown rule_id '{body.rule_id}'. Valid: {sorted(known_rules)}")
     row = upsert_rule_config(
         db, profile=profile, rule_id=body.rule_id,
         overrides=body.overrides, enabled=body.enabled,

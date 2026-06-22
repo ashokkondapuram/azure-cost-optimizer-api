@@ -63,24 +63,34 @@ class ExtendedOptimizationEngine:
         subscription_id: str,
         vms: list[dict] | None = None,
         disks: list[dict] | None = None,
+        snapshots: list[dict] | None = None,
         public_ips: list[dict] | None = None,
+        load_balancers: list[dict] | None = None,
+        app_gateways: list[dict] | None = None,
         storage: list[dict] | None = None,
         aks_clusters: list[dict] | None = None,
         aks_node_pools: dict[str, list] | None = None,
         sql_databases: list[dict] | None = None,
         cosmosdb: list[dict] | None = None,
+        keyvaults: list[dict] | None = None,
+        budgets: list[dict] | None = None,
+        subscription_spend_usd: float = 0.0,
         vm_metrics: dict[str, dict] | None = None,
         node_metrics: dict[str, dict] | None = None,
         cost_by_resource: dict[str, float] | None = None,
     ) -> dict[str, Any]:
         findings: list[ExtendedFinding] = []
         findings.extend(self._analyze_vms(subscription_id, vms or [], vm_metrics or {}, cost_by_resource or {}))
-        findings.extend(self._analyze_disks(subscription_id, disks or []))
+        findings.extend(self._analyze_disks(subscription_id, disks or [], snapshots or []))
         findings.extend(self._analyze_public_ips(subscription_id, public_ips or []))
+        findings.extend(self._analyze_load_balancers(subscription_id, load_balancers or []))
+        findings.extend(self._analyze_app_gateways(subscription_id, app_gateways or []))
         findings.extend(self._analyze_storage(subscription_id, storage or []))
         findings.extend(self._analyze_aks(subscription_id, aks_clusters or [], aks_node_pools or {}, node_metrics or {}))
         findings.extend(self._analyze_sql(subscription_id, sql_databases or []))
         findings.extend(self._analyze_cosmos(subscription_id, cosmosdb or []))
+        findings.extend(self._analyze_keyvaults(subscription_id, keyvaults or []))
+        findings.extend(self._analyze_budgets(subscription_id, budgets or [], subscription_spend_usd))
         findings.sort(key=lambda f: (self._severity_rank(f.severity), -f.estimated_savings_usd, -f.confidence_score))
         total = round(sum(f.estimated_savings_usd for f in findings), 2)
         return {
@@ -90,10 +100,13 @@ class ExtendedOptimizationEngine:
                 "total_estimated_annual_savings_usd": round(total * 12, 2),
                 "by_severity": self._count_by(findings, "severity"),
                 "by_category": self._count_by(findings, "category"),
+                "by_priority": self._count_by(findings, "action_priority"),
+                "top_rules": self._top_rules(findings),
                 "average_confidence_score": round(sum(f.confidence_score for f in findings) / len(findings), 1) if findings else 0,
             },
             "findings": [f.to_dict() for f in findings],
             "analyzed_at": datetime.now(timezone.utc).isoformat(),
+            "engine_version": "extended",
         }
 
     def _analyze_vms(self, subscription_id: str, vms: list[dict], vm_metrics: dict[str, dict], cost_by_resource: dict[str, float]) -> list[ExtendedFinding]:
@@ -112,7 +125,7 @@ class ExtendedOptimizationEngine:
             monthly_cost = float(cost_by_resource.get(rid, 0.0))
             cpu = self._metric_average(vm_metrics.get(rid), "Percentage CPU")
             mem = self._metric_average(vm_metrics.get(rid), "Available Memory Bytes")
-            if cpu is not None and monthly_cost >= under.min_monthly_savings_usd and cpu < under.cpu_idle_pct:
+            if under.enabled and cpu is not None and monthly_cost >= under.min_monthly_savings_usd and cpu < under.cpu_idle_pct:
                 savings = round(monthly_cost * 0.45, 2)
                 out.append(self._finding(
                     rule=under,
@@ -127,7 +140,7 @@ class ExtendedOptimizationEngine:
                     impact="High recurring compute savings",
                     evidence={"avg_cpu_pct": cpu, "vm_size": sku, "monthly_cost_usd": monthly_cost},
                 ))
-            if cpu is not None and cpu < family.cpu_oversize_pct and monthly_cost >= family.min_monthly_savings_usd:
+            if family.enabled and cpu is not None and cpu < family.cpu_oversize_pct and monthly_cost >= family.min_monthly_savings_usd:
                 savings = round(monthly_cost * 0.25, 2)
                 out.append(self._finding(
                     rule=family,
@@ -142,7 +155,7 @@ class ExtendedOptimizationEngine:
                     impact="Meaningful compute optimization with low risk",
                     evidence={"avg_cpu_pct": cpu, "vm_size": sku, "monthly_cost_usd": monthly_cost},
                 ))
-            if monthly_cost >= commit.min_monthly_savings_usd and monthly_cost > 0:
+            if commit.enabled and monthly_cost >= commit.min_monthly_savings_usd and monthly_cost > 0:
                 savings = round(monthly_cost * 0.18, 2)
                 out.append(self._finding(
                     rule=commit,
@@ -158,7 +171,7 @@ class ExtendedOptimizationEngine:
                     evidence={"monthly_cost_usd": monthly_cost, "vm_size": sku},
                 ))
             missing_tags = [t for t in tags_rule.require_tags if not tags.get(t)]
-            if missing_tags:
+            if tags_rule.enabled and missing_tags:
                 out.append(self._finding(
                     rule=tags_rule,
                     subscription_id=subscription_id,
@@ -174,15 +187,16 @@ class ExtendedOptimizationEngine:
                 ))
         return out
 
-    def _analyze_disks(self, subscription_id: str, disks: list[dict]) -> list[ExtendedFinding]:
+    def _analyze_disks(self, subscription_id: str, disks: list[dict], snapshots: list[dict]) -> list[ExtendedFinding]:
         out: list[ExtendedFinding] = []
         rule = self.rules["DISK_UNUSED_EXTENDED"]
+        snapshot_rule = self.rules["SNAPSHOT_RETENTION_EXTENDED"]
         for disk in disks:
             props = disk.get("properties") or {}
             state = props.get("diskState") or ""
             size_gb = props.get("diskSizeGB") or 0
             sku_name = ((disk.get("sku") or {}).get("name") or "")
-            if state == "Unattached":
+            if rule.enabled and state == "Unattached":
                 est = round((0.17 if "Premium" in sku_name else 0.05) * size_gb, 2)
                 out.append(self._finding(
                     rule=rule,
@@ -197,6 +211,30 @@ class ExtendedOptimizationEngine:
                     impact="Direct storage cost reduction",
                     evidence={"disk_state": state, "size_gb": size_gb, "sku": sku_name},
                 ))
+        for snapshot in snapshots:
+            if not snapshot_rule.enabled:
+                continue
+            props = snapshot.get("properties") or {}
+            created_at = self._parse_datetime(props.get("timeCreated"))
+            if not created_at:
+                continue
+            age_days = (datetime.now(timezone.utc) - created_at).days
+            if age_days > snapshot_rule.snapshot_retention_days:
+                size_gb = props.get("diskSizeGB") or 0
+                savings = round(size_gb * 0.05, 2)
+                out.append(self._finding(
+                    rule=snapshot_rule,
+                    subscription_id=subscription_id,
+                    resource=snapshot,
+                    detail=f"Snapshot '{snapshot.get('name')}' is {age_days} days old and may exceed retention policy.",
+                    recommendation=f"Delete or archive snapshots older than {snapshot_rule.snapshot_retention_days} days after validating recovery requirements.",
+                    savings=savings,
+                    waste_score=46,
+                    confidence=82,
+                    priority="P3",
+                    impact="Reduces stale backup storage spend",
+                    evidence={"age_days": age_days, "size_gb": size_gb},
+                ))
         return out
 
     def _analyze_public_ips(self, subscription_id: str, public_ips: list[dict]) -> list[ExtendedFinding]:
@@ -206,7 +244,7 @@ class ExtendedOptimizationEngine:
             props = ip.get("properties") or {}
             assoc = props.get("ipConfiguration") or props.get("natGateway")
             alloc = props.get("publicIPAllocationMethod") or ""
-            if alloc == "Static" and not assoc:
+            if rule.enabled and alloc == "Static" and not assoc:
                 out.append(self._finding(
                     rule=rule,
                     subscription_id=subscription_id,
@@ -222,12 +260,72 @@ class ExtendedOptimizationEngine:
                 ))
         return out
 
+    def _analyze_load_balancers(self, subscription_id: str, load_balancers: list[dict]) -> list[ExtendedFinding]:
+        out: list[ExtendedFinding] = []
+        rule = self.rules["LOAD_BALANCER_IDLE_EXTENDED"]
+        if not rule.enabled:
+            return out
+        for lb in load_balancers:
+            props = lb.get("properties") or {}
+            backends = props.get("backendAddressPools") or []
+            if not backends:
+                continue
+            all_empty = all(
+                not (pool.get("properties") or {}).get("backendIPConfigurations")
+                and not (pool.get("properties") or {}).get("loadBalancerBackendAddresses")
+                for pool in backends
+            )
+            if all_empty:
+                sku_name = ((lb.get("sku") or {}).get("name") or "Basic")
+                savings = 18.0 if sku_name == "Standard" else 0.0
+                out.append(self._finding(
+                    rule=rule,
+                    subscription_id=subscription_id,
+                    resource=lb,
+                    detail=f"Load balancer '{lb.get('name')}' has backend pools with no active backend addresses.",
+                    recommendation="Delete idle load balancers or attach them to active backend resources.",
+                    savings=savings,
+                    waste_score=82,
+                    confidence=88,
+                    priority="P2",
+                    impact="Direct network cost reduction and cleaner topology",
+                    evidence={"sku": sku_name, "backend_pool_count": len(backends)},
+                ))
+        return out
+
+    def _analyze_app_gateways(self, subscription_id: str, app_gateways: list[dict]) -> list[ExtendedFinding]:
+        out: list[ExtendedFinding] = []
+        rule = self.rules["APP_GATEWAY_IDLE_EXTENDED"]
+        if not rule.enabled:
+            return out
+        for gateway in app_gateways:
+            props = gateway.get("properties") or {}
+            listeners = props.get("httpListeners") or []
+            if not listeners:
+                sku = gateway.get("sku") or {}
+                out.append(self._finding(
+                    rule=rule,
+                    subscription_id=subscription_id,
+                    resource=gateway,
+                    detail=f"Application Gateway '{gateway.get('name')}' has no HTTP listeners configured.",
+                    recommendation="Delete idle gateways or restore listener configuration if the gateway is still required.",
+                    savings=125.0,
+                    waste_score=86,
+                    confidence=86,
+                    priority="P1",
+                    impact="High-value idle network appliance cleanup",
+                    evidence={"sku": sku},
+                ))
+        return out
+
     def _analyze_storage(self, subscription_id: str, storage: list[dict]) -> list[ExtendedFinding]:
         out: list[ExtendedFinding] = []
         rule = self.rules["STORAGE_LIFECYCLE_EXTENDED"]
         for acct in storage:
             props = acct.get("properties") or {}
             tier = props.get("accessTier") or "Unknown"
+            if not rule.enabled:
+                continue
             out.append(self._finding(
                 rule=rule,
                 subscription_id=subscription_id,
@@ -254,7 +352,7 @@ class ExtendedOptimizationEngine:
             tags = cluster.get("tags") or {}
             env = str(tags.get("environment") or tags.get("env") or "").lower()
             pools = aks_node_pools.get(cid) or aks_node_pools.get(cid.lower()) or ((cluster.get("properties") or {}).get("agentPoolProfiles") or [])
-            if env in nonprod_rule.nonprod_tag_values:
+            if nonprod_rule.enabled and env in nonprod_rule.nonprod_tag_values:
                 out.append(self._finding(
                     rule=nonprod_rule,
                     subscription_id=subscription_id,
@@ -271,7 +369,7 @@ class ExtendedOptimizationEngine:
             for pool in pools:
                 mode = str(pool.get("mode") or "User")
                 count = int(pool.get("count") or pool.get("nodeCount") or 0)
-                if mode.lower() == "system" and env in reliability_rule.prod_tag_values and count < reliability_rule.aks_min_system_nodes:
+                if reliability_rule.enabled and mode.lower() == "system" and env in reliability_rule.prod_tag_values and count < reliability_rule.aks_min_system_nodes:
                     out.append(self._finding(
                         rule=reliability_rule,
                         subscription_id=subscription_id,
@@ -293,7 +391,7 @@ class ExtendedOptimizationEngine:
                             cpu = self._generic_metric_average(metric)
                             if cpu is not None and cpu < idle_rule.node_cpu_idle_pct:
                                 idle_nodes += 1
-                    if idle_nodes and (idle_nodes / max(count, 1)) >= idle_rule.aks_max_idle_node_ratio:
+                    if idle_rule.enabled and idle_nodes and (idle_nodes / max(count, 1)) >= idle_rule.aks_max_idle_node_ratio:
                         out.append(self._finding(
                             rule=idle_rule,
                             subscription_id=subscription_id,
@@ -316,7 +414,7 @@ class ExtendedOptimizationEngine:
             sku = db.get("sku") or {}
             tier = sku.get("tier") or ""
             name = db.get("name") or ""
-            if tier in {"GeneralPurpose", "Standard", "BusinessCritical"} and "serverless" not in str(sku.get("name") or "").lower():
+            if rule.enabled and tier in {"GeneralPurpose", "Standard", "BusinessCritical"} and "serverless" not in str(sku.get("name") or "").lower():
                 out.append(self._finding(
                     rule=rule,
                     subscription_id=subscription_id,
@@ -339,7 +437,7 @@ class ExtendedOptimizationEngine:
             props = acct.get("properties") or {}
             capabilities = props.get("capabilities") or []
             is_serverless = any(c.get("name") == "EnableServerless" for c in capabilities)
-            if not is_serverless:
+            if rule.enabled and not is_serverless:
                 out.append(self._finding(
                     rule=rule,
                     subscription_id=subscription_id,
@@ -352,6 +450,60 @@ class ExtendedOptimizationEngine:
                     priority="P3",
                     impact="Potential RU/s spend optimization",
                     evidence={"capabilities": capabilities},
+                ))
+        return out
+
+    def _analyze_keyvaults(self, subscription_id: str, keyvaults: list[dict]) -> list[ExtendedFinding]:
+        out: list[ExtendedFinding] = []
+        rule = self.rules["KEYVAULT_PROTECTION_EXTENDED"]
+        if not rule.enabled:
+            return out
+        for vault in keyvaults:
+            props = vault.get("properties") or {}
+            soft_delete = props.get("enableSoftDelete")
+            purge_protection = props.get("enablePurgeProtection")
+            if soft_delete is False or purge_protection is not True:
+                out.append(self._finding(
+                    rule=rule,
+                    subscription_id=subscription_id,
+                    resource=vault,
+                    detail=f"Key Vault '{vault.get('name')}' does not meet the recommended deletion protection baseline.",
+                    recommendation="Enable soft delete and purge protection for production vaults after validating operational recovery procedures.",
+                    savings=0,
+                    waste_score=18,
+                    confidence=92,
+                    priority="P1",
+                    impact="Prevents accidental secret loss and costly recovery incidents",
+                    evidence={"enableSoftDelete": soft_delete, "enablePurgeProtection": purge_protection},
+                ))
+        return out
+
+    def _analyze_budgets(self, subscription_id: str, budgets: list[dict], subscription_spend_usd: float) -> list[ExtendedFinding]:
+        out: list[ExtendedFinding] = []
+        rule = self.rules["BUDGET_GUARDRAIL_EXTENDED"]
+        if not rule.enabled:
+            return out
+        for budget in budgets:
+            props = budget.get("properties") or budget
+            amount = float(props.get("amount") or 0)
+            if amount <= 0:
+                continue
+            current = self._budget_current_spend(props, subscription_spend_usd)
+            forecast = self._budget_forecast_spend(props)
+            used_pct = max(current, forecast) / amount * 100
+            if used_pct >= 80:
+                out.append(self._finding(
+                    rule=rule,
+                    subscription_id=subscription_id,
+                    resource=budget,
+                    detail=f"Budget '{budget.get('name') or props.get('name') or 'subscription budget'}' is at {used_pct:.1f}% of limit.",
+                    recommendation="Review top spend drivers, pause non-prod workloads, and raise owner-specific remediation tickets.",
+                    savings=0,
+                    waste_score=70 if used_pct >= 95 else 54,
+                    confidence=78,
+                    priority="P1" if used_pct >= 95 else "P2",
+                    impact="Controls budget overrun risk",
+                    evidence={"amount": amount, "current_spend_usd": current, "forecast_spend_usd": forecast, "used_pct": used_pct},
                 ))
         return out
 
@@ -388,6 +540,17 @@ class ExtendedOptimizationEngine:
             out[key] = out.get(key, 0) + 1
         return out
 
+    def _top_rules(self, findings: list[ExtendedFinding], limit: int = 5) -> list[dict[str, Any]]:
+        totals: dict[str, dict[str, Any]] = {}
+        for finding in findings:
+            row = totals.setdefault(
+                finding.rule_id,
+                {"rule_id": finding.rule_id, "rule_name": finding.rule_name, "count": 0, "estimated_savings_usd": 0.0},
+            )
+            row["count"] += 1
+            row["estimated_savings_usd"] = round(row["estimated_savings_usd"] + finding.estimated_savings_usd, 2)
+        return sorted(totals.values(), key=lambda r: (-r["estimated_savings_usd"], -r["count"]))[:limit]
+
     def _severity_rank(self, severity: str) -> int:
         return {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}.get(severity, 9)
 
@@ -411,6 +574,29 @@ class ExtendedOptimizationEngine:
                 if vals:
                     return sum(vals) / len(vals)
         return None
+
+    def _parse_datetime(self, value: Any) -> datetime | None:
+        if not value:
+            return None
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                return parsed.replace(tzinfo=timezone.utc)
+            return parsed
+        except ValueError:
+            return None
+
+    def _budget_current_spend(self, props: dict[str, Any], fallback: float) -> float:
+        current_spend = props.get("currentSpend") or {}
+        if isinstance(current_spend, dict):
+            return float(current_spend.get("amount") or fallback or 0)
+        return float(current_spend or fallback or 0)
+
+    def _budget_forecast_spend(self, props: dict[str, Any]) -> float:
+        forecast = props.get("forecastSpend") or props.get("forecast")
+        if isinstance(forecast, dict):
+            return float(forecast.get("amount") or 0)
+        return float(forecast or 0)
 
     def _generic_metric_average(self, metrics: dict[str, Any] | None) -> float | None:
         if not metrics:
