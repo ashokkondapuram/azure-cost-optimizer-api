@@ -21,7 +21,6 @@ from fastapi import (
     Body,
     Depends,
     FastAPI,
-    Header,
     HTTPException,
     Path,
     Query,
@@ -148,11 +147,14 @@ from app.spa_utils import should_serve_spa, spa_index_response
 from app import auth as azure_auth
 from app.user_auth import (
     authenticate_user,
+    check_login_rate_limit,
+    clear_login_failures,
     create_access_token,
     create_app_user,
     ensure_default_admin,
     ensure_default_viewer,
     list_app_users,
+    record_login_failure,
     reset_app_user_password,
     require_admin_user,
     require_authenticated_user,
@@ -285,10 +287,12 @@ async def azure_error_handler(request, exc: AzureAPIError):
 
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request, exc: Exception):
+    # Log only the path — never the full URL — to avoid leaking query params
+    # (subscription_id, from_date, etc.) into structured logs.
     log.exception(
         "unhandled_error",
         method=request.method,
-        url=str(request.url),
+        path=request.url.path,
     )
     return JSONResponse(
         status_code=500,
@@ -307,12 +311,30 @@ class K8sUtilizationIn(BaseModel):
     memory_usage:   Optional[str] = None
 
 
+# ISO 8601 datetime: YYYY-MM-DDTHH:MM:SS with optional timezone offset or Z
+_ISO8601_DATETIME_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$"
+)
+
+
 class K8sSnapshotIn(BaseModel):
     cluster_name:   str = Field(..., min_length=1, max_length=253)
     collected_at:   Optional[str] = None
     summary:        dict = Field(default_factory=dict)
     nodes:          list[dict] = Field(default_factory=list, max_length=500)
     pods:           list[dict] = Field(default_factory=list, max_length=5000)
+
+    @field_validator("collected_at")
+    @classmethod
+    def _validate_collected_at(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        v = value.strip()
+        if not _ISO8601_DATETIME_RE.match(v):
+            raise ValueError(
+                f"collected_at must be an ISO 8601 datetime (e.g. 2024-01-15T10:30:00Z); got {value!r}"
+            )
+        return v
 
 
 def _scoped_subscription(db: Session, subscription_id: str) -> str:
@@ -373,7 +395,16 @@ def _live_cost_token(db: Session) -> str | None:
 
 
 def _enqueue_cost_sync(subscription_id: str, *, reason: str) -> None:
-    request_cost_sync(subscription_id, reason=reason)
+    """Enqueue a background cost sync. Logs a warning if the worker is unavailable."""
+    try:
+        request_cost_sync(subscription_id, reason=reason)
+    except Exception as exc:
+        log.warning(
+            "cost_sync.enqueue_failed",
+            subscription_id=subscription_id,
+            reason=reason,
+            error=str(exc)[:300],
+        )
 
 
 def _require_admin_live_arm(
@@ -405,8 +436,10 @@ def _verify_k8s_agent_token(
     if not expected:
         return
 
-    # Token is configured: always compare, regardless of environment.
-    if not api_key or not secrets.compare_digest(api_key, expected):
+    # Always run compare_digest — even when api_key is empty — so that the
+    # comparison takes constant time regardless of whether a key was provided,
+    # preventing a timing side-channel that could reveal whether a token is set.
+    if not secrets.compare_digest(api_key or "", expected):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
@@ -505,7 +538,11 @@ class BulkFindingStatusIn(BaseModel):
 
 
 class ResourceTagsIn(BaseModel):
-    tags: dict[str, str] = Field(default_factory=dict, description="Tag key-value pairs")
+    # Azure ARM enforces 512-char tag keys and 256-char tag values.
+    tags: dict[
+        Annotated[str, Field(max_length=512)],
+        Annotated[str, Field(max_length=256)],
+    ] = Field(default_factory=dict, description="Tag key-value pairs")
 
 
 class FindingExecutionIn(BaseModel):
@@ -570,13 +607,31 @@ class BatchResourceLookupIn(BaseModel):
     include_metrics: bool = True
     include_advanced_analysis: bool = True
 
+    @field_validator("timespan")
+    @classmethod
+    def _validate_timespan(cls, value: str) -> str:
+        v = (value or "").strip().upper()
+        if not _ISO8601_DURATION_RE.match(v) or v == "P":
+            raise ValueError(
+                f"timespan must be an ISO 8601 duration (e.g. P7D, P1DT12H); got {value!r}"
+            )
+        return v
+
 
 class BulkResourceTagsIn(BaseModel):
     subscription_id: str
     resource_ids: list[Annotated[str, Field(max_length=500)]] = Field(
         ..., min_length=1, max_length=50
     )
-    tags: dict[str, str] = Field(default_factory=dict)
+    # Azure ARM tag key/value length limits applied here too.
+    tags: dict[
+        Annotated[str, Field(max_length=512)],
+        Annotated[str, Field(max_length=256)],
+    ] = Field(default_factory=dict)
+
+
+_VALID_AUTH_MODES = {"managed_identity", "default_credential", "service_principal"}
+_VALID_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
 
 class AzureSettingsIn(BaseModel):
@@ -585,6 +640,16 @@ class AzureSettingsIn(BaseModel):
     client_id: Optional[str] = None
     client_secret: Optional[str] = Field(None, description="Leave blank to keep the stored secret")
     default_subscription_id: Optional[str] = None
+
+    @field_validator("auth_mode")
+    @classmethod
+    def _validate_auth_mode(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        v = value.strip().lower()
+        if v not in _VALID_AUTH_MODES:
+            raise ValueError(f"auth_mode must be one of: {sorted(_VALID_AUTH_MODES)}")
+        return v
 
 
 class DatabaseSettingsIn(BaseModel):
@@ -602,6 +667,16 @@ class ApplicationSettingsIn(BaseModel):
     cors_allowed_origins: Optional[str] = None
     request_timeout_seconds: Optional[int] = None
     log_level: Optional[str] = None
+
+    @field_validator("log_level")
+    @classmethod
+    def _validate_log_level(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        v = value.strip().upper()
+        if v not in _VALID_LOG_LEVELS:
+            raise ValueError(f"log_level must be one of: {sorted(_VALID_LOG_LEVELS)}")
+        return v
 
 
 class KubernetesSettingsIn(BaseModel):
@@ -639,6 +714,15 @@ class CreateUserRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=256)
     display_name: Optional[str] = Field(None, max_length=128)
     role: str = Field(ROLE_VIEWER, description="admin or viewer")
+
+    @field_validator("role")
+    @classmethod
+    def _validate_role(cls, value: str) -> str:
+        v = value.strip().lower()
+        valid = {ROLE_ADMIN, ROLE_VIEWER}
+        if v not in valid:
+            raise ValueError(f"role must be one of: {sorted(valid)}")
+        return v
 
 
 class ResetUserPasswordRequest(BaseModel):
@@ -680,8 +764,6 @@ def health_ready(db: Session = Depends(get_db)):
 
 @app.post("/auth/login", tags=["Auth"], summary="Sign in with username and password")
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    from app.user_auth import check_login_rate_limit, record_login_failure, clear_login_failures
-
     client_ip = request.client.host if request.client else "unknown"
 
     # Skip rate limiting for unresolvable IPs (e.g. behind a proxy returning None)
@@ -786,6 +868,18 @@ def reset_user_password(
 #  SYSTEM SETTINGS  (Azure, database, application, Kubernetes)
 # ══════════════════════════════════════════════════════════════════════════════
 
+# Category → model map used by the generic PUT /settings/{category} endpoint.
+# Explicit dispatch avoids Union-matching ambiguity where overlapping field
+# names could cause Pydantic to silently coerce the wrong model.
+_SETTINGS_MODEL_MAP: dict[str, type[BaseModel]] = {
+    "azure":       AzureSettingsIn,
+    "database":    DatabaseSettingsIn,
+    "application": ApplicationSettingsIn,
+    "kubernetes":  KubernetesSettingsIn,
+    "ai":          AiSettingsIn,
+}
+
+
 @app.get("/settings/status", tags=["Settings"],
          summary="Runtime status for database, CORS, and encryption")
 def settings_status(request: Request):
@@ -814,20 +908,24 @@ def get_settings_category(request: Request, category: str = Path(...), db: Sessi
 def put_settings_category(
     request: Request,
     category: str = Path(...),
-    body: Union[
-        AzureSettingsIn,
-        DatabaseSettingsIn,
-        ApplicationSettingsIn,
-        KubernetesSettingsIn,
-        AiSettingsIn,
-    ] = Body(...),
+    body: dict = Body(...),
     db: Session = Depends(get_db),
 ):
     _ = require_admin_user(request)
     if category not in SETTING_CATEGORIES:
         raise HTTPException(404, f"Unknown category. Valid: {list(SETTING_CATEGORIES)}")
+
+    model_cls = _SETTINGS_MODEL_MAP.get(category)
+    if model_cls is None:
+        raise HTTPException(404, f"Unknown category. Valid: {list(_SETTINGS_MODEL_MAP)}")
+
     try:
-        saved = save_category_settings(db, category, body.model_dump(exclude_none=True))
+        parsed = model_cls.model_validate(body)
+    except Exception as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    try:
+        saved = save_category_settings(db, category, parsed.model_dump(exclude_none=True))
     except RuntimeError as exc:
         raise HTTPException(400, str(exc)) from exc
 
@@ -1029,12 +1127,15 @@ def get_costs(
     live_kw = live_range_kw(range_kw)
     token = _live_cost_token(db)
     scope = f"/subscriptions/{subscription_id}"
-    db_data, source = resolve_cost_db_then_live(
-        db_call=lambda: daily_cost_response_from_db(db, subscription_id, **range_kw),
-        live_call=lambda: query_daily_costs_live(
-            db, subscription_id, token=token, **live_kw,
-        ),
-    )
+    try:
+        db_data, source = resolve_cost_db_then_live(
+            db_call=lambda: daily_cost_response_from_db(db, subscription_id, **range_kw),
+            live_call=lambda: query_daily_costs_live(
+                db, subscription_id, token=token, **live_kw,
+            ),
+        )
+    except (CostExportNotConfiguredError, CostExportReadError, Exception) as exc:
+        raise _cost_api_http_error(exc) from exc
     if db_data:
         if source != "database":
             _enqueue_cost_sync(subscription_id, reason="live_fallback_daily")
@@ -1079,9 +1180,12 @@ def get_rg_costs(
     subscription_id = _scoped_subscription(db, subscription_id)
     range_kw = _cost_range_kwargs(timeframe, from_date, to_date)
     scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}"
-    db_data = daily_cost_by_resource_group_from_db(
-        db, subscription_id, resource_group, **range_kw,
-    )
+    try:
+        db_data = daily_cost_by_resource_group_from_db(
+            db, subscription_id, resource_group, **range_kw,
+        )
+    except (CostExportNotConfiguredError, CostExportReadError, Exception) as exc:
+        raise _cost_api_http_error(exc) from exc
     if db_data:
         log.info(
             "cost_api.get_rg_costs",
