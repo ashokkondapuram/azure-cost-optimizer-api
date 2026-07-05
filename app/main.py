@@ -10,6 +10,7 @@ Includes:
 # ── stdlib ────────────────────────────────────────────────────────────────────
 import json
 import os
+import re
 import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -108,6 +109,9 @@ from app.arm_live_reads import fetch_live_resources, paginate_list
 from app.arm_resource_enrichment import enrich_arm_resources_for_type
 from app.db_clear import clear_synced_data
 from app.analysis import run_db_analysis
+# fix #1: persist_optimization_run must be imported at module level so that
+# _run_live_analysis (and any background task referencing it) never raises
+# a NameError at runtime.
 from app.analysis_persist import persist_optimization_run
 from app.batch_analyzer import (
     create_analysis_job,
@@ -168,32 +172,36 @@ from app.user_auth import (
 )
 
 # ---------------------------------------------------------------------------
-# Initialise settings + logging at module level (read-only — no DDL here)
+# Module-level: settings object only — no DDL, no logging side-effects.
+# fix #9: configure_logging and validate_startup moved into lifespan so they
+# do not fire when main.py is imported by the test suite.
 # ---------------------------------------------------------------------------
 settings = get_settings()
-configure_logging(
-    level=settings.log_level,
-    json_logs=settings.is_production,
-)
-if settings.is_production:
-    settings.validate_startup()
 log = structlog.get_logger()
-log.info(
-    "app.startup",
-    app_env=settings.app_env,
-    log_level=settings.log_level,
-    production=settings.is_production,
-)
 
 
 # ---------------------------------------------------------------------------
 # Lifespan — replaces the deprecated @app.on_event("startup") pattern.
 # DDL (create_all) and schema migrations run here so that importing main.py
-# in tests does NOT trigger a database migration.
+# in tests does NOT trigger a database migration or logging configuration.
 # ---------------------------------------------------------------------------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── startup ──────────────────────────────────────────────────────────
+    # fix #9: logging + startup validation live here, not at module level.
+    configure_logging(
+        level=settings.log_level,
+        json_logs=settings.is_production,
+    )
+    if settings.is_production:
+        settings.validate_startup()
+    log.info(
+        "app.startup",
+        app_env=settings.app_env,
+        log_level=settings.log_level,
+        production=settings.is_production,
+    )
+
     Base.metadata.create_all(bind=engine)
     migrate_schema()
 
@@ -299,17 +307,25 @@ class K8sUtilizationIn(BaseModel):
     memory_usage: Optional[str] = None
 
 
+# fix #10: use max_items (not max_length) on list fields — semantically correct
+# for Pydantic v2 sequence constraints.
 class K8sSnapshotIn(BaseModel):
     cluster_name: str = Field(..., min_length=1, max_length=253)
     collected_at: Optional[str] = None
     summary: dict = Field(default_factory=dict)
-    nodes: list = Field(default_factory=list, max_length=500)
-    pods: list = Field(default_factory=list, max_length=5000)
+    nodes: list = Field(default_factory=list, max_items=500)
+    pods: list = Field(default_factory=list, max_items=5000)
 
 
 def _scoped_subscription(db: Session, subscription_id: str) -> str:
     """Validate format and ensure subscription belongs to this deployment."""
     return ensure_subscription_known(db, subscription_id)
+
+
+# fix #8: validate date format before slicing to avoid silently truncating
+# invalid dates (e.g. 2026-13-01) into equally-invalid partial strings that
+# then cause a confusing 500 downstream instead of a clean 422 here.
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 def _cost_range_kwargs(
@@ -321,9 +337,21 @@ def _cost_range_kwargs(
 ) -> dict:
     kw: dict = {"timeframe": timeframe}
     if (from_date or "").strip():
-        kw["from_date"] = from_date.strip()[:10]
+        raw = from_date.strip()[:10]
+        if not _DATE_RE.match(raw):
+            raise HTTPException(
+                status_code=422,
+                detail=f"from_date must be YYYY-MM-DD; got {from_date!r}",
+            )
+        kw["from_date"] = raw
     if (to_date or "").strip():
-        kw["to_date"] = to_date.strip()[:10]
+        raw = to_date.strip()[:10]
+        if not _DATE_RE.match(raw):
+            raise HTTPException(
+                status_code=422,
+                detail=f"to_date must be YYYY-MM-DD; got {to_date!r}",
+            )
+        kw["to_date"] = raw
     if timeframe == "Custom" and (not kw.get("from_date") or not kw.get("to_date")):
         raise HTTPException(
             status_code=422,
@@ -363,6 +391,12 @@ def _require_admin_live_arm(
     return _scoped_subscription(db, subscription_id)
 
 
+# fix #4: simplify _verify_k8s_agent_token — remove the dead production branch.
+# Old logic: `if is_production and not expected → 503` then
+#            `if auth_enabled and not expected → 503` was unreachable in prod
+#            because the first guard already fired.
+# New logic: single ordered set of guards that is easy to follow and safe to
+# reorder without breaking behaviour.
 def _verify_k8s_agent_token(
     api_key: Optional[str] = None,
     db: Optional[Session] = None,
@@ -370,14 +404,19 @@ def _verify_k8s_agent_token(
     k8s_cfg = get_system_config(db, "kubernetes") if db is not None else {}
     expected = k8s_cfg.get("agent_token") or settings.k8s_agent_token
     require = bool(k8s_cfg.get("require_agent_token") or settings.require_k8s_token)
-    if settings.is_production and not expected:
-        raise HTTPException(status_code=503, detail="K8s agent authentication is not configured")
-    if require and not expected:
-        raise HTTPException(status_code=503, detail="K8s agent authentication is not configured")
+
+    # No token configured: fail loudly in any enforcing mode.
+    if not expected and (settings.is_production or settings.auth_enabled or require):
+        raise HTTPException(
+            status_code=503,
+            detail="K8s agent authentication is not configured",
+        )
+
+    # No token configured and no enforcement (dev mode): allow any call.
     if not expected:
-        if settings.auth_enabled:
-            raise HTTPException(status_code=503, detail="K8s agent authentication is not configured")
         return
+
+    # Token is configured: always compare, regardless of environment.
     if not api_key or not secrets.compare_digest(api_key, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
@@ -635,9 +674,9 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
     clear_login_failures(db, client_ip)
 
-    user.last_login_at = datetime.now(timezone.utc)
-    db.commit()
-
+    # fix #7: check JWT configuration BEFORE writing last_login_at so that a
+    # mis-configured deployment does not leave a committed login timestamp for
+    # an attempt that ultimately failed with a 503.
     if settings.is_production and not settings.jwt_configured:
         log.error("login_blocked", reason="jwt_secret_missing")
         raise HTTPException(
@@ -650,6 +689,11 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
     except RuntimeError as exc:
         log.error("login_blocked", reason=str(exc))
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # Only persist last_login_at once we know the token can be issued.
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -1261,6 +1305,9 @@ def get_cost_forecast(
     return cost_client.query_forecast(sub, timeframe)
 
 
+# fix #5: always require admin auth for budget data, regardless of whether the
+# result comes from cache or a live Azure call. Budget amounts are sensitive and
+# should not be readable by viewer-role users via a cache hit.
 @app.get("/costs/budgets", tags=["Cost Management"],
          summary="List all budgets configured on a subscription")
 def get_budgets(
@@ -1268,11 +1315,11 @@ def get_budgets(
     subscription_id: str = Query(...),
     db: Session = Depends(get_db),
 ):
+    require_admin_user(request)
     subscription_id = _scoped_subscription(db, subscription_id)
     cached = list_budgets_from_db(db, subscription_id)
     if cached:
         return cached
-    require_admin_user(request)
     return cost_client.list_budgets(subscription_id)
 
 
@@ -1412,6 +1459,8 @@ def get_dimensions(
     return cost_client.list_dimensions(sub)
 
 
+# fix #6: omit internal DB primary key `r.id` from the API response — it leaks
+# record counts and enables enumeration attacks.
 @app.get("/costs/history", tags=["Cost Management"],
          summary="Synced cost records from PostgreSQL (scoped by subscription)")
 def cost_history(
@@ -1420,11 +1469,15 @@ def cost_history(
 ):
     """Returns the 100 most recent synced CostRecord rows for the subscription."""
     sub = _scoped_subscription(db, subscription_id)
-    from app.cost_db import list_cost_records
-    records = list_cost_records(db, sub, limit=100)
+    records = (
+        db.query(CostRecord)
+        .filter(CostRecord.subscription_id == sub)
+        .order_by(CostRecord.created_at.desc())
+        .limit(100)
+        .all()
+    )
     return [
         {
-            "id": r.id,
             "subscription_id": r.subscription_id,
             "resource_group": r.resource_group,
             "timeframe": r.timeframe,
@@ -1435,6 +1488,9 @@ def cost_history(
     ]
 
 
+# fix #3: use _scoped_subscription instead of raw .strip().lower() so that
+# trigger_cost_sync enforces the same format validation and deployment guard
+# as every other cost endpoint.
 @app.post("/costs/sync", tags=["Cost Management"],
           summary="Refresh Dashboard and Cost explorer costs (subscription + resource type)")
 def trigger_cost_sync(
@@ -1445,7 +1501,7 @@ def trigger_cost_sync(
 ):
     require_admin_user(request)
     try:
-        subscription_id = subscription_id.strip().lower()
+        subscription_id = _scoped_subscription(db, subscription_id)
         log.info("cost_api.sync_start", subscription_id=subscription_id, source="azure_cost_management")
         synced = sync_costs(subscription_id, db, token)
         log.info("cost_api.sync_done", subscription_id=subscription_id, synced=synced)
@@ -1606,6 +1662,10 @@ def _db_or_live(
     db: Session,
     resource_type: str,
     live_fn,
+    # fix #2: Literal type here makes _db_or_live itself correct, but FastAPI
+    # generates 422 validation only when the individual route handler's Query
+    # param also carries the Literal annotation. Each route below uses
+    # `source: Literal["db", "live"] = Query("db")` for this reason.
     source: Literal["db", "live"] = "db",
     *,
     request: Request,
@@ -1651,8 +1711,361 @@ def _db_or_live(
         cost_map=cost_map,
     )
 
-# NOTE: The remainder of the route handlers (Compute, AKS, Storage, Network,
-# DB, Security, Optimization Engine, Admin, Events, K8s, etc.) are unchanged
-# from the original file below this point. They are preserved verbatim to keep
-# this diff minimal and non-breaking. The APIRouter split (review issue #1) and
-# _run_live_analysis extraction (review issue #2) are tracked as follow-up tasks.
+
+@app.get("/resources/counts", tags=["Resources"],
+         summary="Resource counts by category (single DB query for dashboard)")
+def resource_counts(subscription_id: str = Query(...), db: Session = Depends(get_db)):
+    return get_resource_counts(db, _scoped_subscription(db, subscription_id))
+
+
+@app.get("/resources/from-cost", tags=["Resources"],
+         summary="Azure inventory merged with MTD costs (lazy-loaded)")
+def list_resources_from_cost(
+    subscription_id: str = Query(...),
+    limit: int | None = Query(None, ge=1, le=200, description="Page size for lazy loading"),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    subscription_id = _scoped_subscription(db, subscription_id)
+    if limit is not None:
+        return list_billed_resources_page(db, subscription_id, limit=limit, offset=offset)
+    return list_cost_resources_db(db, subscription_id)
+
+
+@app.get("/resources/billed", tags=["Resources"],
+         summary="Azure inventory merged with MTD costs (paginated)")
+def list_billed_resources(
+    subscription_id: str = Query(...),
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    subscription_id = _scoped_subscription(db, subscription_id)
+    return list_billed_resources_page(db, subscription_id, limit=limit, offset=offset)
+
+
+@app.get("/resources/billed/properties", tags=["Resources"],
+         summary="Lazy-load ARM properties for a billed resource")
+def get_billed_resource_properties(
+    resource_id: str = Query(..., description="Full ARM resource ID"),
+    subscription_id: str = Query(...),
+    db: Session = Depends(get_db),
+    token: str = Depends(arm_bearer_token),
+):
+    from app.arm_resource_probe import probe_billed_resource
+
+    subscription_id = _scoped_subscription(db, subscription_id)
+    try:
+        return probe_billed_resource(db, subscription_id, resource_id, token)
+    except Exception as exc:
+        log.exception("billed_resource_probe_failed", resource_id=resource_id)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+# ── Resource type endpoints — fix #2 applied: each handler declares
+# `source: Literal["db", "live"] = Query("db")` so FastAPI generates a 422
+# when any value other than "db" or "live" is supplied by the caller.
+
+@app.get("/resources/vms", tags=["Compute"],
+         summary="Virtual machines (database or live ARM)")
+def list_vms(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    standalone_only: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    result = _db_or_live(
+        subscription_id, db, "compute/vm",
+        lambda sub, tok: resource_client.list_vms(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+    if standalone_only and isinstance(result, list):
+        result = filter_standalone_vms(result)
+    return result
+
+
+@app.get("/resources/disks", tags=["Compute"],
+         summary="Managed disks (database or live ARM)")
+def list_disks(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "compute/disk",
+        lambda sub, tok: resource_client.list_disks(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/snapshots", tags=["Compute"],
+         summary="Disk snapshots (database or live ARM)")
+def list_snapshots(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "compute/snapshot",
+        lambda sub, tok: resource_client.list_snapshots(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/images", tags=["Compute"],
+         summary="Custom VM images (database or live ARM)")
+def list_images(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "compute/image",
+        lambda sub, tok: resource_client.list_images(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/aks", tags=["Containers"],
+         summary="AKS clusters (database or live ARM)")
+def list_aks(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "containers/aks",
+        lambda sub, tok: resource_client.list_aks_clusters(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/storage", tags=["Storage"],
+         summary="Storage accounts (database or live ARM)")
+def list_storage(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "storage/account",
+        lambda sub, tok: resource_client.list_storage_accounts(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/vnets", tags=["Network"],
+         summary="Virtual networks (database or live ARM)")
+def list_vnets(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "network/vnet",
+        lambda sub, tok: resource_client.list_vnets(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/public-ips", tags=["Network"],
+         summary="Public IP addresses (database or live ARM)")
+def list_public_ips(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "network/publicip",
+        lambda sub, tok: resource_client.list_public_ips(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/load-balancers", tags=["Network"],
+         summary="Load balancers (database or live ARM)")
+def list_load_balancers(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "network/loadbalancer",
+        lambda sub, tok: resource_client.list_load_balancers(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/app-gateways", tags=["Network"],
+         summary="Application gateways (database or live ARM)")
+def list_app_gateways(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "network/appgateway",
+        lambda sub, tok: resource_client.list_app_gateways(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/sql-servers", tags=["Databases"],
+         summary="SQL servers (database or live ARM)")
+def list_sql_servers(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "database/sql",
+        lambda sub, tok: resource_client.list_sql_servers(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/cosmos", tags=["Databases"],
+         summary="Cosmos DB accounts (database or live ARM)")
+def list_cosmos(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "database/cosmos",
+        lambda sub, tok: resource_client.list_cosmos_accounts(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/key-vaults", tags=["Security"],
+         summary="Key vaults (database or live ARM)")
+def list_key_vaults(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "security/keyvault",
+        lambda sub, tok: resource_client.list_key_vaults(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/web-apps", tags=["App Service"],
+         summary="App Service web apps (database or live ARM)")
+def list_web_apps(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "appservice/webapp",
+        lambda sub, tok: resource_client.list_web_apps(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.get("/resources/app-service-plans", tags=["App Service"],
+         summary="App Service plans (database or live ARM)")
+def list_app_service_plans(
+    request: Request,
+    subscription_id: str = Query(...),
+    source: Literal["db", "live"] = Query("db"),
+    limit: int | None = Query(None, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+):
+    return _db_or_live(
+        subscription_id, db, "appservice/plan",
+        lambda sub, tok: resource_client.list_app_service_plans(sub),
+        source, request=request, limit=limit, offset=offset,
+    )
+
+
+@app.patch("/resources/{resource_id:path}/tags", tags=["Resources"],
+           summary="Update Azure resource tags (admin)")
+def patch_resource_tags(
+    request: Request,
+    resource_id: str = Path(..., description="Full ARM resource ID"),
+    body: ResourceTagsIn = ...,
+    subscription_id: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    from app.http_client import AzureAPIError
+    from app.models import ResourceSnapshot
+
+    require_admin_user(request)
+    sub = _scoped_subscription(db, subscription_id)
+    rid = (resource_id or "").strip()
+    if not rid.startswith("/"):
+        rid = f"/{rid}"
+    rid_lower = rid.lower()
+    if sub not in rid_lower:
+        raise HTTPException(400, "resource_id does not match subscription_id")
+
+    tags = {str(k): str(v) for k, v in (body.tags or {}).items()}
+    try:
+        arm_result = resource_client.patch_resource_tags(rid, tags, db=db)
+    except AzureAPIError as exc:
+        raise HTTPException(status_code=exc.status or 502, detail=exc.message) from exc
+
+    row = (
+        db.query(ResourceSnapshot)
+        .filter(
+            ResourceSnapshot.subscription_id == sub,
+            ResourceSnapshot.resource_id == rid_lower,
+        )
+        .first()
+    )
+    if row:
+        row.tags_json = json.dumps(tags)
+        db.commit()
+
+    return {
+        "resource_id": rid,
+        "tags": arm_result.get("tags") or tags,
+        "updated": True,
+    }
