@@ -1,102 +1,113 @@
 # API Reference
 
 ## General notes
-- Base URL depends on the environment where the backend is deployed.
-- All endpoints currently return JSON.
-- Authentication is not yet enforced in the sample implementation and must be added before production use.
+
+- Base URL: `/api` in production (mirrored from root paths via `app/route_mirror.py`).
+- All JSON responses unless noted.
+- **Authentication:** JWT bearer tokens when `AUTH_ENABLED=true` (default). Sign in at `POST /auth/login`, then send `Authorization: Bearer <token>`.
+- **Subscription scoping:** Most data endpoints require `subscription_id` and reject unknown subscriptions (404).
+- **Admin-only:** Sync, analyze, settings, live Azure reads, engine config, and several metrics endpoints require role `admin`.
 
 ## Health
 
-### GET /health
-Purpose: simple liveness indicator.
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/health` | Public | Liveness |
+| GET | `/health/live` | Public | Liveness probe |
+| GET | `/health/ready` | Public | Readiness probe |
 
-Response example:
-```json
-{ "status": "ok" }
-```
+## Auth
 
-## Cost APIs
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/login` | Public | Username/password login (rate limited) |
+| GET | `/auth/me` | User | Current user profile |
 
-### GET /costs
-Purpose: retrieve subscription-level Azure cost data.
+## Cost Management
 
-Query parameters:
-- `subscription_id` - required Azure subscription ID.
-- `timeframe` - optional, default `MonthToDate`.
-- `granularity` - optional, default `Daily`.
+Primary cost reads are **database-first** (blob export sync via `POST /costs/sync`). Live Cost Management calls are admin-only where noted.
 
-Behavior:
-- queries Azure Cost Management,
-- stores a cost record in PostgreSQL,
-- returns the Azure response payload.
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/costs` | User + subscription | Daily cost series from DB |
+| GET | `/costs/resource-group` | User + subscription | RG-scoped daily costs |
+| GET | `/costs/by-resource` | User + subscription | Per-resource MTD costs |
+| GET | `/costs/by-service` | User + subscription | Service breakdown |
+| GET | `/costs/summary` | User + subscription | Summary KPIs |
+| GET | `/costs/changes` | User + subscription | MTD cost deltas |
+| GET | `/cost/daily` | User + subscription | Daily rollup |
+| GET | `/costs/history` | User + subscription | Cost query audit log (scoped) |
+| GET | `/costs/forecast` | Admin + subscription | Live forecast |
+| GET | `/costs/dimensions` | Admin + subscription | Live filter dimensions |
+| GET | `/costs/budgets` | User + subscription | Budgets (DB; live fallback admin) |
+| POST | `/costs/sync` | Admin | Pull blob export into DB |
 
-### GET /costs/resource-group
-Purpose: retrieve resource-group-level Azure cost data.
+## Dashboard
 
-Query parameters:
-- `subscription_id` - required.
-- `resource_group` - required.
-- `timeframe` - optional.
-- `granularity` - optional.
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/dashboard/overview` | User + subscription | Dashboard KPIs |
+| GET | `/sync/status` | User + subscription | Sync freshness |
+| GET | `/dashboard/resources/{resource_id}` | User + subscription | Resource detail |
+| GET | `/advisor/recommendations` | User + subscription | Advisor recommendations |
+| GET | `/alerts/monitor` | User + subscription | Monitor alert resources |
+| GET | `/outliers/underutilized` | User + subscription | Underutilized resources |
+| GET | `/budgets` | User + subscription | Budget snapshots |
 
-### GET /costs/history
-Purpose: return the latest persisted cost query records.
+## Resources
 
-## Resource inventory APIs
+DB-first list endpoints accept `source=db` (default) or `source=live` (admin). Live-only list endpoints require admin.
 
-### GET /resources/all
-Returns all ARM resources for the given subscription.
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/resources/subscriptions` | Subscription catalog |
+| POST | `/resources/subscriptions/sync` | Admin — refresh catalog from Azure |
+| POST | `/resources/sync` | Admin — inventory + optional cost sync |
+| GET | `/resources/counts` | Counts by category |
+| GET | `/resources/vms`, `/disks`, `/aks`, … | Paginated inventory (`limit`, `offset`) |
+| GET | `/resources/vms/{rg}/{name}/sizing` | VM rightsizing (scoped subscription) |
+| GET | `/resources/mysql`, `/vnets`, `/nics`, … | Admin live ARM reads |
 
-### GET /resources/vms
-Returns virtual machines.
+See `app/main.py` and OpenAPI at `/api/openapi.json` (admin) for the full route list.
 
-### GET /resources/storage
-Returns storage accounts.
+## Optimization
 
-### GET /resources/aks
-Returns AKS clusters.
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/optimize/analyze` | Admin | Queue or run analysis |
+| POST | `/optimize/analyze/batch` | Admin | Queue batched job |
+| GET | `/optimize/jobs`, `/optimize/jobs/{id}` | User + subscription | Job status |
+| GET | `/optimize/runs`, `/optimize/runs/{id}` | User + subscription | Run history |
+| GET | `/optimize/findings` | User + subscription | Open/closed findings |
+| GET | `/optimize/findings/summary` | User + subscription | Aggregated summary |
+| PATCH | `/optimize/findings/{id}/status` | Admin + subscription | Update finding status |
+| GET | `/optimize/config/{profile}` | Admin | Engine rule overrides |
+| GET | `/optimize/rules` | User | Rule catalog |
 
-### GET /resources/appservices
-Returns App Services / Web Apps.
+## Settings (admin)
 
-### GET /resources/sql
-Returns SQL servers.
+| Method | Path | Description |
+|--------|------|-------------|
+| GET/POST | `/settings/{category}` | Azure, database, kubernetes, ai config |
 
-### GET /resources/disks
-Returns managed disks.
+## Kubernetes agent
 
-### GET /resources/keyvaults
-Returns Key Vaults.
+All `/k8s/*` routes require header **`X-API-Key`** (value from `K8S_AGENT_TOKEN` or Settings → Kubernetes). JWT middleware is skipped; token is required when auth is enabled.
 
-### GET /resources/publicips
-Returns public IP addresses.
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/k8s/utilization` | Legacy utilization payload |
+| POST | `/k8s/snapshot` | Batched cluster snapshot |
+| GET | `/k8s/snapshot`, `/k8s/snapshots` | Read snapshots |
 
-### GET /resources/resourcegroups
-Returns resource groups.
+## Environment variables (backend)
 
-Common query parameter:
-- `subscription_id` - required.
-
-## Kubernetes telemetry APIs
-
-### POST /k8s/utilization
-Purpose: ingest a Kubernetes utilization snapshot.
-
-Payload fields:
-- `cluster_name`
-- `node_name`
-- `pod_name`
-- `namespace`
-- `cpu_usage`
-- `memory_usage`
-
-### GET /k8s/utilization
-Purpose: retrieve the latest persisted Kubernetes utilization records.
-
-## Production API recommendations
-- add OpenAPI tags and descriptions,
-- add authentication requirements,
-- add pagination for resource endpoints,
-- add filtering support,
-- add versioning strategy such as `/api/v1/...`,
-- add standardized error model.
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | PostgreSQL (required in production) |
+| `JWT_SECRET` | JWT signing (required in production) |
+| `SETTINGS_ENCRYPTION_KEY` | Encrypt settings at rest (required in production) |
+| `K8S_AGENT_TOKEN` | Agent API key (required in production) |
+| `ADMIN_PASSWORD` | Bootstrap admin password (required in production) |
+| `AUTH_ENABLED` | Must be true in production |
+| `CORS_ALLOWED_ORIGINS` | Allowed frontend origins |

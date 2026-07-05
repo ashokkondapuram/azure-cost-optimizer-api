@@ -22,7 +22,7 @@ export default class ErrorBoundary extends React.Component {
         <div className="card empty-state" role="alert" style={{ margin: '2rem' }}>
           <p style={{ color: 'var(--danger)', fontWeight: 600 }}>Something went wrong</p>
           <p style={{ color: 'var(--text2)', fontSize: '0.86rem' }}>
-            {error.message || 'An unexpected error occurred in this view.'}
+            {error?.message || String(error) || 'An unexpected error occurred in this view.'}
           </p>
           <button
             type="button"

@@ -23,6 +23,12 @@ export const testAzureSettings = (body = {}) =>
 export const testDatabaseSettings = (body = {}) =>
   api.post('/settings/database/test', body).then((r) => r.data);
 
+export const saveAiSettings = (body) =>
+  api.post('/settings/ai', body).then((r) => r.data);
+
+export const testAiSettings = (body = {}) =>
+  api.post('/settings/ai/test', body).then((r) => r.data);
+
 export const reloadSettings = () =>
   api.post('/settings/reload').then((r) => r.data);
 

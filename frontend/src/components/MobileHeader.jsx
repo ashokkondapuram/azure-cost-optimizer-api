@@ -1,6 +1,7 @@
 import React from 'react';
 import { Menu, X } from 'lucide-react';
 import AssetIcon from './AssetIcon';
+import ThemeToggle from './ThemeToggle';
 
 export default function MobileHeader({ open, onToggle, title, iconKey }) {
   return (
@@ -16,6 +17,7 @@ export default function MobileHeader({ open, onToggle, title, iconKey }) {
       </button>
       {iconKey && <AssetIcon iconKey={iconKey} size={22} className="mobile-header__icon" />}
       <span className="mobile-header__title">{title}</span>
+      <ThemeToggle compact className="mobile-header__theme" />
     </header>
   );
 }

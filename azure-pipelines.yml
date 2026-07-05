@@ -1,0 +1,113 @@
+# Build the React frontend, then deploy to App Service.
+# App Service (Oryx) installs the Python dependencies from requirements.txt at
+# deploy time (SCM_DO_BUILD_DURING_DEPLOYMENT=true) — no manual vendoring.
+
+trigger:
+  branches:
+    include:
+      - main
+      - feature-ashok
+      - dev-slot
+
+pr: none
+
+variables:
+  RESOURCE_GROUP: costperfoptimizer
+  WEBAPP_NAME: CostOptimizeRecommender
+
+stages:
+
+- stage: Build
+  jobs:
+  - job: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    # Frontend is a build artifact (gitignored), so it must be built here and
+    # included in the zip; main.py serves frontend/build as static files.
+    - task: NodeTool@0
+      inputs:
+        versionSpec: 18.x
+
+    - script: |
+        set -euo pipefail
+        cd frontend
+        npm ci --no-audit --no-fund
+        npm run build
+        test -f build/index.html
+      displayName: Build React frontend
+
+    - task: ArchiveFiles@2
+      displayName: Zip source for deployment
+      inputs:
+        rootFolderOrFile: $(System.DefaultWorkingDirectory)
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: $(Build.ArtifactStagingDirectory)/app.zip
+        replaceExistingArchive: true
+        excludePatterns: |
+          **/__pycache__/**
+          **/*.pyc
+          **/node_modules/**
+          deps/**
+          .venv/**
+          .git/**
+          .env
+          *.db
+          .DS_Store
+
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: $(Build.ArtifactStagingDirectory)/app.zip
+        artifact: app
+
+- stage: Deploy
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - deployment: Deploy
+    environment: production
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: app
+
+          # Configure the app BEFORE the zip deploy so the Oryx build that runs
+          # during zipDeploy sees SCM_DO_BUILD_DURING_DEPLOYMENT=true and builds
+          # antenv, and so the startup command is the uvicorn launcher (not the
+          # old startup.sh). Doing this in the deploy task is order-sensitive and
+          # left stale config in place during the build.
+          - task: AzureCLI@2
+            displayName: Configure App Service (Oryx build + startup)
+            inputs:
+              azureSubscription: terraform-connect
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -euo pipefail
+                az webapp config appsettings set \
+                  -g "$(RESOURCE_GROUP)" -n "$(WEBAPP_NAME)" \
+                  --settings \
+                    SCM_DO_BUILD_DURING_DEPLOYMENT=true \
+                    ENABLE_ORYX_BUILD=true \
+                    WEBSITE_RUN_FROM_PACKAGE=0 \
+                    WEBSITES_PORT=8000 \
+                    APP_ENV=production
+                az webapp config set \
+                  -g "$(RESOURCE_GROUP)" -n "$(WEBAPP_NAME)" \
+                  --linux-fx-version "PYTHON|3.13" \
+                  --startup-file "antenv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --timeout-keep-alive 75"
+
+          - task: AzureRmWebAppDeployment@4
+            inputs:
+              ConnectionType: AzureRM
+              azureSubscription: terraform-connect
+              appType: webAppLinux
+              WebAppName: $(WEBAPP_NAME)
+              ResourceGroupName: $(RESOURCE_GROUP)
+              packageForLinux: $(Pipeline.Workspace)/app/app.zip
+              DeploymentType: zipDeploy

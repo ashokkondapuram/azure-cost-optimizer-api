@@ -1,12 +1,19 @@
 import React from 'react';
-export default function UtilBar({ pct, color = '#0078d4' }) {
-  const bg = pct > 80 ? '#c0392b' : pct > 60 ? '#d67f00' : color;
+
+export default function UtilBar({ pct }) {
+  const level = pct > 80 ? 'critical' : pct > 60 ? 'warning' : 'ok';
+
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-      <div style={{ flex:1, background:'#f0f2f7', borderRadius:99, height:6, overflow:'hidden' }}>
-        <div style={{ width:`${pct}%`, background:bg, height:'100%', borderRadius:99, transition:'width 0.4s ease' }} />
+    <div className="util-bar">
+      <div className="util-bar__track">
+        <div
+          className={`util-bar__fill util-bar__fill--${level}`}
+          style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
+        />
       </div>
-      <span style={{ fontSize:'0.72rem', fontWeight:700, color:bg, minWidth:32 }}>{pct}%</span>
+      <span className={`util-bar__label util-bar__label--${level}`}>
+        {pct}%
+      </span>
     </div>
   );
 }

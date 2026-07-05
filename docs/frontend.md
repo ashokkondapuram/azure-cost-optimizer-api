@@ -1,52 +1,40 @@
 # Frontend
 
 ## Overview
-The frontend is a React single-page application that provides an operator-oriented interface for the platform.
+The frontend is a React SPA served from the FastAPI backend. It uses React Router, TanStack Query, and a registry-driven navigation model (`frontend/src/config/appRegistry.js`).
 
-## Functional views
+## Primary views
 
-### Dashboard
-The dashboard allows the operator to request Azure cost data by subscription and timeframe. It renders a bar chart and summary statistics.
+| Route | Component | Purpose |
+|-------|-----------|---------|
+| `/` | `Dashboard.jsx` | Cost/optimization portal, inventory counts, sync freshness |
+| `/costs` | `CostExplorer.jsx` | MTD spend, daily trend, service breakdown |
+| `/recommendations` | `Recommendations.jsx` | Findings list/grouped by resource, CSV export |
+| `/k8s` | `K8sSnapshots.jsx` | Cluster utilization snapshots from the agent |
+| `/history` | `RunHistory.jsx` | Optimization run history |
+| Resource routes | `ResourceList.jsx`, `VirtualMachines.jsx`, `AKSClusters.jsx` | DB-first inventory with insight drawer |
 
-### Resources
-The resources page allows the operator to browse Azure resource inventory by resource category. It presents a tabbed control that loads data from category-specific endpoints.
+Admin-only: Optimization center, Engine rules, Settings, API explorer.
 
-### Kubernetes
-The Kubernetes page provides separate visibility into node-level and pod-level utilization records persisted by the backend.
+## Architecture
 
-### Cost history
-The cost history page shows previously stored cost query records from PostgreSQL.
-
-## Frontend architecture
-The current frontend consists of:
-- router shell in `App.js`,
-- API abstraction layer in `api/client.js`,
-- page-level components in `src/pages/`,
-- global CSS in `index.css`.
+- **Shell:** `App.js` — auth, subscription picker, currency toggle, sidebar nav
+- **API:** `api/azure.js` — Axios client with bearer token
+- **Registry:** `appRegistry.js` — nav groups, dashboard sections, resource page metadata
+- **Findings:** `useFindingsIndex` + `indexReady` guard to avoid phantom badge counts
+- **Sync:** `OperationProgressContext` + `useResourceSync` / `useCostSync`
 
 ## Data flow
-1. The operator enters the subscription ID.
-2. The frontend stores it in local storage.
-3. Page components call the backend through Axios.
-4. Responses are rendered in charts or tables.
 
-## UX strengths
-- simple navigation,
-- low learning curve,
-- fast operator workflow,
-- clear separation of cost, inventory, and Kubernetes views.
+1. User signs in (JWT in localStorage; httpOnly cookie migration is a future hardening item).
+2. Subscription is persisted in local storage and sent on every API call.
+3. List pages read synced DB inventory by default; admins can use `source=live` for ARM.
+4. Findings index loads separately; inventory still renders if the index fails.
 
-## Required enterprise UX improvements
-For a world-class product sold to large enterprises, add:
-- Azure AD SSO,
-- multi-tenant organization selector,
-- role-aware menus,
-- advanced filtering,
-- search and pagination,
-- export to CSV/PDF,
-- dark mode / accessibility improvements,
-- loading skeletons,
-- richer empty states,
-- error banners with remediation hints,
-- audit views,
-- saved dashboards.
+## Conventions
+
+- Use `formatCurrency`, `formatDate`, etc. from `utils/format.js` for display text.
+- Resource pages share `ResourceInventoryShell`, `FilterBar`, and `ResourceInsightDrawer`.
+- Icons resolve through `config/azureIconRegistry.js`.
+
+See also: [api-reference.md](./api-reference.md), [FUNCTIONALITY.md](./FUNCTIONALITY.md).

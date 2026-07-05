@@ -1,85 +1,42 @@
 # Backend
 
 ## Overview
-The backend is implemented in Python using FastAPI. It acts as the system of integration between Azure APIs, PostgreSQL persistence, and the React frontend.
+Python FastAPI application (`app/main.py`) integrating Azure ARM/Cost APIs, PostgreSQL persistence, and the optimization engine.
 
-## Modules
+## Security model
 
-### main.py
-Primary application entry point. Responsibilities include:
-- creating the FastAPI app,
-- registering middleware,
-- exposing routes,
-- handling request validation,
-- coordinating persistence,
-- returning serialized responses.
+- **Auth:** JWT middleware (`app/middleware/app_auth.py`); roles `admin` and `viewer`.
+- **Subscription allowlist:** `ensure_subscription_known()` only accepts subscriptions with synced operational data (resource/cost/finding rows), not catalog-only cache entries.
+- **Live ARM:** Admin-only via `_require_admin_live_arm()` or `source=live` on list endpoints.
+- **Metrics fan-out:** `/metrics/subscription` and `/metrics/by-type` are admin-only.
+- **Findings status:** Viewers may acknowledge or ignore; resolve/reopen requires admin.
 
-### azure_cost.py
-Encapsulates Azure Cost Management API interaction. Responsibilities include:
-- acquiring ARM token through `DefaultAzureCredential`,
-- constructing REST requests,
-- submitting cost query payloads,
-- returning raw Azure response payloads.
+## Key modules
 
-### azure_resources.py
-Encapsulates Azure Resource Manager inventory calls. Responsibilities include listing:
-- all resources,
-- virtual machines,
-- storage accounts,
-- AKS clusters,
-- app services,
-- SQL servers,
-- managed disks,
-- key vaults,
-- public IPs,
-- resource groups.
+| Module | Role |
+|--------|------|
+| `main.py` | Routes, request validation, orchestration |
+| `azure_resources.py` / `azure_cost.py` | Azure API clients |
+| `db_sync.py` | Inventory + cost sync into PostgreSQL |
+| `analysis/orchestrator.py` | DB-first analysis, persists findings |
+| `batch_analyzer.py` | Background analysis jobs |
+| `optimizer/` | Rule engine and resource sub-engines |
+| `resource_store.py` | DB-first inventory reads |
+| `validators.py` | Subscription and input validation |
 
-### database.py
-Centralizes SQLAlchemy engine and session configuration. It provides a session generator to the FastAPI dependency injection system.
+## Analysis
 
-### models.py
-Defines ORM models for persisted entities. The current schema includes:
-- `CostRecord`
-- `K8sUtilization`
+- `POST /optimize/analyze` queues a background job; honors optional `components` for scoped runs.
+- Cost-export rules merge on every run (including scoped analysis).
+- Job progress shows a single step label (full or scoped component names).
 
-## Request handling model
+## Inventory
 
-### Synchronous flow
-The current implementation uses synchronous HTTP requests to Azure. This keeps the code simple and easy to understand, but production-grade scaling may later benefit from:
-- retry wrappers,
-- circuit breakers,
-- async clients,
-- background jobs for long-running queries.
+Resource list endpoints default to DB reads (`_db_or_live`). Canonical types map through `sync_scope.py` and `resource_store.RESOURCE_COUNTS_KEYS`.
 
-### Error handling
-Routes currently wrap integration calls in broad exception handling and convert failures into HTTP 500 responses. For enterprise delivery, improve this by introducing:
-- typed exception mapping,
-- standardized error payloads,
-- correlation IDs,
-- client-safe error messages,
-- retry classification.
+## Kubernetes agent
 
-## Persistence behavior
-The backend stores:
-- Azure cost query history,
-- raw cost response payloads,
-- Kubernetes telemetry snapshots.
+- POST ingest endpoints require the agent API key.
+- GET snapshot/list endpoints accept agent key **or** signed-in app users.
 
-This creates a base for later enterprise features such as:
-- reporting dashboards,
-- usage trend analysis,
-- anomaly detection,
-- optimization recommendation history,
-- audit trails.
-
-## Recommended production enhancements
-- Add Alembic migrations and migration runbooks.
-- Add Pydantic response/request schemas for every endpoint.
-- Add service layer separation from route layer.
-- Add structured JSON logging.
-- Add request tracing.
-- Add rate limiting.
-- Add authentication and authorization.
-- Add pagination for inventory endpoints.
-- Add database retention jobs.
-- Add unit, integration, and contract tests.
+See also: [api-reference.md](./api-reference.md), [security.md](./security.md).

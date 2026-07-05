@@ -4,7 +4,7 @@ export const STATIC_COMPONENTS = catalog.components;
 export const STATIC_RULES = catalog.rules;
 
 const COMPONENT_ORDER = [
-  'Virtual Machines', 'Managed Disks', 'App Service', 'AKS',
+  'Virtual Machines', 'Managed Disks', 'Disk Snapshots', 'App Service', 'AKS',
   'Storage Accounts', 'Public IPs', 'Network Interfaces', 'NAT Gateways',
   'Load Balancers', 'Application Gateways',
   'SQL Database', 'Cosmos DB', 'Redis Cache',

@@ -1,127 +1,391 @@
-import React, { useContext, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Boxes, AlertTriangle } from 'lucide-react';
+import React, { useContext, useMemo, useState } from 'react';
+import { RefreshCw } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import PageHeader from '../components/PageHeader';
+import AssetIcon from '../components/AssetIcon';
+import FilterBar from '../components/FilterBar';
+import FetchFromAzureButton from '../components/FetchFromAzureButton';
+import AdminOnly from '../components/AdminOnly';
+import useResourceSync from '../hooks/useResourceSync';
+import usePaginatedResources from '../hooks/usePaginatedResources';
+import useResourceSource from '../hooks/useResourceSource';
+import { PAGE_ICONS } from '../config/assetIcons';
 import { AppCtx } from '../App';
-import { fetchAKS } from '../api/azure';
+import { syncTypesForApiPath } from '../utils/syncScope';
+import InlineFindingBadge from '../components/visual/InlineFindingBadge';
+import InlineCostCell from '../components/visual/InlineCostCell';
+import ResourceInsightDrawer from '../components/ResourceInsightDrawer';
+import useFindingsIndex from '../hooks/useFindingsIndex';
+import useAdvisorIndex from '../hooks/useAdvisorIndex';
+import AdvisorTableCell from '../components/advisor/AdvisorTableCell';
+import InlineTriggerBadge from '../components/visual/InlineTriggerBadge';
+import { lookupAdvisorForResource } from '../utils/resourceAdvisorUtils';
+import { resourceTotalCost } from '../utils/costCurrency';
+import { costColumnLabel } from '../config/resourceColumnConfig';
+import ResourceInventoryShell from '../components/ResourceInventoryShell';
+import { FINDINGS_INDEX_LIMIT } from '../hooks/useFindingsIndex';
+import { QueryErrorState, SubscriptionRequired, LoadingState, EmptyState } from '../components/QueryStates';
+import { inventoryListSubtitle } from '../utils/viewerUi';
+import { dedupeAksClusters, normalizeAksCluster } from '../utils/aksNormalize';
+import {
+  matchResourceRow, uniqueResourceGroups, resourceGroupOf,
+} from '../utils/filterUtils';
+import {
+  resolveResourceFindings, resourceHasFindings,
+} from '../utils/resourceFindingsUtils';
 
-const STATE_COLOR = { Running: 'var(--success)', Stopped: 'var(--warning)', Failed: 'var(--danger)', Creating: 'var(--accent)' };
+const STATE_COLOR = { Running: 'var(--success)', Stopped: 'var(--warning)', Failed: 'var(--danger)', Creating: 'var(--accent)', Succeeded: 'var(--success)' };
 
 export default function AKSClusters() {
-  const { subscription } = useContext(AppCtx);
+  const { subscription, billingCurrency } = useContext(AppCtx);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [rgFilter, setRgFilter] = useState('');
+  const [stateFilter, setStateFilter] = useState('');
+  const [versionFilter, setVersionFilter] = useState('');
+  const [findingsOnly, setFindingsOnly] = useState(false);
   const [selected, setSelected] = useState(null);
+  const currency = billingCurrency || 'CAD';
+  const { byResourceId, savingsByResource, truncated, indexReady, isError: findingsIndexError, error: findingsIndexErr } = useFindingsIndex(subscription);
+  const {
+    byResourceId: advisorByResourceId,
+    indexReady: advisorIndexReady,
+    isLoading: advisorIndexLoading,
+    isError: advisorIndexError,
+  } = useAdvisorIndex(subscription);
+  const { dataSource, isLive, resetToDatabase, isAdmin } = useResourceSource();
 
-  const { data: clusters = [], isLoading } = useQuery({
-    queryKey: ['aks', subscription],
-    queryFn: () => fetchAKS({ subscription_id: subscription }),
-    enabled: !!subscription,
+  const { sync, syncing } = useResourceSync({
+    subscription,
+    syncTypes: syncTypesForApiPath('/resources/aks'),
+    includeCosts: false,
+    invalidateKeys: [['/resources/aks', subscription], ['resource-counts', subscription], ['findings-index', subscription]],
   });
 
-  const filtered = clusters.filter(c =>
-    !search ||
-    (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
-    (c.location || '').toLowerCase().includes(search.toLowerCase())
+  const {
+    items: clusters,
+    total: clustersTotal,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+    hasMore,
+    loadMore,
+    isLoadingMore,
+  } = usePaginatedResources({
+    apiPath: '/resources/aks',
+    subscription,
+    dataSource,
+    enabled: !!subscription,
+    includeProperties: true,
+  });
+
+  const normalizedClusters = useMemo(
+    () => dedupeAksClusters(clusters).map(normalizeAksCluster),
+    [clusters],
   );
 
-  const running  = clusters.filter(c => c.properties?.powerState?.code === 'Running').length;
-  const stopped  = clusters.filter(c => c.properties?.powerState?.code === 'Stopped').length;
-  const totalNodes = clusters.reduce((s, c) => {
-    const pools = c.properties?.agentPoolProfiles || [];
-    return s + pools.reduce((ps, p) => ps + (p.count || 0), 0);
-  }, 0);
-  const versions = [...new Set(clusters.map(c => c.properties?.kubernetesVersion).filter(Boolean))];
+  const handleSync = async () => {
+    try {
+      resetToDatabase();
+      await sync();
+      await refetch();
+    } catch {
+      /* syncMsg */
+    }
+  };
+
+  const handleRefresh = () => {
+    resetToDatabase();
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ['findings-index', subscription] });
+  };
+
+  const rid = (c) => (c.id || '').toLowerCase();
+
+  const filtered = normalizedClusters.filter((c) => {
+    if (!matchResourceRow(c, search, [
+      (row) => row._version,
+      (row) => row._state,
+      (row) => String(row._nodeCount),
+    ])) return false;
+    if (rgFilter && resourceGroupOf(c) !== rgFilter) return false;
+    if (stateFilter && c._state !== stateFilter) return false;
+    if (versionFilter && c._version !== versionFilter) return false;
+    if (findingsOnly && !resourceHasFindings(c, byResourceId.get(rid(c)) || [], { indexReady })) return false;
+    return true;
+  });
+
+  const resourceGroups = uniqueResourceGroups(normalizedClusters);
+  const stateOptions = useMemo(
+    () => [...new Set(normalizedClusters.map((c) => c._state).filter(Boolean))].sort(),
+    [normalizedClusters],
+  );
+  const versionOptions = useMemo(
+    () => [...new Set(normalizedClusters.map((c) => c._version).filter((v) => v && v !== '—'))].sort(),
+    [normalizedClusters],
+  );
+  const hasFilters = !!(search || rgFilter || stateFilter || versionFilter || findingsOnly);
+
+  const running = normalizedClusters.filter((c) => c._state === 'Running' || c._state === 'Succeeded').length;
+  const stopped = normalizedClusters.filter((c) => c._state === 'Stopped').length;
+  const totalNodes = normalizedClusters.reduce((sum, c) => sum + c._nodeCount, 0);
+  const versions = versionOptions;
+
+  const selectedCluster = selected ? normalizeAksCluster(selected) : null;
+  const selectedFindings = selectedCluster
+    ? resolveResourceFindings(selectedCluster, byResourceId.get((selectedCluster.id || '').toLowerCase()) || [], { indexReady })
+    : [];
+  const totalCost = (c) => resourceTotalCost(c);
+
+  const groupedClusters = (() => {
+    const groups = new Map();
+    for (const c of filtered) {
+      const rg = c.resourceGroup || c.resource_group || '—';
+      if (!groups.has(rg)) groups.set(rg, []);
+      groups.get(rg).push(c);
+    }
+    return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+  })();
 
   return (
     <div>
-      <div className="page-header">
-        <div>
-          <div className="page-title">AKS Clusters</div>
-          <div className="page-sub">Live from Azure Resource Manager · {clusters.length} clusters</div>
+      <PageHeader
+        title="AKS clusters"
+        iconSrc={PAGE_ICONS.aks}
+        subtitle={subscription
+          ? inventoryListSubtitle({
+            isAdmin,
+            isLive,
+            suffix: `${filtered.length} of ${clustersTotal} clusters`,
+          })
+          : 'Select a subscription'}
+      >
+        <AdminOnly>
+          <FetchFromAzureButton onClick={handleSync} loading={syncing} disabled={!subscription} />
+        </AdminOnly>
+        <button type="button" className="btn btn-secondary" onClick={handleRefresh} disabled={!subscription || isFetching}>
+          <RefreshCw size={13} className={isFetching ? 'spin' : ''} /> Refresh
+        </button>
+      </PageHeader>
+
+      {subscription && (
+        <FilterBar
+          search={{
+            value: search,
+            onChange: setSearch,
+            placeholder: 'Search name, version, location…',
+          }}
+          selects={[
+            ...(resourceGroups.length > 0 ? [{
+              id: 'rg',
+              label: 'Resource group',
+              value: rgFilter,
+              onChange: setRgFilter,
+              options: [
+                { value: '', label: 'All resource groups' },
+                ...resourceGroups.map((rg) => ({ value: rg, label: rg })),
+              ],
+            }] : []),
+            ...(stateOptions.length > 0 ? [{
+              id: 'state',
+              label: 'State',
+              value: stateFilter,
+              onChange: setStateFilter,
+              options: [
+                { value: '', label: 'All states' },
+                ...stateOptions.map((s) => ({ value: s, label: s })),
+              ],
+            }] : []),
+            ...(versionOptions.length > 0 ? [{
+              id: 'version',
+              label: 'K8s version',
+              value: versionFilter,
+              onChange: setVersionFilter,
+              options: [
+                { value: '', label: 'All versions' },
+                ...versionOptions.map((v) => ({ value: v, label: v })),
+              ],
+            }] : []),
+          ]}
+          toggles={[
+            { id: 'findings', label: 'With open findings', checked: findingsOnly, onChange: setFindingsOnly },
+          ]}
+          onClear={hasFilters ? () => {
+            setSearch('');
+            setRgFilter('');
+            setStateFilter('');
+            setVersionFilter('');
+            setFindingsOnly(false);
+          } : undefined}
+          resultCount={{
+            shown: filtered.length,
+            total: clustersTotal,
+            label: 'clusters',
+          }}
+        />
+      )}
+
+      {!subscription && <SubscriptionRequired />}
+      {subscription && isError && (
+        <QueryErrorState error={error} onRetry={handleRefresh} title="Could not load AKS clusters" />
+      )}
+
+      {subscription && !isError && findingsIndexError && (
+        <div className="alert alert--warning" role="status" style={{ marginBottom: '1rem' }}>
+          Open findings are temporarily unavailable. Cluster inventory still loads.
         </div>
-        <input placeholder="Search name, location…" value={search} onChange={e => setSearch(e.target.value)} style={{ width: 240 }} />
+      )}
+
+      {subscription && !isError && (
+      <>
+      <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
+        <div className="stat-card accent">
+          <AssetIcon src={PAGE_ICONS.aks} size={22} className="stat-card__icon" alt="" />
+          <div className="stat-label">Total clusters</div><div className="stat-value">{clustersTotal}</div><div className="stat-sub">{running} running</div>
+        </div>
+        <div className="stat-card warning">
+          <AssetIcon src={PAGE_ICONS.kubernetes} size={22} className="stat-card__icon" alt="" />
+          <div className="stat-label">Stopped</div><div className="stat-value">{stopped}</div><div className="stat-sub">Not incurring compute</div>
+        </div>
+        <div className="stat-card success">
+          <AssetIcon src={PAGE_ICONS.k8sNode} size={22} className="stat-card__icon" alt="" />
+          <div className="stat-label">Total nodes</div><div className="stat-value">{totalNodes.toLocaleString()}</div><div className="stat-sub">Across all pools</div>
+        </div>
+        <div className="stat-card purple">
+          <AssetIcon src={PAGE_ICONS.nodepool} size={22} className="stat-card__icon" alt="" />
+          <div className="stat-label">K8s versions</div><div className="stat-value">{versions.length}</div><div className="stat-sub">{versions[0] || '—'} (latest in use)</div>
+        </div>
       </div>
 
-      <div className="grid-4" style={{ marginBottom: '1.5rem' }}>
-        <div className="stat-card accent"><div className="stat-label">Total Clusters</div><div className="stat-value">{clusters.length}</div><div className="stat-sub">{running} running</div></div>
-        <div className="stat-card warning"><div className="stat-label">Stopped</div><div className="stat-value">{stopped}</div><div className="stat-sub">Not incurring compute</div></div>
-        <div className="stat-card success"><div className="stat-label">Total Nodes</div><div className="stat-value">{totalNodes.toLocaleString()}</div><div className="stat-sub">Across all pools</div></div>
-        <div className="stat-card purple"><div className="stat-label">K8s Versions</div><div className="stat-value">{versions.length}</div><div className="stat-sub">{versions[0] || '—'} (latest in use)</div></div>
-      </div>
+      {subscription && filtered.length > 0 && (
+        <ResourceInventoryShell
+          showFindingsSummary
+          summaryRows={filtered}
+          byResourceId={byResourceId}
+          savingsByResource={savingsByResource}
+          currency={currency}
+          isAdmin={isAdmin}
+          getResourceId={rid}
+          truncated={truncated}
+          indexReady={indexReady}
+          findingsLimit={FINDINGS_INDEX_LIMIT}
+          emptyUserMessage="No open findings for AKS clusters"
+        />
+      )}
 
       <div className="card">
-        {isLoading ? <div className="empty-state"><div className="spin" /></div> :
-         filtered.length === 0 ? <div className="empty-state"><AlertTriangle size={28} /><p>No AKS clusters found in this subscription.</p></div> : (
-          <div className="table-wrap">
-            <table>
+        {isLoading ? <LoadingState message="Loading AKS clusters…" /> :
+         filtered.length === 0 ? (
+          <EmptyState
+            iconKey={PAGE_ICONS.aks}
+            message={hasFilters
+              ? 'No clusters match your filters.'
+              : (isAdmin ? 'No AKS clusters in the database. Fetch from Azure to load and save inventory.' : 'No AKS clusters available yet. Ask an administrator to sync inventory from Azure.')}
+          >
+            {!hasFilters && (
+              <AdminOnly>
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <FetchFromAzureButton onClick={handleSync} loading={syncing} disabled={!subscription} className="btn btn-primary" />
+                </div>
+              </AdminOnly>
+            )}
+          </EmptyState>
+         ) : (
+          <div className="table-wrap resource-table-wrap">
+            <table className="table resource-table">
               <thead>
                 <tr>
-                  <th>Name</th><th>Version</th><th>Location</th>
-                  <th>Node Pools</th><th>Nodes</th><th>State</th>
-                  <th>SKU</th><th>Network</th><th>Tags</th>
+                  <th>Name</th>
+                  <th>Resource group</th>
+                  <th>Location</th>
+                  <th>Node pools</th>
+                  <th>State</th>
+                  <th>{costColumnLabel(currency)}</th>
+                  <th>Advisor</th>
+                  <th>Cost signals</th>
+                  <th>Findings</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((c, i) => {
-                  const p = c.properties || {};
-                  const pools = p.agentPoolProfiles || [];
-                  const nodeCount = pools.reduce((s, pp) => s + (pp.count || 0), 0);
-                  const state = p.powerState?.code || p.provisioningState || 'Unknown';
-                  const tags = c.tags || {};
-                  return (
-                    <tr key={i} style={{ cursor: 'pointer' }} onClick={() => setSelected(c)}>
-                      <td style={{ color: 'var(--text)', fontWeight: 600 }}>{c.name}</td>
-                      <td style={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{p.kubernetesVersion || '—'}</td>
-                      <td>{c.location}</td>
-                      <td>{pools.length}</td>
-                      <td>{nodeCount}</td>
-                      <td><span style={{ color: STATE_COLOR[state] || 'var(--text2)', fontWeight: 600, fontSize: '0.8rem' }}>● {state}</span></td>
-                      <td style={{ fontSize: '0.78rem' }}>{c.sku?.name || '—'}</td>
-                      <td style={{ fontSize: '0.78rem' }}>{p.networkProfile?.networkPlugin || '—'}</td>
-                      <td>{Object.entries(tags).slice(0, 2).map(([k, v]) => <span key={k} className="tag">{k}: {v}</span>)}</td>
+                {groupedClusters.map(([rgName, groupRows]) => (
+                  <React.Fragment key={rgName}>
+                    <tr className="resource-group-header">
+                      <td colSpan={8}>
+                        <span className="resource-group-header__label">{rgName}</span>
+                        <span className="resource-group-header__count">{groupRows.length}</span>
+                      </td>
                     </tr>
-                  );
-                })}
+                    {groupRows.map((c) => {
+                      const clusterRid = rid(c);
+                      const indexFindings = byResourceId.get(clusterRid) || [];
+                      const cost = totalCost(c);
+                      const isSelected = selected && rid(selected) === clusterRid;
+                      return (
+                        <tr
+                          key={`${c.id || c.name}-${c.resourceGroup || ''}`}
+                          className={`resource-table__row${isSelected ? ' resource-row--selected' : ''}`}
+                          onClick={() => setSelected(c)}
+                        >
+                          <td>
+                            <span className="icon-inline">
+                              <AssetIcon src={PAGE_ICONS.aks} size={18} alt="" />
+                              <span className="resource-name">{c.name}</span>
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '0.8rem', color: 'var(--text2)' }}>{c.resourceGroup || '—'}</td>
+                          <td>{c.location}</td>
+                          <td>{c._pools.length > 0 ? c._pools.length.toLocaleString() : '—'}</td>
+                          <td><span style={{ color: STATE_COLOR[c._state] || 'var(--text2)', fontWeight: 600, fontSize: '0.8rem' }}>● {c._state}</span></td>
+                          <td>
+                            {cost > 0 ? <InlineCostCell amount={cost} row={c} currency={currency} /> : '—'}
+                          </td>
+                          <td>
+                            <AdvisorTableCell
+                              recommendations={lookupAdvisorForResource(advisorByResourceId, c)}
+                              indexReady={advisorIndexReady && !advisorIndexLoading}
+                              isError={advisorIndexError}
+                              currency={currency}
+                              subscriptionHasAdvisor={advisorByResourceId.size > 0}
+                            />
+                          </td>
+                          <td>
+                            <InlineTriggerBadge findings={indexFindings} indexReady={indexReady} compact />
+                          </td>
+                          <td>
+                            <InlineFindingBadge resource={c} indexFindings={indexFindings} savings={savingsByResource.get(clusterRid) || 0} currency={currency} indexReady={indexReady} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
               </tbody>
             </table>
+            {hasMore && !hasFilters && (
+              <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => loadMore()} disabled={isLoadingMore}>
+                  {isLoadingMore ? 'Loading…' : 'Load more'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {selected && (
-        <div className="modal-overlay" onClick={() => setSelected(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <div className="modal-title">{selected.name}</div>
-              <button className="btn btn-ghost" onClick={() => setSelected(null)}>✕</button>
-            </div>
-            <div style={{ fontSize: '0.85rem', display: 'grid', gap: '0.75rem' }}>
-              <div><strong>Resource ID</strong><br /><span style={{ color: 'var(--text2)', wordBreak: 'break-all', fontSize: '0.78rem' }}>{selected.id}</span></div>
-              <div><strong>Location</strong> · {selected.location}</div>
-              <div><strong>K8s Version</strong> · {selected.properties?.kubernetesVersion}</div>
-              <div><strong>Node Pools</strong></div>
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Pool Name</th><th>Mode</th><th>Count</th><th>VM Size</th><th>OS</th></tr></thead>
-                  <tbody>
-                    {(selected.properties?.agentPoolProfiles || []).map((pp, i) => (
-                      <tr key={i}>
-                        <td style={{ fontWeight: 500 }}>{pp.name}</td>
-                        <td><span className={`badge ${pp.mode === 'System' ? 'badge-critical' : 'badge-info'}`}>{pp.mode}</span></td>
-                        <td>{pp.count}</td>
-                        <td style={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>{pp.vmSize}</td>
-                        <td>{pp.osType}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div>
-                <strong>Tags</strong><br />
-                {Object.entries(selected.tags || {}).map(([k, v]) => <span key={k} className="tag">{k}: {v}</span>)}
-              </div>
-            </div>
-          </div>
-        </div>
+
+      <ResourceInsightDrawer
+        resource={selectedCluster || selected}
+        findings={selectedFindings}
+        onClose={() => setSelected(null)}
+        title="AKS cluster"
+        iconKey={PAGE_ICONS.aks}
+        apiPath="/resources/aks"
+        currency={currency}
+        indexReady={indexReady}
+      />
+      </>
       )}
     </div>
   );

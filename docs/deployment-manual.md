@@ -12,11 +12,21 @@ postgresql+psycopg2://<user>:<password>@<host>:5432/<database>
 
 ## 2. Configure backend application settings
 Set the following environment variables in the Azure Web App:
-- `DATABASE_URL`
-- `APP_ENV=prod`
+- `DATABASE_URL` (or `POSTGRESQLCONNSTR_<name>`)
+- `AZURE_AUTH_MODE=managed_identity`
+- `AZURE_DEFAULT_SUBSCRIPTION_ID=<subscription-guid>`
+- `SETTINGS_ENCRYPTION_KEY=<fernet-key>`
+- `APP_ENV=production`
 - `LOG_LEVEL=INFO`
 - `REQUEST_TIMEOUT_SECONDS=60`
 - `CORS_ALLOWED_ORIGINS=https://<frontend-domain>`
+
+Startup command:
+```text
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+See [DEPLOY_APP_SERVICE.md](./DEPLOY_APP_SERVICE.md) for the full managed-identity deployment guide.
 
 ## 3. Enable Managed Identity
 Turn on system-assigned or user-assigned Managed Identity for the backend host.

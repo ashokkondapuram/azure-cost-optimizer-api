@@ -1,0 +1,58 @@
+@media print {
+  .sidebar,
+  .sidebar-backdrop,
+  .mobile-header,
+  .global-progress,
+  .toast-stack,
+  .command-palette-backdrop,
+  .command-palette,
+  .bulk-action-bar,
+  .page-header-actions,
+  .page-header-actions__row,
+  .btn,
+  .rec-detail-card__actions,
+  .column-picker,
+  .filter-presets__save,
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .app-shell,
+  .main-content,
+  .page-shell {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+
+  .card,
+  .rec-detail-card,
+  .stat-card {
+    break-inside: avoid;
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    background: #fff !important;
+  }
+
+  .page-shell::before {
+    content: 'InfinityOps report';
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  a[href]::after {
+    content: none !important;
+  }
+}

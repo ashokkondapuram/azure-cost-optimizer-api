@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="InfinityOps">
+  <defs>
+    <linearGradient id="bg" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="6" y1="4" x2="26" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#bg)"/>
+  <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#shine)"/>
+  <path d="M10.5 16c0-2.8 2.2-4.5 4.5-4.5 1.6 0 2.8.7 3.5 1.8M21.5 16c0 2.8-2.2 4.5-4.5 4.5-1.6 0-2.8-.7-3.5-1.8" fill="none" stroke="#ffffff" stroke-width="2.15" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14.2 13.8c1.4-1.2 3.4-1.2 4.8 0 1.4 1.2 1.4 3.1 0 4.3-1.4 1.2-3.4 1.2-4.8 0" fill="none" stroke="#e0f2fe" stroke-width="1.65" stroke-linecap="round"/>
+  <circle cx="23.5" cy="8.5" r="2.35" fill="#bae6fd"/>
+  <circle cx="23.5" cy="8.5" r="1.1" fill="#ffffff"/>
+</svg>

@@ -1,76 +1,123 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import {
-  LayoutDashboard, Cpu, HardDrive, Network, Database,
-  Shield, DollarSign, Search, Activity,
-  ChevronDown, ChevronRight, Boxes, CloudCog,
-  Globe, Server, Container, KeyRound, AppWindow,
-  Layers, GitBranch
-} from 'lucide-react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fetchSubscriptions } from './api/azure';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { fetchSubscriptions, fetchCostSummary } from './api/azure';
+import { hasActiveSession } from './api/tokenStorage';
+import { getErrorMessage } from './api/errors';
+import usePersistedState from './hooks/usePersistedState';
+import MobileHeader from './components/MobileHeader';
+import AssetIcon from './components/AssetIcon';
+import InfinityOpsLogo, { InfinityOpsWordmark } from './components/brand/InfinityOpsLogo';
+import ErrorBoundary from './components/ErrorBoundary';
+import ProtectedRoute from './components/ProtectedRoute';
+import AuthSessionSync from './components/AuthSessionSync';
+import SidebarNav from './components/navigation/SidebarNav';
+import { createResourceRoutes } from './components/routing/ResourceRoutes';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import { OperationProgressProvider } from './context/OperationProgressContext';
+import { ToastProvider } from './context/ToastContext';
+import GlobalProgressBar from './components/GlobalProgressBar';
+import CommandPalette from './components/CommandPalette';
+import ThemeToggle from './components/ThemeToggle';
+import { LoadingState } from './components/QueryStates';
+import { PAGE_ICONS, iconForRoute } from './config/assetIcons';
+import { getPageTitle, APP_NAME } from './config/appRegistry';
+import { formatUserRole } from './utils/roleLabels';
 
-import Dashboard        from './pages/Dashboard';
-import CostExplorer    from './pages/CostExplorer';
-import Findings        from './pages/Findings';
-import VirtualMachines from './pages/VirtualMachines';
-import AKSClusters     from './pages/AKSClusters';
-import EngineConfig    from './pages/EngineConfig';
-import RunHistory      from './pages/RunHistory';
-import ResourceList    from './pages/ResourceList';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const CostExplorer = lazy(() => import('./pages/CostExplorer'));
+const Recommendations = lazy(() => import('./pages/Recommendations'));
+const OptimizationHub = lazy(() => import('./pages/OptimizationHub'));
+const EngineConfig = lazy(() => import('./pages/EngineConfig'));
+const AdminOptimization = lazy(() => import('./pages/AdminOptimization'));
+const RunHistory = lazy(() => import('./pages/RunHistory'));
+const SettingsPage = lazy(() => import('./pages/Settings'));
+const ApiExplorer = lazy(() => import('./pages/ApiExplorer'));
+const K8sSnapshots = lazy(() => import('./pages/K8sSnapshots'));
+const Login = lazy(() => import('./pages/Login'));
 
-const qc = new QueryClient({ defaultOptions: { queries: { staleTime: 60_000, retry: 1 } } });
+const qc = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+    mutations: { retry: 0 },
+  },
+});
+
 export const AppCtx = createContext({});
 
-function NavGroup({ label, icon, color, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          width: '100%', display: 'flex', alignItems: 'center',
-          gap: 8, padding: '6px 1rem', background: 'none', border: 'none',
-          cursor: 'pointer', color: 'var(--text2)', fontSize: '0.78rem',
-          fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}
-      >
-        <span style={{ color }}>{icon}</span>
-        <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
-        {open
-          ? <ChevronDown size={13} style={{ opacity: 0.5 }} />
-          : <ChevronRight size={13} style={{ opacity: 0.5 }} />}
-      </button>
-      {open && <div style={{ paddingLeft: '0.75rem' }}>{children}</div>}
-    </div>
-  );
-}
-
 function Shell() {
-  const { subscription, setSubscription, subscriptions, loading } = useContext(AppCtx);
+  const {
+    subscription, setSubscription, subscriptionOptions,
+    loading, subscriptionError, billingCurrency,
+  } = useContext(AppCtx);
+  const { user, logout, isAdmin } = useAuth();
+  const location = useLocation();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const subName = subscriptionOptions.find((s) => s.subscriptionId === subscription)?.displayName;
+  const pageTitle = getPageTitle(location.pathname);
+
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+
+  useEffect(() => {
+    document.title = pageTitle === APP_NAME ? APP_NAME : `${pageTitle} · ${APP_NAME}`;
+  }, [pageTitle]);
+
+  useEffect(() => { closeMobile(); }, [location.pathname, closeMobile]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <nav className="sidebar">
+    <ToastProvider>
+    <OperationProgressProvider subscription={subscription}>
+    <div className={`app-shell${mobileOpen ? ' app-shell--nav-open' : ''}`}>
+      <GlobalProgressBar />
+      <CommandPalette subscription={subscription} />
+      <div className="sidebar-backdrop" onClick={closeMobile} aria-hidden={!mobileOpen} />
+
+      <aside className="sidebar" aria-label="Main navigation">
         <div className="sidebar-logo">
-          <CloudCog size={18} color="#2563eb" />
-          Azure<span>FinOps</span>
+          <div className="sidebar-logo__icon sidebar-logo__icon--brand">
+            <InfinityOpsLogo size={32} />
+          </div>
+          <InfinityOpsWordmark />
         </div>
 
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)' }}>
-          <div className="topbar-label" style={{ marginBottom: 6 }}>Subscription</div>
+        <div className="sidebar-sub-picker">
+          <div className="topbar-label icon-inline">
+            <AssetIcon iconKey={PAGE_ICONS.subscription} size={12} />
+            Subscription
+          </div>
           {loading ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text3)', fontSize: '0.8rem' }}>
-              <div className="spin" style={{ width: 14, height: 14 }} /> Loading...
+            <div className="sidebar-loading">
+              <div className="spin" style={{ width: 14, height: 14, borderWidth: 2 }} />
+              Loading…
+            </div>
+          ) : subscriptionError ? (
+            <div className="sidebar-error" role="alert">{subscriptionError}</div>
+          ) : subscriptionOptions.length === 0 ? (
+            <div className="sidebar-empty-sub" role="status">
+              No subscriptions in the database yet.
+              {isAdmin && (
+                <span> Set a default subscription in Settings, or run Sync from Azure.</span>
+              )}
             </div>
           ) : (
             <select
+              className="select-field"
               value={subscription}
-              onChange={e => setSubscription(e.target.value)}
-              style={{ width: '100%', fontSize: '0.78rem', padding: '6px 8px' }}
+              onChange={(e) => setSubscription(e.target.value)}
             >
-              <option value="">-- Select --</option>
-              {subscriptions.map(s => (
+              <option value="">Select subscription</option>
+              {subscriptionOptions.map((s) => (
                 <option key={s.subscriptionId} value={s.subscriptionId}>
                   {s.displayName || s.subscriptionId}
                 </option>
@@ -79,148 +126,167 @@ function Shell() {
           )}
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem 0' }}>
+        <SidebarNav onNavClick={closeMobile} />
 
-          <div className="sidebar-section">Overview</div>
-          <NavLink to="/" end className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            <LayoutDashboard size={15} /> Dashboard
-          </NavLink>
-          <NavLink to="/costs" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            <DollarSign size={15} /> Cost Explorer
-          </NavLink>
-          <NavLink to="/findings" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            <Activity size={15} /> Findings
-          </NavLink>
-
-          <div className="sidebar-section">Resources</div>
-
-          <NavGroup label="Compute" icon={<Cpu size={14} />} color="#3b82f6" defaultOpen={true}>
-            <NavLink to="/vms"   className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Server size={14} /> Virtual Machines
-            </NavLink>
-            <NavLink to="/disks" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <HardDrive size={14} /> Managed Disks
-            </NavLink>
-          </NavGroup>
-
-          <NavGroup label="Containers" icon={<Boxes size={14} />} color="#7c3aed">
-            <NavLink to="/aks" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Boxes size={14} /> AKS Clusters
-            </NavLink>
-            <NavLink to="/acr" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Container size={14} /> Container Registries
-            </NavLink>
-          </NavGroup>
-
-          <NavGroup label="App Services" icon={<AppWindow size={14} />} color="#0891b2">
-            <NavLink to="/appservices" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <AppWindow size={14} /> Web / Function Apps
-            </NavLink>
-          </NavGroup>
-
-          <NavGroup label="Storage" icon={<HardDrive size={14} />} color="#d97706">
-            <NavLink to="/storage" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <HardDrive size={14} /> Storage Accounts
-            </NavLink>
-          </NavGroup>
-
-          <NavGroup label="Networking" icon={<Network size={14} />} color="#059669">
-            <NavLink to="/publicips"     className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Globe size={14} /> Public IPs
-            </NavLink>
-            <NavLink to="/loadbalancers" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Layers size={14} /> Load Balancers
-            </NavLink>
-            <NavLink to="/appgateways"   className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <GitBranch size={14} /> App Gateways
-            </NavLink>
-            <NavLink to="/nsgs"          className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Shield size={14} /> Network Sec. Groups
-            </NavLink>
-          </NavGroup>
-
-          <NavGroup label="Databases" icon={<Database size={14} />} color="#dc2626">
-            <NavLink to="/sql"        className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Database size={14} /> SQL Servers
-            </NavLink>
-            <NavLink to="/cosmosdb"   className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Database size={14} /> Cosmos DB
-            </NavLink>
-            <NavLink to="/postgresql" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <Database size={14} /> PostgreSQL
-            </NavLink>
-          </NavGroup>
-
-          <NavGroup label="Security" icon={<Shield size={14} />} color="#f97316">
-            <NavLink to="/keyvaults" className={({ isActive }) => `nav-item nav-sub${isActive ? ' active' : ''}`}>
-              <KeyRound size={14} /> Key Vaults
-            </NavLink>
-          </NavGroup>
-
-          <div className="sidebar-section">Engine</div>
-          <NavLink to="/engine"  className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            <CloudCog size={15} /> Engine Config
-          </NavLink>
-          <NavLink to="/history" className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}>
-            <Search size={15} /> Run History
-          </NavLink>
+        <div className="sidebar-footer">
+          <div className="sidebar-theme">
+            <div className="topbar-label">Appearance</div>
+            <ThemeToggle />
+          </div>
+          <div className="sidebar-footer__user">
+            <span className="sidebar-footer__name" title={user?.username}>
+              {user?.display_name || user?.username}
+            </span>
+            {user?.role && <span className="sidebar-footer__role">{formatUserRole(user.role)}</span>}
+          </div>
+          <button type="button" className="sidebar-footer__logout" onClick={logout} title="Sign out">
+            <LogOut size={14} />
+            Sign out
+          </button>
+          {subName && <span className="sidebar-footer__sub" title={subName}>{subName}</span>}
         </div>
+      </aside>
 
-        <div style={{ padding: '1rem', borderTop: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text3)' }}>
-          v5.0 · AzureFinOps
-        </div>
-      </nav>
-
-      <main className="main-content">
-        <Routes>
-          <Route path="/"          element={<Dashboard />} />
-          <Route path="/costs"     element={<CostExplorer />} />
-          <Route path="/findings"  element={<Findings />} />
-          <Route path="/vms"       element={<VirtualMachines />} />
-          <Route path="/aks"       element={<AKSClusters />} />
-          <Route path="/engine"    element={<EngineConfig />} />
-          <Route path="/history"   element={<RunHistory />} />
-          <Route path="/disks"         element={<ResourceList title="Managed Disks"           apiPath="/resources/disks" />} />
-          <Route path="/acr"           element={<ResourceList title="Container Registries"    apiPath="/resources/acr" />} />
-          <Route path="/appservices"   element={<ResourceList title="Web / Function Apps"     apiPath="/resources/appservices" />} />
-          <Route path="/storage"       element={<ResourceList title="Storage Accounts"        apiPath="/resources/storage" />} />
-          <Route path="/publicips"     element={<ResourceList title="Public IPs"              apiPath="/resources/publicips" />} />
-          <Route path="/loadbalancers" element={<ResourceList title="Load Balancers"          apiPath="/resources/loadbalancers" />} />
-          <Route path="/appgateways"   element={<ResourceList title="Application Gateways"   apiPath="/resources/appgateways" />} />
-          <Route path="/nsgs"          element={<ResourceList title="Network Security Groups" apiPath="/resources/nsgs" />} />
-          <Route path="/sql"           element={<ResourceList title="SQL Servers"             apiPath="/resources/sql" />} />
-          <Route path="/cosmosdb"      element={<ResourceList title="Cosmos DB Accounts"      apiPath="/resources/cosmosdb" />} />
-          <Route path="/postgresql"    element={<ResourceList title="PostgreSQL Servers"      apiPath="/resources/postgresql" />} />
-          <Route path="/keyvaults"     element={<ResourceList title="Key Vaults"              apiPath="/resources/keyvaults" />} />
-        </Routes>
-      </main>
+      <div className="main-column">
+        <MobileHeader
+          open={mobileOpen}
+          onToggle={() => setMobileOpen((o) => !o)}
+          title={pageTitle}
+          iconKey={iconForRoute(location.pathname)}
+        />
+        <main className="main-content">
+          <ErrorBoundary>
+            <Suspense fallback={<LoadingState message="Loading page…" />}>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/costs" element={<CostExplorer />} />
+                <Route path="/recommendations" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
+                <Route path="/optimization-hub" element={<OptimizationHub />} />
+                <Route path="/optimize/actions" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
+                <Route path="/optimize/scoreboard" element={<Navigate to="/optimization-hub?tab=scoreboard" replace />} />
+                <Route path="/optimize/rollout-monitor" element={<Navigate to="/optimization-hub" replace />} />
+                <Route path="/k8s" element={<K8sSnapshots />} />
+                <Route path="/engine" element={<ProtectedRoute adminOnly><EngineConfig /></ProtectedRoute>} />
+                <Route path="/admin/optimization" element={<ProtectedRoute adminOnly><AdminOptimization /></ProtectedRoute>} />
+                <Route path="/history" element={<RunHistory />} />
+                <Route path="/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
+                <Route path="/admin/api-explorer" element={<ProtectedRoute adminOnly><ApiExplorer /></ProtectedRoute>} />
+                {createResourceRoutes()}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
+        </main>
+      </div>
     </div>
+    </OperationProgressProvider>
+    </ToastProvider>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <>
+      <AuthSessionSync />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/*" element={<ProtectedRoute><Shell /></ProtectedRoute>} />
+      </Routes>
+    </>
+  );
+}
+
+function AppData() {
+  const { loading: authLoading } = useAuth();
+  const [subscriptionRaw, setSubscriptionRaw] = usePersistedState('finops-subscription', '');
+  const setSubscription = useCallback((value) => {
+    setSubscriptionRaw(value ? String(value).trim().toLowerCase() : '');
+  }, [setSubscriptionRaw]);
+  const subscription = subscriptionRaw ? String(subscriptionRaw).trim().toLowerCase() : '';
+
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [subscriptionError, setSubscriptionError] = useState('');
+
+  const subscriptionOptions = useMemo(() => {
+    const byId = new Map();
+    subscriptions.forEach((s) => {
+      if (s.subscriptionId) byId.set(s.subscriptionId, s);
+    });
+    if (subscription && !byId.has(subscription)) {
+      byId.set(subscription, { subscriptionId: subscription, displayName: subscription, state: 'Synced' });
+    }
+    return Array.from(byId.values()).sort((a, b) =>
+      (a.displayName || a.subscriptionId).localeCompare(b.displayName || b.subscriptionId),
+    );
+  }, [subscriptions, subscription]);
+
+  const { data: costSummary } = useQuery({
+    queryKey: ['cost-summary-meta', subscription],
+    queryFn: () => fetchCostSummary({ subscription_id: subscription, timeframe: 'MonthToDate' }),
+    enabled: !!subscription && hasActiveSession() && !authLoading,
+    staleTime: 30 * 60_000,
+  });
+
+  const billingCurrency = costSummary?.billing_currency || 'CAD';
+
+  const loadSubscriptions = useCallback(() => {
+    if (authLoading || !hasActiveSession()) {
+      if (!hasActiveSession()) {
+        setSubscriptions([]);
+        setLoading(false);
+      }
+      return;
+    }
+    setLoading(true);
+    fetchSubscriptions()
+      .then((list) => {
+        setSubscriptions(list);
+        setSubscriptionError('');
+        if (list.length > 0) {
+          const ids = new Set(list.map((s) => s.subscriptionId));
+          if (!subscription || !ids.has(subscription)) {
+            setSubscription(list[0].subscriptionId);
+          }
+        }
+      })
+      .catch((err) => {
+        setSubscriptionError(getErrorMessage(err, 'Could not load subscriptions.'));
+      })
+      .finally(() => setLoading(false));
+  }, [setSubscription, subscription, authLoading]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    loadSubscriptions();
+  }, [loadSubscriptions, authLoading]);
+
+  return (
+    <AppCtx.Provider value={{
+      subscription,
+      setSubscription,
+      subscriptions,
+      subscriptionOptions,
+      loading,
+      subscriptionError,
+      reloadSubscriptions: loadSubscriptions,
+      billingCurrency,
+    }}>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AppCtx.Provider>
   );
 }
 
 export default function App() {
-  const [subscription, setSubscription] = useState('');
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchSubscriptions()
-      .then(data => {
-        const list = Array.isArray(data) ? data : (data?.value || []);
-        setSubscriptions(list);
-        if (list.length > 0 && !subscription) setSubscription(list[0].subscriptionId);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
-
   return (
     <QueryClientProvider client={qc}>
-      <AppCtx.Provider value={{ subscription, setSubscription, subscriptions, loading }}>
-        <BrowserRouter>
-          <Shell />
-        </BrowserRouter>
-      </AppCtx.Provider>
+      <ThemeProvider>
+        <AuthProvider>
+          <AppData />
+        </AuthProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

@@ -1,142 +1,117 @@
-# Azure Cost Optimizer Platform
+# InfinityOps Platform
 
-Enterprise-ready full-stack platform for Azure cost visibility, resource inventory, and Kubernetes utilization telemetry.
+Enterprise FinOps platform for Azure cost visibility, resource inventory, optimization recommendations, and optional Kubernetes utilization telemetry.
 
-This repository contains a production-oriented application designed to help organizations collect Azure cost data, inventory Azure resources, track Kubernetes node and pod utilization, persist operational data in PostgreSQL, and present the results through a React frontend.
+This repository contains a production-oriented application that collects Azure cost data, inventories Azure resources, runs a rule-based optimization engine with savings estimates, persists operational data in PostgreSQL, and presents results through a React frontend.
 
 ## Business purpose
 
 The platform is intended for organizations that need:
-- centralized Azure cost visibility,
+- centralized Azure cost visibility and budget tracking,
 - inventory coverage across major Azure resource types,
-- a lightweight Kubernetes utilization collector,
-- secure identity-based access with Managed Identity,
-- data persistence for historical reporting,
-- a frontend that can be adapted into an internal FinOps or platform engineering portal.
+- actionable optimization recommendations grounded in actual billed cost,
+- secure JWT-based authentication with role-based access (admin vs viewer),
+- data persistence for historical reporting and analysis runs,
+- a frontend FinOps portal for cost, inventory, and recommendations.
 
 ## What is included
 
 ### Backend
-- Python FastAPI application.
-- Azure Cost Management API integration.
-- Azure Resource Manager inventory endpoints.
-- PostgreSQL persistence for cost history and Kubernetes telemetry.
-- CORS support for frontend integration.
-- Health endpoint for operational checks.
+- Python FastAPI application (`app/main.py`).
+- Azure Cost Management API integration (actual spend only — no list-price heuristics in user-facing cost fields).
+- Azure Resource Manager inventory and live-read endpoints.
+- Optimization engine with per-resource sub-engines (`app/optimizer/`).
+- PostgreSQL persistence for costs, inventory snapshots, findings, and analysis jobs.
+- JWT authentication, subscription scoping, and admin-gated analysis/sync operations.
 
 ### Frontend
-- React application with a left navigation layout.
-- Dashboard for Azure cost retrieval and visualization.
-- Resource explorer for Azure inventory.
-- Kubernetes telemetry viewer.
-- Historical cost request viewer.
+- React SPA with navigation driven by `frontend/src/config/appRegistry.js`.
+- Dashboard, cost explorer, resource inventory pages, and **Recommendations** (`/recommendations`).
+- Admin tools: optimization runs, engine config, settings, user management.
+- Shared findings index for consistent badges and drawer panels across resource pages.
 
 ### Kubernetes agent
-- Lightweight in-cluster polling agent.
+- Lightweight in-cluster polling agent (`k8s/agent.py`).
 - Reads node and pod usage from `metrics-server`.
-- Pushes utilization snapshots to the backend.
+- Pushes utilization snapshots to the backend (token-authenticated in production).
 
 ## Repository map
 
 ```text
-azure-cost-optimizer-api/
+CostOptimizeRecommender/
 ├── app/
-│   ├── main.py
-│   ├── azure_cost.py
-│   ├── azure_resources.py
-│   ├── database.py
-│   └── models.py
+│   ├── main.py              # FastAPI routes (costs, resources, optimize, auth)
+│   ├── analysis/            # DB analysis orchestration
+│   ├── dashboard/           # Dashboard API
+│   ├── optimizer/           # Rule engine + resource sub-engines
+│   ├── resources/           # Per-type technical fetch + metrics specs
+│   └── database.py
 ├── frontend/
 │   ├── package.json
 │   └── src/
+│       ├── config/appRegistry.js   # Nav + route source of truth
+│       └── pages/Recommendations.jsx
 ├── k8s/
 │   ├── utilization-agent.yaml
 │   └── agent.py
 ├── docs/
 │   ├── README.md
-│   ├── architecture.md
-│   ├── backend.md
-│   ├── frontend.md
-│   ├── api-reference.md
-│   ├── database.md
-│   ├── security.md
-│   ├── operations.md
-│   ├── kubernetes-agent.md
-│   ├── deployment-manual.md
-│   └── production-readiness.md
+│   ├── FUNCTIONALITY.md
+│   ├── DEPLOY_APP_SERVICE.md
+│   └── ...
 └── requirements.txt
 ```
 
 ## Core capabilities
 
 ### 1. Azure cost retrieval
-The backend queries Azure Cost Management APIs using Managed Identity through `DefaultAzureCredential`. The application supports subscription-level and resource-group-level cost retrieval and stores request history in PostgreSQL.
+The backend queries Azure Cost Management APIs using Managed Identity through `DefaultAzureCredential`. Supports subscription-level and resource-group-level cost retrieval; stores snapshots and query history in PostgreSQL.
 
 ### 2. Azure resource inventory
-The backend exposes endpoints to enumerate common Azure resource types such as Virtual Machines, AKS clusters, Storage Accounts, App Services, SQL Servers, Managed Disks, Key Vaults, Public IPs, Resource Groups, and the complete ARM resource list.
+Endpoints enumerate VMs, disks, AKS, storage, databases, networking, App Service, Key Vault, and aggregate pages (monitoring, integration, analytics, etc.). Inventory can be synced from Azure into PostgreSQL for fast list views.
 
-### 3. Kubernetes telemetry
-A lightweight pod collects node and pod utilization from `metrics.k8s.io` and sends snapshots to the API. This gives the frontend a simple operational view without requiring a heavy observability stack.
+### 3. Optimization engine
+Rule-based analysis (`/optimize/analyze`, admin-only) produces findings with `estimated_savings_usd` derived from **actual billed cost** baselines. Findings are listed at `/optimize/findings` and in the UI at `/recommendations`.
 
-### 4. Historical persistence
-The application persists cost query metadata and Kubernetes utilization snapshots into PostgreSQL so operators can retain an audit trail and build dashboards over time.
+### 4. Kubernetes telemetry
+Optional in-cluster agent collects node/pod utilization and sends snapshots to the API.
 
-### 5. Frontend UX
-The React user interface provides navigation and views for cost data, resources, Kubernetes utilization, and cost query history.
-
-## Intended production model
-
-This repository now excludes infrastructure provisioning because you plan to create the Azure Web App and PostgreSQL manually. The application therefore focuses on:
-- application code,
-- documentation,
-- runtime configuration,
-- security posture,
-- operational guidance,
-- production-readiness expectations.
-
-## Minimum required Azure roles
-
-Assign the Web App Managed Identity the smallest possible set of roles:
-- `Cost Management Reader` for cost data.
-- `Reader` for Azure Resource Manager inventory.
-
-Apply these roles at the subscription scope only if cross-resource visibility is required. If your operating model allows narrower scope, reduce permissions accordingly.
+### 5. Authentication & authorization
+When `AUTH_ENABLED=true` (required in production):
+- JWT login at `/api/auth/login` with rate limiting.
+- Protected API roots include `/dashboard`, `/sync`, `/optimize`, `/resources`, and related paths.
+- Admin role required for analysis, sync-from-Azure, settings, and user management.
 
 ## Runtime configuration
 
-### Backend environment variables
-- `DATABASE_URL` - PostgreSQL SQLAlchemy connection string.
-- `CORS_ALLOWED_ORIGINS` - comma-separated list of allowed frontend origins.
-- `APP_ENV` - environment label such as `dev`, `qa`, or `prod`.
-- `LOG_LEVEL` - logging verbosity such as `INFO` or `WARNING`.
-- `REQUEST_TIMEOUT_SECONDS` - timeout for Azure REST calls.
+### Backend environment variables (key)
+- `DATABASE_URL` — PostgreSQL SQLAlchemy connection string.
+- `CORS_ALLOWED_ORIGINS` — comma-separated allowed frontend origins.
+- `APP_ENV` — `dev`, `qa`, or `prod`.
+- `AUTH_ENABLED` — must be `true` in production.
+- `JWT_SECRET` — signing key for access tokens (required when auth enabled).
+- `SETTINGS_ENCRYPTION_KEY` — encrypts sensitive settings at rest (required in production).
+- `K8S_AGENT_TOKEN` — shared secret for utilization agent POSTs (required in production).
 
 ### Frontend environment variables
-- `REACT_APP_API_URL` - base URL for the backend API.
+- `REACT_APP_API_URL` — base URL for the backend API.
 
-## Production expectations
+## Minimum required Azure roles
 
-For enterprise rollout, implement the following before external customer delivery:
-- Azure AD or equivalent authentication in front of the frontend and backend.
-- Role-based authorization for API endpoints.
-- Structured logging and centralized log shipping.
-- Database migration management.
-- Health probes and readiness checks.
-- Strong secret handling through Azure Key Vault or App Settings references.
-- WAF / reverse proxy / ingress controls.
-- Backup and restore procedures for PostgreSQL.
-- CI/CD with quality gates.
-- Audit logging and alerting.
+Assign the Web App Managed Identity:
+- `Cost Management Reader` for cost data.
+- `Reader` for Azure Resource Manager inventory.
+
+Apply at subscription scope only when cross-resource visibility is required.
 
 ## Reading guide
 
-Start with these documents:
-1. `docs/README.md` for documentation index.
-2. `docs/architecture.md` for system design.
-3. `docs/backend.md` for backend design.
-4. `docs/frontend.md` for frontend structure.
-5. `docs/security.md` for security posture.
-6. `docs/production-readiness.md` for enterprise hardening checklist.
+1. `docs/FUNCTIONALITY.md` — end-to-end behavior, cost policy, routes.
+2. `docs/architecture.md` — system design.
+3. `docs/backend.md` — backend modules.
+4. `docs/frontend.md` — frontend structure and `appRegistry`.
+5. `docs/security.md` — auth, secrets, production gates.
+6. `docs/DEPLOY_APP_SERVICE.md` — Azure App Service deployment.
 
 ## License
 

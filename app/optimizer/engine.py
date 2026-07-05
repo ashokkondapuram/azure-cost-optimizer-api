@@ -13,11 +13,18 @@ import structlog
 from datetime import datetime, timezone, timedelta
 from typing import Any
 from app.optimizer.rules import DEFAULT_RULES, Rule, Severity, Category
+from app.optimizer.rule_overrides import apply_rule_overrides
+from app.appgateway_utils import http_listener_count
+from app.cost_utils import resource_cost, savings_from_factor, aks_pool_cost_share
+from app.azure_retail_pricing import estimate_vm_sku_savings, vm_os_type
+from app.pricing.savings_calculator import savings_from_retail_or_none
+from app.disk_staleness import augment_disk_evidence, evaluate_unattached_disk, staleness_evidence
+from app.vm_sizing import extract_vm_utilization, recommend_vm_sku, suggest_smaller_sku
+from app.optimizer.resource_engines.compute.vm.helpers import idle_vm_action_text, sizing_action_label
+from app.finding_evidence import build_rule_evidence
+from app.aks_versions import is_minor_version_supported, normalize_k8s_minor, supported_minors_for_location
 
 log = structlog.get_logger()
-
-# Latest supported AKS k8s minor versions (update quarterly)
-SUPPORTED_K8S = {"1.29", "1.30", "1.31", "1.32"}
 
 
 # ─── Finding dataclass ────────────────────────────────────────────────────────
@@ -27,11 +34,12 @@ class Finding:
         "resource_id", "resource_name", "resource_type",
         "subscription_id", "resource_group", "location",
         "detail", "recommendation", "estimated_savings_usd",
-        "waste_score", "tags", "detected_at",
+        "waste_score", "tags", "detected_at", "evidence",
     )
 
     def __init__(self, rule: Rule, resource: dict, detail: str,
-                 recommendation: str, savings: float = 0.0, score: int = 50):
+                 recommendation: str, savings: float = 0.0, score: int = 50,
+                 evidence: dict[str, Any] | None = None):
         self.rule_id   = rule.id
         self.rule_name = rule.name
         self.category  = rule.category.value
@@ -44,10 +52,23 @@ class Finding:
         self.location        = resource.get("location", "")
         self.detail          = detail
         self.recommendation  = recommendation
-        self.estimated_savings_usd = round(savings, 2)
         self.waste_score     = score   # 0=fine, 100=critical waste
         self.tags            = resource.get("tags") or {}
         self.detected_at     = datetime.now(timezone.utc).isoformat()
+        savings = round(savings, 2)
+        self.estimated_savings_usd = savings
+        self.evidence = build_rule_evidence(
+            rule.id,
+            evidence or {},
+            finding={
+                "rule_id": rule.id,
+                "resource_id": resource.get("id", ""),
+                "resource_type": resource.get("type", ""),
+                "detail": detail,
+                "estimated_savings_usd": savings,
+            },
+            estimated_savings_usd=savings,
+        )
 
     def to_dict(self) -> dict:
         return {s: getattr(self, s) for s in self.__slots__}
@@ -83,9 +104,7 @@ class OptimizationEngine:
             import copy
             r = copy.deepcopy(rule)
             if rule_overrides and rid in rule_overrides:
-                for k, v in rule_overrides[rid].items():
-                    if hasattr(r, k):
-                        setattr(r, k, v)
+                apply_rule_overrides(r, rule_overrides[rid])
             self.rules[rid] = r
 
     # ─── Public entry point ───────────────────────────────────────────────
@@ -101,6 +120,11 @@ class OptimizationEngine:
         public_ips:    list[dict] | None = None,
         load_balancers: list[dict] | None = None,
         app_gateways:  list[dict] | None = None,
+        app_services:  list[dict] | None = None,
+        app_service_plans: list[dict] | None = None,
+        network_interfaces: list[dict] | None = None,
+        nat_gateways:  list[dict] | None = None,
+        redis_caches:  list[dict] | None = None,
         sql_servers:   list[dict] | None = None,
         sql_databases: list[dict] | None = None,
         cosmosdb:      list[dict] | None = None,
@@ -110,7 +134,7 @@ class OptimizationEngine:
         cost_by_resource: dict | None = None,           # resourceId -> cost_usd
         budgets:       list[dict] | None = None,
         subscription_spend_usd: float = 0.0,
-        max_workers:   int = 16,
+        max_workers:   int = 4,
     ) -> dict:
         """Run all rule checks in parallel. Returns structured report."""
         log.info("engine.analyze.start",
@@ -121,10 +145,13 @@ class OptimizationEngine:
 
         tasks = [
             (self._check_vms,        (vms or [], vm_metrics or {}, cost_by_resource or {})),
-            (self._check_disks,      (disks or [], snapshots or [])),
-            (self._check_aks,        (aks_clusters or [], aks_node_pools or {}, node_metrics or {})),
+            (self._check_disks,      (disks or [], cost_by_resource or {})),
+            (self._check_snapshots,  (snapshots or [], cost_by_resource or {})),
+            (self._check_aks,        (aks_clusters or [], aks_node_pools or {}, node_metrics or {}, cost_by_resource or {})),
             (self._check_storage,    (storage or [],)),
-            (self._check_network,    (public_ips or [], load_balancers or [], app_gateways or [])),
+            (self._check_network,    (public_ips or [], load_balancers or [], app_gateways or [], network_interfaces or [], nat_gateways or [], cost_by_resource or {})),
+            (self._check_app_services, (app_services or [], app_service_plans or [], cost_by_resource or {})),
+            (self._check_redis,      (redis_caches or [], cost_by_resource or {})),
             (self._check_databases,  (sql_servers or [], sql_databases or [], cosmosdb or [])),
             (self._check_security,   (keyvaults or [],)),
             (self._check_cost,       (budgets or [], subscription_spend_usd)),
@@ -168,7 +195,7 @@ class OptimizationEngine:
             props = vm.get("properties", {})
             hw    = props.get("hardwareProfile", {})
             sku   = hw.get("vmSize", "")
-            cost  = costs.get(rid.lower(), 0.0)
+            cost  = resource_cost(costs, rid)
 
             # Power state from instanceView
             iv = props.get("instanceView", {})
@@ -183,31 +210,104 @@ class OptimizationEngine:
                     detail=f"VM '{name}' is stopped (not deallocated) — still billed for compute.",
                     recommendation="Run: az vm deallocate --name {name} --resource-group <rg>",
                     savings=cost, score=90,
+                    evidence={
+                        "power_state": power.replace("PowerState/", ""),
+                        "vm_size": sku,
+                        "monthly_cost_usd": cost,
+                    },
                 ))
                 continue
 
             # CPU metrics-based checks
             m = metrics.get(rid.lower()) or metrics.get(rid)
             avg_cpu = _avg_metric(m, "Percentage CPU") if m else None
-            avg_mem = _avg_metric(m, "Available Memory Bytes") if m else None
+            util = extract_vm_utilization(m, sku=sku) if m else None
+            avg_mem = util.avg_memory_pct if util else None
 
             if avg_cpu is not None:
                 if rule_idle.enabled and avg_cpu < rule_idle.cpu_idle_pct:
+                    idle_rec = (
+                        recommend_vm_sku(
+                            current_sku=sku,
+                            utilization=util,
+                            cpu_down_pct=rule_idle.cpu_idle_pct,
+                            memory_down_pct=rule_idle.mem_idle_pct,
+                        )
+                        if util and sku
+                        else None
+                    )
+                    idle_sku = (
+                        idle_rec.suggested_sku
+                        if idle_rec and idle_rec.suggested_sku and idle_rec.action in {"downgrade", "cross_family"}
+                        else None
+                    )
+                    idle_action = idle_vm_action_text(idle_rec)
                     out.append(Finding(
                         rule_idle, vm,
                         detail=f"VM '{name}' avg CPU {avg_cpu:.1f}% over 7d (threshold {rule_idle.cpu_idle_pct}%). SKU: {sku}.",
-                        recommendation="Deallocate if unused, or downsize to B-series burstable.",
-                        savings=cost * 0.90, score=85,
+                        recommendation=f"Deallocate if unused. {idle_action}",
+                        savings=savings_from_factor(cost, 0.90), score=85,
+                        evidence={
+                            "avg_cpu_pct": round(avg_cpu, 2),
+                            "avg_memory_pct": round(avg_mem, 2) if avg_mem is not None else None,
+                            "cpu_threshold_pct": rule_idle.cpu_idle_pct,
+                            "vm_size": sku,
+                            "suggested_sku": idle_sku,
+                            "sizing_action": idle_rec.action if idle_rec else None,
+                            "monthly_cost_usd": cost,
+                            "power_state": power.replace("PowerState/", "") if power else "unknown",
+                        },
                     ))
-                elif rule_over.enabled and avg_cpu < rule_over.cpu_oversize_pct:
-                    # Recommend smaller SKU
-                    smaller = _suggest_smaller_sku(sku)
-                    out.append(Finding(
-                        rule_over, vm,
-                        detail=f"VM '{name}' avg CPU {avg_cpu:.1f}% (threshold {rule_over.cpu_oversize_pct}%). SKU: {sku}.",
-                        recommendation=f"Downsize from {sku} to {smaller}. Estimated 30-50% cost reduction.",
-                        savings=cost * 0.35, score=60,
-                    ))
+                elif rule_over.enabled and util and (util.has_cpu or util.has_memory):
+                    rec = recommend_vm_sku(
+                        current_sku=sku,
+                        utilization=util,
+                        cpu_down_pct=rule_over.cpu_oversize_pct,
+                        memory_down_pct=rule_over.mem_idle_pct,
+                    )
+                    if rec and rec.suggested_sku and rec.action in {"downgrade", "cross_family"}:
+                        target_sku = rec.suggested_sku
+                        pricing = estimate_vm_sku_savings(
+                            vm.get("location") or "",
+                            sku,
+                            target_sku,
+                            os_type=vm_os_type(vm),
+                            actual_monthly_cost=cost if cost > 0 else None,
+                        )
+                        savings = savings_from_retail_or_none(pricing)
+                        if savings is None:
+                            savings = 0.0
+                        current_retail = pricing.get("current_sku_monthly_usd")
+                        suggested_retail = pricing.get("suggested_sku_monthly_usd")
+                        price_note = ""
+                        if current_retail is not None and suggested_retail is not None:
+                            price_note = (
+                                f" Azure retail pricing: {sku} ~${current_retail:,.2f}/mo → "
+                                f"{target_sku} ~${suggested_retail:,.2f}/mo "
+                                f"(est. savings ${savings:,.2f}/mo)."
+                            )
+                        verb = sizing_action_label(rec.action)
+                        out.append(Finding(
+                            rule_over, vm,
+                            detail=(
+                                f"VM '{name}' averages {avg_cpu:.1f}% CPU"
+                                + (f" and {avg_mem:.1f}% memory" if avg_mem is not None else "")
+                                + f" (threshold {rule_over.cpu_oversize_pct}%). SKU: {sku}."
+                            ),
+                            recommendation=f"{verb} {sku} → {target_sku}.{price_note}",
+                            savings=savings,
+                            score=60,
+                            evidence={
+                                "avg_cpu_pct": round(avg_cpu, 2),
+                                "avg_memory_pct": round(avg_mem, 2) if avg_mem is not None else None,
+                                "cpu_oversize_threshold_pct": rule_over.cpu_oversize_pct,
+                                "vm_size": sku,
+                                "suggested_sku": target_sku,
+                                "sizing_action": rec.action,
+                                "monthly_cost_usd": cost,
+                                **pricing,
+                            },
+                        ))
 
             # Reserved Instance check — on-demand VMs running >7d
             if rule_ri.enabled and power == "PowerState/running":
@@ -215,10 +315,15 @@ class OptimizationEngine:
                     rule_ri, vm,
                     detail=f"VM '{name}' ({sku}) running on pay-as-you-go.",
                     recommendation="Purchase 1-yr Reserved Instance for ~40% savings.",
-                    savings=cost * 0.40, score=40,
+                    savings=savings_from_factor(cost, 0.40), score=40,
+                    evidence={
+                        "power_state": "running",
+                        "pricing_model": "on_demand",
+                        "vm_size": sku,
+                        "monthly_cost_usd": cost,
+                    },
                 ))
 
-            # Spot opportunity for dev/test
             if rule_spot.enabled:
                 tags = vm.get("tags") or {}
                 env  = tags.get("environment", tags.get("env", "")).lower()
@@ -227,65 +332,125 @@ class OptimizationEngine:
                         rule_spot, vm,
                         detail=f"VM '{name}' tagged env='{env}' running on on-demand.",
                         recommendation="Switch to Azure Spot VMs for up to 90% savings on interruptible workloads.",
-                        savings=cost * 0.85, score=55,
+                        savings=savings_from_factor(cost, 0.85), score=55,
+                        evidence={
+                            "environment": env,
+                            "pricing_model": "on_demand",
+                            "vm_size": sku,
+                            "monthly_cost_usd": cost,
+                        },
                     ))
         return out
 
     # ─── COMPUTE: Disks & Snapshots ───────────────────────────────────────
-    def _check_disks(self, disks: list, snapshots: list) -> list[Finding]:
+    def _check_disks(self, disks: list, costs: dict) -> list[Finding]:
         out = []
         rule_ua  = self.rules["DISK_UNATTACHED"]
-        rule_snp = self.rules["SNAPSHOT_OLD"]
         rule_ov  = self.rules["DISK_OVERSIZE"]
-        now      = datetime.now(timezone.utc)
 
         for disk in disks:
             props  = disk.get("properties", {})
             state  = props.get("diskState", "")
             sku_t  = disk.get("sku", {}).get("name", "")
             size_gb = props.get("diskSizeGB", 0)
-            # Estimate cost: Premium_LRS ~$0.17/GB, Standard_LRS ~$0.05/GB
-            cost_per_gb = 0.17 if "Premium" in sku_t else 0.05
-            monthly_cost = size_gb * cost_per_gb
+            monthly_cost = resource_cost(costs, disk.get("id", ""))
 
             if rule_ua.enabled and state == "Unattached":
+                stale_ctx = evaluate_unattached_disk(disk, max_days=14)
+                if not stale_ctx.is_stale:
+                    continue
+                detail = (
+                    f"Disk '{disk.get('name')}' ({size_gb} GB, {sku_t}) has been unattached "
+                    f"for {stale_ctx.age_days} days."
+                )
+                if stale_ctx.last_owner_name:
+                    detail += f" Last attached to '{stale_ctx.last_owner_name}'."
                 out.append(Finding(
                     rule_ua, disk,
-                    detail=f"Disk '{disk.get('name')}' ({size_gb} GB, {sku_t}) is unattached.",
+                    detail=detail,
                     recommendation="Delete the disk or snapshot it first: az disk delete --ids <id>",
                     savings=monthly_cost, score=88,
+                    evidence=augment_disk_evidence({
+                        "disk_state": state,
+                        "size_gb": size_gb,
+                        "sku": sku_t,
+                        "monthly_cost_usd": monthly_cost,
+                        **staleness_evidence(stale_ctx),
+                    }, props, disk_resource=disk),
                 ))
             elif rule_ov.enabled and state == "Unattached" and "Premium" in sku_t:
+                stale_ctx = evaluate_unattached_disk(disk, max_days=14)
+                if not stale_ctx.is_stale:
+                    continue
                 out.append(Finding(
                     rule_ov, disk,
                     detail=f"Premium disk '{disk.get('name')}' is unattached. Downgrade to Standard SSD.",
                     recommendation="az disk update --sku StandardSSD_LRS --ids <id>",
-                    savings=monthly_cost * 0.70, score=55,
+                    savings=savings_from_factor(monthly_cost, 0.70), score=55,
+                    evidence={
+                        "disk_state": state,
+                        "sku": sku_t,
+                        "size_gb": size_gb,
+                        "monthly_cost_usd": monthly_cost,
+                    },
                 ))
+
+        return out
+
+    def _check_snapshots(self, snapshots: list, costs: dict) -> list[Finding]:
+        from app.optimizer.resource_engines.compute.snapshot.analysis import (
+            snapshot_created_at,
+            snapshot_size_gb,
+        )
+        from app.snapshot_retention import (
+            is_stale_snapshot,
+            meets_snapshot_savings_gate,
+            meets_snapshot_size_gate,
+            snapshot_age_days,
+            snapshot_threshold_evidence,
+        )
+
+        out = []
+        rule_snp = self.rules["SNAPSHOT_OLD"]
 
         for snap in snapshots:
             if not rule_snp.enabled:
                 break
-            props      = snap.get("properties", {})
-            time_str   = props.get("timeCreated", "")
-            size_gb    = props.get("diskSizeGB", 0)
-            monthly_cost = size_gb * 0.05
-            try:
-                created = datetime.fromisoformat(time_str.replace("Z", "+00:00"))
-                age_days = (now - created).days
-                if age_days > 90:
-                    out.append(Finding(
-                        rule_snp, snap,
-                        detail=f"Snapshot '{snap.get('name')}' is {age_days} days old ({size_gb} GB).",
-                        recommendation="Delete snapshots older than 90 days if the source disk is healthy.",
-                        savings=monthly_cost, score=40,
-                    ))
-            except Exception:
-                pass
+            created = snapshot_created_at(snap)
+            if not created:
+                continue
+            if not is_stale_snapshot(snap, retention_days=rule_snp.snapshot_retention_days):
+                continue
+            if not meets_snapshot_size_gate(snap, min_size_gb=rule_snp.snapshot_min_size_gb):
+                continue
+            age_days = snapshot_age_days(snap) or 0
+            size_gb = snapshot_size_gb(snap)
+            monthly_cost = resource_cost(costs, snap.get("id", ""))
+            if not meets_snapshot_savings_gate(monthly_cost, min_monthly_savings_usd=0.0):
+                continue
+            out.append(Finding(
+                rule_snp, snap,
+                detail=(
+                    f"Snapshot '{snap.get('name')}' is {age_days} days old ({size_gb:g} GB) — "
+                    f"exceeds the {rule_snp.snapshot_retention_days}-day retention threshold."
+                ),
+                recommendation=(
+                    f"Delete snapshots older than {rule_snp.snapshot_retention_days} days "
+                    "if the source disk is healthy."
+                ),
+                savings=monthly_cost, score=40,
+                evidence={
+                    "age_days": age_days,
+                    "size_gb": size_gb,
+                    "time_created": created.isoformat(),
+                    "monthly_cost_usd": monthly_cost,
+                    **snapshot_threshold_evidence(rule_snp),
+                },
+            ))
         return out
 
     # ─── KUBERNETES ───────────────────────────────────────────────────────
-    def _check_aks(self, clusters: list, node_pools: dict, node_metrics: dict) -> list[Finding]:
+    def _check_aks(self, clusters: list, node_pools: dict, node_metrics: dict, costs: dict) -> list[Finding]:
         out = []
         rule_idle   = self.rules["AKS_NODE_IDLE"]
         rule_over   = self.rules["AKS_OVERPROVISIONED"]
@@ -294,6 +459,7 @@ class OptimizationEngine:
         rule_ver    = self.rules["AKS_OLD_VERSION"]
         rule_asc    = self.rules["AKS_NO_AUTOSCALER"]
         rule_split  = self.rules["AKS_SINGLE_NODE_POOL"]
+        supported_by_region: dict[tuple[str, str], set[str]] = {}
 
         for cluster in clusters:
             cid   = cluster.get("id", "")
@@ -302,20 +468,43 @@ class OptimizationEngine:
             tags  = cluster.get("tags") or {}
             env   = tags.get("environment", tags.get("env", "prod")).lower()
 
-            # k8s version check
+            # k8s version check — supported versions from Azure ARM per region
             k8s_ver = props.get("kubernetesVersion", "")
-            minor   = ".".join(k8s_ver.split(".")[:2]) if k8s_ver else ""
-            if rule_ver.enabled and minor and minor not in SUPPORTED_K8S:
+            minor = normalize_k8s_minor(k8s_ver)
+            sub_id = _extract_sub(cid)
+            loc = (cluster.get("location") or "").strip()
+            region_key = (sub_id, loc.lower())
+            if region_key not in supported_by_region and sub_id and loc:
+                supported_by_region[region_key] = supported_minors_for_location(sub_id, loc)
+            supported = supported_by_region.get(region_key, set())
+            version_supported = is_minor_version_supported(k8s_ver, supported)
+            if rule_ver.enabled and minor and version_supported is False:
                 out.append(Finding(
                     rule_ver, cluster,
-                    detail=f"Cluster '{cname}' is on k8s {k8s_ver}. Supported: {', '.join(sorted(SUPPORTED_K8S))}.",
-                    recommendation="az aks upgrade --name {cname} --kubernetes-version <latest>",
+                    detail=(
+                        f"Cluster '{cname}' is on k8s {k8s_ver}, which is not supported in region '{loc}'. "
+                        f"Supported: {', '.join(sorted(supported))}."
+                    ),
+                    recommendation="Upgrade the cluster to a supported Kubernetes version for this region.",
                     savings=0, score=50,
+                    evidence={
+                        "kubernetes_version": k8s_ver,
+                        "kubernetes_minor": minor,
+                        "location": loc,
+                        "supported_versions": sorted(supported),
+                        "version_source": "azure_arm",
+                    },
                 ))
 
             pools = node_pools.get(cid, node_pools.get(cid.lower(), []))
             if not pools:
                 pools = props.get("agentPoolProfiles", [])
+
+            cluster_cost = resource_cost(costs, cid)
+            total_nodes = sum(
+                int(p.get("count") or p.get("nodeCount") or p.get("vmCount") or 0)
+                for p in pools
+            )
 
             # Single pool check
             if rule_split.enabled and len(pools) == 1:
@@ -324,6 +513,7 @@ class OptimizationEngine:
                     detail=f"Cluster '{cname}' has only 1 node pool. All workloads share the same nodes.",
                     recommendation="Add a separate user node pool for workloads; keep system pool lean (Standard_D2s_v3 x2).",
                     savings=0, score=30,
+                    evidence={"pool_count": len(pools)},
                 ))
 
             for pool in pools:
@@ -333,10 +523,8 @@ class OptimizationEngine:
                 vm_sku = pool.get("vmSize", "")
                 asc    = pool.get("enableAutoScaling") or pool.get("autoscaleEnabled")
 
-                # Estimate node cost ($0.10/core/hr * 730hr * vCPU_guess)
-                vcpu_guess = _sku_vcpu_guess(vm_sku)
-                node_monthly = vcpu_guess * 0.10 * 730
-                pool_cost    = count * node_monthly
+                pool_cost = aks_pool_cost_share(cluster_cost, count, total_nodes)
+                node_monthly = pool_cost / count if count > 0 else 0.0
 
                 # Autoscaler disabled
                 if rule_asc.enabled and not asc and count > rule_asc.node_count_min:
@@ -344,7 +532,14 @@ class OptimizationEngine:
                         rule_asc, cluster,
                         detail=f"Pool '{pname}' on cluster '{cname}' has {count} nodes, autoscaler OFF.",
                         recommendation=f"Enable cluster autoscaler: az aks nodepool update --enable-cluster-autoscaler --min-count 1 --max-count {count}",
-                        savings=pool_cost * 0.30, score=75,
+                        savings=savings_from_factor(pool_cost, 0.30), score=75,
+                        evidence={
+                            "pool_name": pname,
+                            "node_count": count,
+                            "autoscaler_enabled": bool(asc),
+                            "node_count_min": rule_asc.node_count_min,
+                            "monthly_cost_usd": pool_cost,
+                        },
                     ))
 
                 # Spot opportunity for non-system pools
@@ -355,7 +550,14 @@ class OptimizationEngine:
                             rule_spot, cluster,
                             detail=f"Pool '{pname}' ({vm_sku} x{count}) on cluster '{cname}' using on-demand nodes.",
                             recommendation="Use Spot node pool for interruptible workloads. Add --priority Spot --eviction-policy Delete.",
-                            savings=pool_cost * 0.80, score=65,
+                            savings=savings_from_factor(pool_cost, 0.80), score=65,
+                            evidence={
+                                "pool_name": pname,
+                                "scale_set_priority": spot_mode or "regular",
+                                "node_count": count,
+                                "vm_size": vm_sku,
+                                "monthly_cost_usd": pool_cost,
+                            },
                         ))
 
                 # Dev cluster running 24/7
@@ -364,7 +566,12 @@ class OptimizationEngine:
                         rule_dev, cluster,
                         detail=f"Non-prod cluster '{cname}' (env={env}) appears to run 24/7.",
                         recommendation=f"Enable AKS start/stop schedule for {rule_dev.cluster_dev_hours}. Saves ~14 hrs/day.",
-                        savings=pool_cost * (14 / 24), score=70,
+                        savings=savings_from_factor(pool_cost, 14 / 24), score=70,
+                        evidence={
+                            "environment": env,
+                            "pool_name": pname,
+                            "monthly_cost_usd": pool_cost,
+                        },
                     ))
 
                 # Node metrics — idle nodes
@@ -382,7 +589,13 @@ class OptimizationEngine:
                         rule_over, cluster,
                         detail=f"Pool '{pname}': {idle_nodes}/{count} nodes are idle (CPU<{rule_idle.node_cpu_idle}%, Mem<{rule_idle.node_mem_idle}%).",
                         recommendation=f"Reduce pool min-count by {idle_nodes}. Enable autoscaler to manage this automatically.",
-                        savings=idle_nodes * node_monthly, score=80,
+                        savings=round(idle_nodes * node_monthly, 2) if node_monthly > 0 else 0, score=80,
+                        evidence={
+                            "idle_nodes": idle_nodes,
+                            "node_count": count,
+                            "pool_name": pname,
+                            "monthly_cost_usd": pool_cost,
+                        },
                     ))
         return out
 
@@ -404,24 +617,30 @@ class OptimizationEngine:
                     detail=f"Storage '{acct.get('name')}' is on Hot tier. Verify if data is actively accessed.",
                     recommendation="Set lifecycle policy to move blobs to Cool after 30 days, Archive after 90 days.",
                     savings=0, score=35,
+                    evidence={"access_tier": tier, "sku": sku},
                 ))
 
             if rule_lc.enabled:
-                lc = props.get("networkAcls") or {}  # lifecycle is a management policy, flagging for review
                 out.append(Finding(
                     rule_lc, acct,
                     detail=f"Storage '{acct.get('name')}' has no verified lifecycle management policy.",
                     recommendation="Add blob lifecycle policy via: az storage account management-policy create",
                     savings=0, score=25,
+                    evidence={"has_lifecycle_policy": False, "kind": kind},
                 ))
         return out
 
     # ─── NETWORKING ───────────────────────────────────────────────────────
-    def _check_network(self, public_ips: list, load_balancers: list, app_gateways: list) -> list[Finding]:
+    def _check_network(self, public_ips: list, load_balancers: list, app_gateways: list,
+                       network_interfaces: list | None = None, nat_gateways: list | None = None,
+                       costs: dict | None = None) -> list[Finding]:
         out = []
+        costs = costs or {}
         rule_ip  = self.rules["IP_UNASSOCIATED"]
         rule_lb  = self.rules["LB_NO_BACKEND"]
         rule_agw = self.rules["APPGW_UNUSED"]
+        rule_nic = self.rules.get("NIC_UNATTACHED")
+        rule_nat = self.rules.get("NAT_GATEWAY_IDLE")
 
         for ip in public_ips:
             if not rule_ip.enabled:
@@ -430,11 +649,17 @@ class OptimizationEngine:
             assoc = props.get("ipConfiguration") or props.get("natGateway")
             alloc = props.get("publicIPAllocationMethod", "")
             if not assoc and alloc == "Static":
+                ip_cost = resource_cost(costs, ip.get("id", ""))
                 out.append(Finding(
                     rule_ip, ip,
                     detail=f"Static Public IP '{ip.get('name')}' is not associated with any resource.",
                     recommendation="Delete: az network public-ip delete --ids <id>",
-                    savings=3.65, score=80,  # Static IP ~$3.65/mo
+                    savings=ip_cost, score=70,
+                    evidence={
+                        "allocation": "unassociated",
+                        "public_ip_allocation_method": alloc,
+                        "monthly_cost_usd": ip_cost,
+                    },
                 ))
 
         for lb in load_balancers:
@@ -449,28 +674,145 @@ class OptimizationEngine:
                 for pool in backends
             )
             sku_name = lb.get("sku", {}).get("name", "Basic")
-            lb_cost  = 18.0 if sku_name == "Standard" else 0.0
+            lb_cost  = resource_cost(costs, lb.get("id", ""))
             if all_empty and backends:
                 out.append(Finding(
                     rule_lb, lb,
                     detail=f"Load Balancer '{lb.get('name')}' ({sku_name}) has no backend instances.",
                     recommendation="Delete idle LB or attach it to active backend resources.",
                     savings=lb_cost, score=82,
+                    evidence={
+                        "backend_pool_count": len(backends),
+                        "all_backends_empty": True,
+                        "sku": lb.get("sku") or {},
+                        "monthly_cost_usd": lb_cost,
+                    },
                 ))
 
         for agw in app_gateways:
             if not rule_agw.enabled:
                 break
             props     = agw.get("properties", {})
-            listeners = props.get("httpListeners", [])
+            listener_count = http_listener_count(props)
             sku_tier  = agw.get("sku", {}).get("tier", "Standard_v2")
-            agw_cost  = 125.0 if "WAF" in sku_tier else 125.0
-            if not listeners:
+            agw_cost  = resource_cost(costs, agw.get("id", ""))
+            if listener_count == 0:
                 out.append(Finding(
                     rule_agw, agw,
                     detail=f"Application Gateway '{agw.get('name')}' has no HTTP listeners configured.",
-                    recommendation="Delete or reconfigure. WAF v2/Standard v2 costs ~$125+/mo idle.",
+                    recommendation="Delete or reconfigure. Idle Application Gateway still incurs billed cost.",
                     savings=agw_cost, score=85,
+                    evidence={
+                        "determination": "idle_no_listeners",
+                        "data_source": "synced_inventory",
+                        "http_listener_count": listener_count,
+                        "sku": agw.get("sku") or {},
+                        "sku_tier": sku_tier,
+                        "monthly_cost_usd": agw_cost,
+                    },
+                ))
+
+        for nic in network_interfaces or []:
+            if not rule_nic or not rule_nic.enabled:
+                break
+            props = nic.get("properties", {})
+            if not props.get("virtualMachine") and not props.get("privateEndpoint"):
+                out.append(Finding(
+                    rule_nic, nic,
+                    detail=f"NIC '{nic.get('name')}' is not attached to a VM or private endpoint.",
+                    recommendation="Delete orphaned NIC after confirming no DNS or firewall dependency.",
+                    savings=0, score=55,
+                    evidence={"has_vm": False, "has_private_endpoint": False},
+                ))
+
+        for nat in nat_gateways or []:
+            if not rule_nat or not rule_nat.enabled:
+                break
+            props = nat.get("properties", {})
+            subnets = props.get("subnets") or []
+            if not subnets:
+                nat_cost = resource_cost(costs, nat.get("id", ""))
+                out.append(Finding(
+                    rule_nat, nat,
+                    detail=f"NAT Gateway '{nat.get('name')}' has no subnet associations.",
+                    recommendation="Delete idle NAT Gateway or attach required subnets.",
+                    savings=nat_cost, score=78,
+                    evidence={
+                        "subnet_count": 0,
+                        "monthly_cost_usd": nat_cost,
+                    },
+                ))
+        return out
+
+    # ─── APP SERVICES ─────────────────────────────────────────────────────
+    def _check_app_services(self, apps: list, plans: list, costs: dict) -> list[Finding]:
+        out = []
+        rule_empty = self.rules.get("ASP_EMPTY")
+        rule_over  = self.rules.get("ASP_OVERPROVISIONED")
+        if not rule_empty and not rule_over:
+            return out
+
+        apps_by_plan: dict[str, int] = {}
+        for app in apps:
+            props = app.get("properties", {})
+            plan_id = (props.get("serverFarmId") or "").lower()
+            if plan_id:
+                apps_by_plan[plan_id] = apps_by_plan.get(plan_id, 0) + 1
+
+        for plan in plans:
+            pid = (plan.get("id") or "").lower()
+            pname = plan.get("name", "")
+            sku = plan.get("sku", {}) or {}
+            tier = (sku.get("tier") or "").lower()
+            app_count = apps_by_plan.get(pid, 0)
+
+            if rule_empty and rule_empty.enabled and app_count == 0:
+                plan_cost = resource_cost(costs, plan.get("id", ""))
+                out.append(Finding(
+                    rule_empty, plan,
+                    detail=f"App Service Plan '{pname}' ({tier}) hosts no apps.",
+                    recommendation="Delete unused plan or migrate apps from other plans to consolidate.",
+                    savings=plan_cost, score=72,
+                    evidence={"app_count": app_count, "tier": tier, "monthly_cost_usd": plan_cost},
+                ))
+            elif rule_over and rule_over.enabled and tier in ("premium", "premiumv2", "premiumv3", "isolated") and app_count < 2:
+                plan_cost = resource_cost(costs, plan.get("id", ""))
+                out.append(Finding(
+                    rule_over, plan,
+                    detail=f"Plan '{pname}' is {tier} tier with only {app_count} app(s).",
+                    recommendation="Downgrade to Standard tier or consolidate more apps onto this plan.",
+                    savings=savings_from_factor(plan_cost, 0.35), score=58,
+                    evidence={"app_count": app_count, "tier": tier, "monthly_cost_usd": plan_cost},
+                ))
+        return out
+
+    # ─── REDIS ────────────────────────────────────────────────────────────
+    def _check_redis(self, caches: list, costs: dict) -> list[Finding]:
+        out = []
+        rule_failed = self.rules.get("REDIS_FAILED")
+        rule_over   = self.rules.get("REDIS_OVERSIZED")
+        for cache in caches:
+            props = cache.get("properties", {}) or {}
+            state = (props.get("provisioningState") or "").lower()
+            sku = cache.get("sku", {}) or {}
+            tier = (sku.get("family") or sku.get("name") or "").lower()
+            capacity = int(sku.get("capacity") or 0)
+            if rule_failed and rule_failed.enabled and state == "failed":
+                out.append(Finding(
+                    rule_failed, cache,
+                    detail=f"Redis '{cache.get('name')}' is in Failed state.",
+                    recommendation="Delete failed cache and recreate, or open Azure support ticket.",
+                    savings=0, score=90,
+                    evidence={"provisioning_state": state},
+                ))
+            if rule_over and rule_over.enabled and "premium" in tier and capacity >= 1:
+                monthly = resource_cost(costs, cache.get("id", ""))
+                out.append(Finding(
+                    rule_over, cache,
+                    detail=f"Redis '{cache.get('name')}' uses Premium capacity {capacity}.",
+                    recommendation="Validate memory usage; consider Standard tier or lower capacity for dev/test.",
+                    savings=savings_from_factor(monthly, 0.35), score=50,
+                    evidence={"tier": tier, "capacity": capacity, "monthly_cost_usd": monthly},
                 ))
         return out
 
@@ -493,6 +835,7 @@ class OptimizationEngine:
                     detail=f"SQL DB '{db.get('name')}' on provisioned {tier}/{sku_name}.",
                     recommendation="Switch to Serverless tier for auto-pause when idle (dev/test DBs).",
                     savings=0, score=40,
+                    evidence={"tier": tier, "sku": sku_name},
                 ))
 
         for cosmos in cosmosdb:
@@ -507,24 +850,40 @@ class OptimizationEngine:
                     detail=f"Cosmos DB '{cosmos.get('name')}' is on provisioned throughput.",
                     recommendation="Enable autoscale or switch to serverless mode for variable-traffic workloads.",
                     savings=0, score=35,
+                    evidence={"serverless_enabled": is_serverless},
                 ))
         return out
 
     # ─── SECURITY ─────────────────────────────────────────────────────────
     def _check_security(self, keyvaults: list) -> list[Finding]:
+        from app.keyvault_utilization import (
+            kv_inventory_evidence,
+            protection_baseline_gap,
+            purge_protection_enabled,
+            soft_delete_enabled,
+        )
+
         out = []
         rule = self.rules["KEYVAULT_SOFT_DELETE_OFF"]
         if not rule.enabled:
             return out
         for kv in keyvaults:
+            if not protection_baseline_gap(kv):
+                continue
             props = kv.get("properties", {})
-            if not props.get("enableSoftDelete") or not props.get("enablePurgeProtection"):
-                out.append(Finding(
-                    rule, kv,
-                    detail=f"Key Vault '{kv.get('name')}' missing soft-delete or purge protection.",
-                    recommendation="az keyvault update --enable-soft-delete true --enable-purge-protection true --name <name>",
-                    savings=0, score=70,
-                ))
+            soft_delete = soft_delete_enabled(kv)
+            purge_protection = purge_protection_enabled(kv)
+            out.append(Finding(
+                rule, kv,
+                detail=f"Key Vault '{kv.get('name')}' missing soft-delete or purge protection.",
+                recommendation="az keyvault update --enable-soft-delete true --enable-purge-protection true --name <name>",
+                savings=0, score=70,
+                evidence={
+                    "enableSoftDelete": props.get("enableSoftDelete") if soft_delete is None else soft_delete,
+                    "enablePurgeProtection": purge_protection,
+                    **kv_inventory_evidence(kv),
+                },
+            ))
         return out
 
     # ─── COST ─────────────────────────────────────────────────────────────
@@ -546,6 +905,12 @@ class OptimizationEngine:
                     detail=f"Budget '{budget.get('name')}': {pct:.1f}% used (${current:,.0f} of ${amount:,.0f}).",
                     recommendation="Immediate cost review. Apply resource tagging and cost allocation policies.",
                     savings=0, score=95,
+                    evidence={
+                        "used_pct": round(pct, 2),
+                        "budget_crit_pct": rule_crit.budget_crit_pct,
+                        "amount": amount,
+                        "current_spend_usd": current,
+                    },
                 ))
             elif rule_warn.enabled and pct >= rule_warn.budget_warn_pct:
                 out.append(Finding(
@@ -553,6 +918,12 @@ class OptimizationEngine:
                     detail=f"Budget '{budget.get('name')}': {pct:.1f}% used (${current:,.0f} of ${amount:,.0f}).",
                     recommendation="Review top spending resources and apply reserved instances or rightsizing.",
                     savings=0, score=75,
+                    evidence={
+                        "used_pct": round(pct, 2),
+                        "budget_warn_pct": rule_warn.budget_warn_pct,
+                        "amount": amount,
+                        "current_spend_usd": current,
+                    },
                 ))
         return out
 
@@ -571,38 +942,6 @@ def _avg_metric(metrics: dict | None, name: str) -> float | None:
                 vals = [d.get("average") for d in data if d.get("average") is not None]
                 return sum(vals) / len(vals) if vals else None
     return None
-
-
-def _suggest_smaller_sku(sku: str) -> str:
-    """Simple SKU downsize heuristic."""
-    sku = sku.upper()
-    mappings = {
-        "STANDARD_D64S_V5": "Standard_D32s_v5",
-        "STANDARD_D32S_V5": "Standard_D16s_v5",
-        "STANDARD_D16S_V5": "Standard_D8s_v5",
-        "STANDARD_D8S_V5":  "Standard_D4s_v5",
-        "STANDARD_D4S_V5":  "Standard_D2s_v5",
-        "STANDARD_D64S_V3": "Standard_D32s_v3",
-        "STANDARD_D32S_V3": "Standard_D16s_v3",
-        "STANDARD_D16S_V3": "Standard_D8s_v3",
-        "STANDARD_D8S_V3":  "Standard_D4s_v3",
-        "STANDARD_D4S_V3":  "Standard_D2s_v3",
-        "STANDARD_E64S_V5": "Standard_E32s_v5",
-        "STANDARD_E32S_V5": "Standard_E16s_v5",
-        "STANDARD_E16S_V5": "Standard_E8s_v5",
-        "STANDARD_E8S_V5":  "Standard_E4s_v5",
-        "STANDARD_F72S_V2": "Standard_F36s_v2",
-        "STANDARD_F36S_V2": "Standard_F16s_v2",
-        "STANDARD_F16S_V2": "Standard_F8s_v2",
-    }
-    return mappings.get(sku, "B-series burstable equivalent")
-
-
-def _sku_vcpu_guess(sku: str) -> int:
-    """Best-effort vCPU count from SKU name."""
-    import re
-    m = re.search(r'_(\d+)', sku.upper())
-    return int(m.group(1)) if m else 4
 
 
 def _severity_rank(s: str) -> int:

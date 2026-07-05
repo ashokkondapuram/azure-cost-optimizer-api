@@ -1,47 +1,45 @@
 # Security
 
-## Identity model
-The backend is designed to authenticate to Azure APIs using Managed Identity. This removes the need to store Azure client secrets in the codebase.
+## Application authentication
 
-## Required Azure RBAC
-- `Cost Management Reader` for cost data.
-- `Reader` for Azure resource inventory.
+The SPA uses **local username/password** accounts stored in PostgreSQL (`app_users` table), not Azure AD SSO.
 
-Scope these roles as narrowly as your operating model allows.
+- **Login:** `POST /auth/login` returns a JWT access token.
+- **Sessions:** Bearer token in `Authorization` header; validated on protected API routes via `AppAuthMiddleware`.
+- **Roles:** `admin` (sync, analyze, settings, live Azure reads) and `viewer` (read scoped data).
+- **Rate limiting:** Failed login attempts are tracked in the database (`login_attempts` table) per client IP.
+- **Token validity:** Middleware verifies the user still exists and `is_active=true` on each request.
+- **Production gates:** Startup validation requires `JWT_SECRET`, `SETTINGS_ENCRYPTION_KEY`, `K8S_AGENT_TOKEN`, `ADMIN_PASSWORD`, PostgreSQL, and `AUTH_ENABLED=true`.
 
-## Application security posture
-The sample code is a functional baseline, not a completed enterprise security implementation. Before production rollout, implement:
-- frontend authentication,
-- backend authentication,
-- backend authorization,
-- secure CORS policy,
-- rate limiting,
-- audit logging,
-- request tracing,
-- tamper-resistant log storage,
-- secret rotation model,
-- vulnerability scanning.
+### Client-side note
 
-## Secrets handling
-- Do not hardcode database credentials.
-- Use Azure Web App settings and preferably Key Vault references.
-- Never log bearer tokens.
-- Never expose internal operational errors directly to end users in production.
+The React app stores JWTs in `localStorage` today. For hardened production deployments, prefer httpOnly cookies or a backend-for-frontend pattern to reduce XSS token theft risk.
 
-## Network security
-- Restrict backend ingress.
-- Restrict PostgreSQL access to approved sources.
-- Consider private endpoints and VNet integration.
-- Place the frontend behind enterprise identity and WAF controls.
+## API authorization
 
-## Kubernetes security
-The collector pod runs with read-only RBAC for nodes, pods, and metrics APIs. Keep the service account dedicated to this component and avoid sharing it with other workloads.
+Protected route roots include `/costs`, `/resources`, `/optimize`, `/dashboard`, `/settings`, `/metrics`, `/admin`, `/sync`, `/advisor`, `/alerts`, `/outliers`, and `/budgets`.
 
-## Compliance posture
-For top-tier enterprise customers, align implementation and evidence generation with the organization's required controls, for example:
-- access reviews,
-- change control,
-- secure SDLC,
-- audit evidence retention,
-- incident response procedures,
-- backup and disaster recovery tests.
+- **Subscription scoping:** Data endpoints call `ensure_subscription_known()` — subscriptions must appear in the catalog or synced inventory.
+- **Admin gates:** `require_admin_user()` on sync, analyze, cost sync, settings, engine config, and live Azure/Monitor calls.
+
+## Kubernetes agent
+
+- Routes under `/k8s/*` skip JWT but require `X-API-Key`.
+- When `AUTH_ENABLED=true`, an agent token must be configured or requests are rejected.
+
+## Azure access
+
+The app uses Managed Identity or configured service principal credentials (Settings → Azure) for ARM and Cost Management APIs.
+
+Minimum Azure RBAC on each subscription:
+
+- **Cost Management Reader** — cost export and live cost queries
+- **Reader** — resource inventory
+
+Store secrets in Azure App Service application settings or Key Vault references — never commit credentials to source control.
+
+## Related docs
+
+- [api-reference.md](./api-reference.md)
+- [DEPLOY_APP_SERVICE.md](./DEPLOY_APP_SERVICE.md)
+- [AZURE_PERMISSIONS.md](./AZURE_PERMISSIONS.md)

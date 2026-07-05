@@ -8,6 +8,7 @@ Assign these at **subscription scope** (or Management Group for multi-sub):
 |------|---------|
 | `Cost Management Reader` | Read Cost Management queries, budgets, forecasts |
 | `Reader` | Read all resource metadata via ARM |
+| `Monitoring Reader` | Read Azure Monitor metrics for utilization-based rules |
 
 ## Service Principal Setup
 
@@ -30,7 +31,13 @@ az role assignment create \
   --role "Reader" \
   --scope /subscriptions/<subscription-id>
 
-# 5. Create client secret
+# 5. Assign Monitoring Reader (metrics for utilization rules)
+az role assignment create \
+  --assignee <sp-object-id> \
+  --role "Monitoring Reader" \
+  --scope /subscriptions/<subscription-id>
+
+# 6. Create client secret
 az ad app credential reset --id <app-id> --years 1
 ```
 
@@ -52,6 +59,18 @@ DATABASE_URL=postgresql://...
 | Subscription | `/subscriptions/{id}` |
 | Resource Group | `/subscriptions/{id}/resourceGroups/{rg}` |
 | Management Group | `/providers/Microsoft.Management/managementGroups/{mg}` |
+
+## Cost currency fields (Azure only — no app-side FX)
+
+| Azure field | Meaning |
+|-------------|---------|
+| `PreTaxCost` | Charge in **billing currency** (e.g. CAD for Canadian subscriptions) |
+| `CostUSD` | Same charge in **USD**, provided by Azure |
+| `Currency` | Billing currency code (`CAD`, `USD`, …) |
+
+Use `GET /costs/summary?subscription_id=...` for subscription totals in both amounts.
+
+App endpoint `GET /costs/summary` aggregates `PreTaxCost` + `CostUSD` from Cost Management API `2024-08-01`.
 
 ## API Versions Used
 

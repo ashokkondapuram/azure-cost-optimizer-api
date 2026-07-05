@@ -56,6 +56,8 @@ class Rule:
     reserved_savings_threshold: float = 0.30  # 30% savings to recommend Reserved
     spot_eligible_workloads: list = field(default_factory=lambda: ["batch", "dev", "test", "ci"])
     rightsizing_memory_buffer: float = 1.20  # 20% headroom when recommending SKU
+    snapshot_retention_days: int = 90
+    snapshot_min_size_gb: int = 0
 
 
 # ─── Built-in rule catalogue ─────────────────────────────────────────────────
@@ -134,6 +136,11 @@ DEFAULT_RULES: dict[str, Rule] = {
         name="Single Node Pool Architecture",
         description="All workloads on one pool. Split system vs user pools for cost + resilience.",
     ),
+    "AKS_EMPTY_POOL": Rule(
+        id="AKS_EMPTY_POOL", category=Category.KUBERNETES, severity=Severity.HIGH,
+        name="Empty AKS Node Pool",
+        description="Node pool has zero nodes or no schedulable capacity. Remove or resize the pool.",
+    ),
 
     # ── STORAGE ──────────────────────────────────────────────────────────
     "STORAGE_HOT_UNUSED": Rule(
@@ -158,6 +165,16 @@ DEFAULT_RULES: dict[str, Rule] = {
         name="Unassociated Public IP Address",
         description="Static Public IP not associated with any resource. Incurring idle charges. Delete it.",
     ),
+    "NIC_UNATTACHED": Rule(
+        id="NIC_UNATTACHED", category=Category.NETWORK, severity=Severity.MEDIUM,
+        name="Unattached Network Interface",
+        description="NIC not attached to a VM or other resource. Delete after confirming no dependency.",
+    ),
+    "NAT_GATEWAY_IDLE": Rule(
+        id="NAT_GATEWAY_IDLE", category=Category.NETWORK, severity=Severity.HIGH,
+        name="Idle NAT Gateway",
+        description="NAT Gateway with no associated subnets. Costs ~$32+/mo idle. Delete or attach subnets.",
+    ),
     "LB_NO_BACKEND": Rule(
         id="LB_NO_BACKEND", category=Category.NETWORK, severity=Severity.HIGH,
         name="Load Balancer With Empty Backend Pool",
@@ -167,6 +184,45 @@ DEFAULT_RULES: dict[str, Rule] = {
         id="APPGW_UNUSED", category=Category.NETWORK, severity=Severity.HIGH,
         name="Application Gateway With No Listeners",
         description="Application Gateway has no active listeners. Costs ~$125+/mo idle. Delete or consolidate.",
+    ),
+
+    # ── APP SERVICES ─────────────────────────────────────────────────────
+    "ASP_EMPTY": Rule(
+        id="ASP_EMPTY", category=Category.COMPUTE, severity=Severity.HIGH,
+        name="Empty App Service Plan",
+        description="App Service Plan with no hosted apps. Delete or consolidate workloads.",
+    ),
+    "ASP_OVERPROVISIONED": Rule(
+        id="ASP_OVERPROVISIONED", category=Category.COMPUTE, severity=Severity.MEDIUM,
+        name="Over-Provisioned App Service Plan",
+        description="Premium/isolated plan hosting few apps. Downgrade SKU or consolidate apps.",
+    ),
+    "PLAN_EMPTY": Rule(
+        id="PLAN_EMPTY", category=Category.COMPUTE, severity=Severity.HIGH,
+        name="Empty App Service Plan",
+        description="App Service Plan hosts no web apps. Delete or consolidate workloads.",
+    ),
+    "PLAN_UNDERUTILIZED": Rule(
+        id="PLAN_UNDERUTILIZED", category=Category.COMPUTE, severity=Severity.MEDIUM,
+        name="Underutilized App Service Plan",
+        description="Plan CPU and memory utilization are consistently low. Downgrade SKU.",
+    ),
+    "APP_IDLE": Rule(
+        id="APP_IDLE", category=Category.COMPUTE, severity=Severity.MEDIUM,
+        name="Idle Web App",
+        description="Web app has low request volume or is stopped on a paid plan.",
+    ),
+
+    # ── REDIS / CACHE ────────────────────────────────────────────────────
+    "REDIS_FAILED": Rule(
+        id="REDIS_FAILED", category=Category.DATABASE, severity=Severity.CRITICAL,
+        name="Failed Redis Cache",
+        description="Azure Cache for Redis in Failed provisioning state. Delete and recreate or open support ticket.",
+    ),
+    "REDIS_OVERSIZED": Rule(
+        id="REDIS_OVERSIZED", category=Category.DATABASE, severity=Severity.MEDIUM,
+        name="Oversized Redis Cache",
+        description="Premium Redis tier may exceed workload needs. Review SKU and shard count.",
     ),
 
     # ── DATABASE ─────────────────────────────────────────────────────────

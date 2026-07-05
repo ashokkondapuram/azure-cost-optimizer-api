@@ -7,7 +7,7 @@ import {
   MapPin, Lightbulb, BarChart3, Target, FileJson, Ban,
 } from 'lucide-react';
 import AssetIcon from './AssetIcon';
-import { iconKeyForAzureType, iconKeyForCategory } from '../config/azureIconRegistry';
+import { iconKeyForAzureType, iconKeyForCategory, iconKeyForCanonicalType } from '../config/azureIconRegistry';
 
 export const CATEGORY_META = {
   COMPUTE:    { Icon: Cpu,       color: '#60a5fa', label: 'Compute' },
@@ -106,7 +106,7 @@ export function SeverityIcon({ severity, size = 13, showLabel = false }) {
 }
 
 export function AzureResourceIcon({ type, size = 28, src = null }) {
-  const iconKey = src || iconKeyForAzureType(type);
+  const iconKey = src || iconKeyForCanonicalType(type) || iconKeyForAzureType(type);
   const { Icon, color } = metaForAzureType(type);
   const lucideFallback = (
     <span

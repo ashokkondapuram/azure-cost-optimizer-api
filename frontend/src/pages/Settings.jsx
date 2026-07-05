@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Save, RefreshCw, Cloud, Database, Settings2, Boxes, CheckCircle2, AlertTriangle,
+  Trash2, Users, Sparkles, Activity,
 } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
+import { AppCtx } from '../App';
 import Toggle from '../components/Toggle';
 import { LoadingState, QueryErrorState } from '../components/QueryStates';
 import { getErrorMessage } from '../api/errors';
+import { toDisplayText } from '../utils/formatDisplay';
 import {
   fetchAllSettings,
   fetchSettingsStatus,
@@ -14,19 +16,89 @@ import {
   saveDatabaseSettings,
   saveApplicationSettings,
   saveKubernetesSettings,
+  saveAiSettings,
   testAzureSettings,
   testDatabaseSettings,
+  testAiSettings,
   applyDatabaseSettings,
   reloadSettings,
 } from '../api/settings';
-import { PAGE_ICONS } from '../config/assetIcons';
+import { clearDatabaseData } from '../api/azure';
+import UsersPanel from '../components/settings/UsersPanel';
+import DataFreshnessPanel from '../components/settings/DataFreshnessPanel';
+import SettingsHero from '../components/settings/SettingsHero';
 
-const TABS = [
-  { id: 'azure', label: 'Azure connection', Icon: Cloud },
-  { id: 'database', label: 'Database', Icon: Database },
-  { id: 'application', label: 'Application', Icon: Settings2 },
-  { id: 'kubernetes', label: 'Kubernetes agent', Icon: Boxes },
+const TAB_SECTIONS = [
+  {
+    id: 'access',
+    label: 'Access',
+    tabs: [{ id: 'users', label: 'Users', Icon: Users }],
+  },
+  {
+    id: 'connections',
+    label: 'Connections',
+    tabs: [
+      { id: 'azure', label: 'Azure connection', Icon: Cloud },
+      { id: 'database', label: 'Database', Icon: Database },
+    ],
+  },
+  {
+    id: 'platform',
+    label: 'Platform',
+    tabs: [
+      { id: 'application', label: 'Application', Icon: Settings2 },
+      { id: 'kubernetes', label: 'Kubernetes agent', Icon: Boxes },
+    ],
+  },
+  {
+    id: 'system',
+    label: 'System',
+    tabs: [
+      { id: 'runtime', label: 'Runtime status', Icon: Activity },
+      { id: 'ai', label: 'AI connection', Icon: Sparkles },
+    ],
+  },
+  {
+    id: 'maintenance',
+    label: 'Maintenance',
+    tabs: [{ id: 'data', label: 'Data management', Icon: Trash2 }],
+  },
 ];
+
+const TAB_META = {
+  users: {
+    title: 'Users',
+    description: 'Manage accounts, roles, and access to this application.',
+  },
+  azure: {
+    title: 'Azure connection',
+    description: 'Authentication and credentials used to sync Azure inventory and costs.',
+  },
+  database: {
+    title: 'Database',
+    description: 'PostgreSQL connection for inventory, costs, and optimization findings.',
+  },
+  application: {
+    title: 'Application',
+    description: 'CORS, logging, timeouts, and general runtime behavior.',
+  },
+  kubernetes: {
+    title: 'Kubernetes agent',
+    description: 'Token and settings for the in-cluster utilization agent.',
+  },
+  runtime: {
+    title: 'Runtime status',
+    description: 'Deployment, database, and platform health at a glance.',
+  },
+  ai: {
+    title: 'AI connection',
+    description: 'Azure OpenAI settings for AI-enriched recommendations after analysis.',
+  },
+  data: {
+    title: 'Data management',
+    description: 'Clear synced data and refresh inventory from Azure.',
+  },
+};
 
 function SourceBadge({ source }) {
   const cls =
@@ -49,42 +121,66 @@ function FieldRow({ label, source, hint, children }) {
   );
 }
 
-function RuntimeStatus({ status }) {
+function RuntimeStatusCompact({ status }) {
   if (!status) return null;
-  const { database, cors, encryption, deployment, azure } = status;
+  const { database, cors, deployment, azure, ai } = status;
   const onAppService = deployment?.is_app_service;
+  const corsOrigins = cors?.active_origins || [];
+  const corsTitle = corsOrigins.join(', ') || undefined;
+
+  const items = [
+    {
+      key: 'host',
+      label: 'Host',
+      value: onAppService ? (deployment?.site_name || 'App Service') : 'Self-hosted',
+      tone: onAppService ? 'ok' : 'muted',
+    },
+    {
+      key: 'auth',
+      label: 'Azure auth',
+      value: (azure?.auth_mode || 'managed identity').replace(/_/g, ' '),
+      tone: 'ok',
+    },
+    {
+      key: 'database',
+      label: 'Database',
+      value: database?.active_url ? 'Connected' : 'Not configured',
+      tone: database?.active_url ? 'ok' : 'warn',
+    },
+    {
+      key: 'cors',
+      label: 'CORS',
+      value: corsOrigins.length
+        ? `${corsOrigins.length} origin${corsOrigins.length === 1 ? '' : 's'}`
+        : 'None',
+      tone: corsOrigins.length ? 'ok' : 'muted',
+      title: corsTitle,
+    },
+    {
+      key: 'ai',
+      label: 'AI analysis',
+      value: ai?.configured
+        ? (ai.deployment || 'Configured')
+        : ai?.enabled
+          ? 'Incomplete'
+          : 'Off',
+      tone: ai?.configured ? 'ok' : ai?.enabled ? 'warn' : 'muted',
+    },
+  ];
 
   return (
-    <div className="settings-runtime card" style={{ marginBottom: '1rem', padding: '1rem 1.1rem' }}>
-      <div style={{ fontWeight: 600, marginBottom: '0.65rem', fontSize: '0.88rem' }}>Runtime status</div>
-      {onAppService && (
-        <div className="alert alert--success" style={{ marginBottom: '0.85rem' }}>
-          <CheckCircle2 size={16} className="alert__icon" />
-          <span>
-            Running on Azure Web App <strong>{deployment.site_name}</strong>.
-            Azure auth: <strong>{azure?.auth_mode || 'managed_identity'}</strong>.
-            {deployment.managed_identity_available
-              ? ' Managed identity endpoint detected.'
-              : ' Enable managed identity on the Web App.'}
-          </span>
-        </div>
-      )}
-      <div className="settings-runtime__grid">
-        <div>
-          <div className="settings-runtime__label">Database</div>
-          <div className="settings-runtime__value">Active: {database.active_url}</div>
-          <div className="settings-runtime__hint">{database.note}</div>
-        </div>
-        <div>
-          <div className="settings-runtime__label">CORS</div>
-          <div className="settings-runtime__value">{cors.active_origins.join(', ') || 'None'}</div>
-          <div className="settings-runtime__hint">Updates apply immediately after save.</div>
-        </div>
-        <div>
-          <div className="settings-runtime__label">Secret encryption</div>
-          <div className="settings-runtime__value">{encryption.enabled ? 'Enabled' : 'Not configured'}</div>
-          <div className="settings-runtime__hint">{encryption.message}</div>
-        </div>
+    <div className="settings-runtime-compact">
+      <div className="settings-runtime-compact__grid">
+        {items.map((item) => (
+          <div
+            key={item.key}
+            className={`settings-runtime-compact__chip settings-runtime-compact__chip--${item.tone}`}
+            title={item.title}
+          >
+            <span className="settings-runtime-compact__chip-label">{item.label}</span>
+            <span className="settings-runtime-compact__chip-value">{item.value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -92,11 +188,13 @@ function RuntimeStatus({ status }) {
 
 function StatusBanner({ type, message }) {
   if (!message) return null;
+  const text = toDisplayText(message);
+  if (text === '—') return null;
   const isSuccess = type === 'success';
   return (
     <div className={`alert ${isSuccess ? 'alert--success' : 'alert--danger'}`} role="status">
       {isSuccess ? <CheckCircle2 size={16} className="alert__icon" /> : <AlertTriangle size={16} className="alert__icon" />}
-      <span>{message}</span>
+      <span>{text}</span>
     </div>
   );
 }
@@ -137,7 +235,7 @@ function AuthMethodPicker({ value, onChange, isAppService }) {
           <span className="auth-method-picker__label">
             {opt.label}
             {opt.recommended && isAppService && (
-              <span className="badge badge-success" style={{ marginLeft: 6 }}>Recommended</span>
+              <span className="badge badge-low" style={{ marginLeft: 6 }}>Recommended</span>
             )}
           </span>
           <span className="auth-method-picker__desc">{opt.description}</span>
@@ -406,11 +504,211 @@ function KubernetesForm({ data, onChange }) {
   );
 }
 
+function AiForm({ data, onChange }) {
+  return (
+    <div className="settings-grid">
+      <FieldRow label="AI recommendations" source={data.ai_enabled_source} hint="AI recommendations run on every analysis when Azure OpenAI is configured. Rule engine supplies evidence; AI writes the recommendation users see.">
+        <Toggle checked={data.ai_enabled !== false} onChange={(checked) => onChange('ai_enabled', checked)} label="Use AI recommendations" />
+      </FieldRow>
+      <FieldRow label="Authentication" source={data.ai_auth_mode_source} hint="Use Azure AD when API keys are disabled on the OpenAI resource. Without an API key, Azure AD is used automatically.">
+        <select value={data.ai_auth_mode || 'api_key'} onChange={(e) => onChange('ai_auth_mode', e.target.value)}>
+          <option value="api_key">API key</option>
+          <option value="azure_ad">Azure AD (managed identity or service principal)</option>
+        </select>
+      </FieldRow>
+      <FieldRow label="OpenAI endpoint" source={data.openai_endpoint_source} hint="Azure OpenAI resource endpoint, e.g. https://your-resource.openai.azure.com">
+        <input type="url" value={data.openai_endpoint || ''} onChange={(e) => onChange('openai_endpoint', e.target.value)} placeholder="https://your-resource.openai.azure.com" autoComplete="off" />
+      </FieldRow>
+      <FieldRow label="Deployment name" source={data.openai_deployment_source}>
+        <input type="text" value={data.openai_deployment || ''} onChange={(e) => onChange('openai_deployment', e.target.value)} placeholder="gpt-4o-mini" autoComplete="off" />
+      </FieldRow>
+      <FieldRow label="API version" source={data.openai_api_version_source}>
+        <input type="text" value={data.openai_api_version || '2024-08-01-preview'} onChange={(e) => onChange('openai_api_version', e.target.value)} autoComplete="off" />
+      </FieldRow>
+      <FieldRow
+        label="API key"
+        source={data.openai_key_source}
+        hint={data.openai_key_set ? 'A key is stored. Leave blank to keep the current value.' : 'Required only when authentication is API key.'}
+      >
+        <input type="password" value={data.openai_key || ''} onChange={(e) => onChange('openai_key', e.target.value)} autoComplete="new-password" />
+      </FieldRow>
+      <FieldRow label="Enrich all findings" source={data.ai_enrich_all_findings_source} hint="When off, only the highest-savings findings are sent to the model.">
+        <Toggle checked={!!data.ai_enrich_all_findings} onChange={(checked) => onChange('ai_enrich_all_findings', checked)} label="Send every finding to AI" />
+      </FieldRow>
+      <FieldRow label="Max findings per run" source={data.ai_max_findings_per_run_source}>
+        <input type="number" min={1} max={200} value={data.ai_max_findings_per_run ?? 200} onChange={(e) => onChange('ai_max_findings_per_run', Number(e.target.value))} />
+      </FieldRow>
+      <FieldRow label="Batch size" source={data.ai_batch_size_source} hint="Findings per AI request. Smaller batches use fewer tokens per call and reduce truncation risk.">
+        <input type="number" min={1} max={25} value={data.ai_batch_size ?? 10} onChange={(e) => onChange('ai_batch_size', Number(e.target.value))} />
+      </FieldRow>
+    </div>
+  );
+}
+
+function DataManagementPanel({ subscription, subscriptionLabel }) {
+  const qc = useQueryClient();
+  const { reloadSubscriptions } = useContext(AppCtx);
+  const [scope, setScope] = useState('subscription');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [resultMsg, setResultMsg] = useState({ type: '', text: '' });
+
+  const clearMut = useMutation({
+    mutationFn: () => clearDatabaseData(
+      scope === 'subscription' && subscription
+        ? { subscription_id: subscription }
+        : {},
+    ),
+    onSuccess: (res) => {
+      const deleted = res.deleted || {};
+      const total = Object.values(deleted).reduce((sum, n) => sum + (n || 0), 0);
+      setResultMsg({
+        type: 'success',
+        text: `Cleared ${total.toLocaleString()} rows. Run Sync from Azure to reload inventory.`,
+      });
+      setConfirmOpen(false);
+      setConfirmText('');
+      qc.invalidateQueries();
+      reloadSubscriptions?.();
+    },
+    onError: (err) => {
+      setResultMsg({ type: 'error', text: getErrorMessage(err, 'Could not clear database.') });
+      setConfirmOpen(false);
+    },
+  });
+
+  const canConfirm = confirmText.trim().toUpperCase() === 'CLEAR';
+  const scopeLabel = scope === 'subscription' && subscription
+    ? `subscription ${subscriptionLabel || subscription}`
+    : 'all subscriptions';
+
+  return (
+    <div className="settings-form-stack">
+      <div className="alert alert--warning">
+        <AlertTriangle size={16} className="alert__icon" />
+        <span>
+          This removes synced Azure inventory, costs, budgets, optimization findings, and run history
+          from the local database. User accounts, engine rules, and system settings are kept.
+        </span>
+      </div>
+
+      <div className="setting-field">
+        <div className="setting-field__label">Clear scope</div>
+        <div className="auth-method-picker" role="radiogroup" aria-label="Clear scope">
+          <button
+            type="button"
+            role="radio"
+            aria-checked={scope === 'subscription'}
+            className={`auth-method-picker__option${scope === 'subscription' ? ' auth-method-picker__option--active' : ''}`}
+            onClick={() => setScope('subscription')}
+            disabled={!subscription}
+          >
+            <span className="auth-method-picker__label">Current subscription</span>
+            <span className="auth-method-picker__desc">
+              {subscription
+                ? `Clear data for ${subscriptionLabel || subscription}`
+                : 'Select a subscription in the sidebar first'}
+            </span>
+          </button>
+          <button
+            type="button"
+            role="radio"
+            aria-checked={scope === 'all'}
+            className={`auth-method-picker__option${scope === 'all' ? ' auth-method-picker__option--active' : ''}`}
+            onClick={() => setScope('all')}
+          >
+            <span className="auth-method-picker__label">All subscriptions</span>
+            <span className="auth-method-picker__desc">Clear all synced inventory, costs, and findings</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="setting-field">
+        <div className="setting-field__label">Removed</div>
+        <ul className="settings-list-hint">
+          <li>Resource inventory and per-resource costs</li>
+          <li>Cost snapshots and budgets</li>
+          <li>Optimization findings, runs, and batch jobs</li>
+          <li>Subscription cache</li>
+        </ul>
+      </div>
+
+      <div className="setting-field">
+        <div className="setting-field__label">Preserved</div>
+        <ul className="settings-list-hint">
+          <li>User accounts and login settings</li>
+          <li>Engine rule profiles and thresholds</li>
+          <li>Azure connection and application settings</li>
+        </ul>
+      </div>
+
+      <StatusBanner type={resultMsg.type} message={resultMsg.text} />
+
+      <div className="settings-panel__actions">
+        <button
+          type="button"
+          className="btn btn-danger"
+          disabled={scope === 'subscription' && !subscription}
+          onClick={() => { setConfirmOpen(true); setConfirmText(''); setResultMsg({ type: '', text: '' }); }}
+        >
+          <Trash2 size={14} /> Clear database
+        </button>
+      </div>
+
+      {confirmOpen && (
+        <div className="modal-overlay" onClick={() => !clearMut.isPending && setConfirmOpen(false)} role="presentation">
+          <div
+            className="modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="clear-db-title"
+          >
+            <h2 id="clear-db-title" className="modal-title">Clear database?</h2>
+            <p style={{ margin: '0 0 1rem', color: 'var(--text2)', lineHeight: 1.5 }}>
+              You are about to clear synced data for <strong>{scopeLabel}</strong>.
+              This cannot be undone. Type <strong>CLEAR</strong> to confirm.
+            </p>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="Type CLEAR"
+              autoComplete="off"
+              aria-label="Confirmation text"
+            />
+            <div className="settings-panel__actions" style={{ marginTop: '1rem' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setConfirmOpen(false)}
+                disabled={clearMut.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={() => clearMut.mutate()}
+                disabled={!canConfirm || clearMut.isPending}
+              >
+                {clearMut.isPending ? <RefreshCw size={14} className="spin" /> : <Trash2 size={14} />}
+                Confirm clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const FORM_MAP = {
   azure: AzureForm,
   database: DatabaseForm,
   application: ApplicationForm,
   kubernetes: KubernetesForm,
+  ai: AiForm,
 };
 
 const SAVE_MAP = {
@@ -418,11 +716,13 @@ const SAVE_MAP = {
   database: saveDatabaseSettings,
   application: saveApplicationSettings,
   kubernetes: saveKubernetesSettings,
+  ai: saveAiSettings,
 };
 
 const TEST_MAP = {
   azure: testAzureSettings,
   database: testDatabaseSettings,
+  ai: testAiSettings,
 };
 
 function stripMeta(data) {
@@ -438,7 +738,8 @@ function stripMeta(data) {
 
 export default function Settings() {
   const qc = useQueryClient();
-  const [tab, setTab] = useState('azure');
+  const { subscription, subscriptionOptions } = useContext(AppCtx);
+  const [tab, setTab] = useState('users');
   const [drafts, setDrafts] = useState({});
   const [saveMsg, setSaveMsg] = useState('');
   const [testMsg, setTestMsg] = useState({ type: '', text: '' });
@@ -460,6 +761,7 @@ export default function Settings() {
       database: stripMeta(data.database),
       application: stripMeta(data.application),
       kubernetes: stripMeta(data.kubernetes),
+      ai: stripMeta(data.ai),
     });
   }, [data]);
 
@@ -508,97 +810,107 @@ export default function Settings() {
   const tabData = data?.[tab] || {};
   const draft = drafts[tab] || {};
   const isAppService = runtimeStatus?.deployment?.is_app_service;
+  const subLabel = subscriptionOptions?.find((s) => s.subscriptionId === subscription)?.displayName;
+
+  const activeTabMeta = TAB_META[tab] || { title: 'Settings', description: '' };
 
   return (
-    <div>
-      <PageHeader
-        title="Settings"
-        iconKey={PAGE_ICONS.settings}
-        subtitle="Store Azure, database, and deployment configuration in the database"
-      >
-        <button type="button" className="btn btn-secondary" onClick={() => reloadMut.mutate()} disabled={reloadMut.isPending}>
-          <RefreshCw size={14} className={reloadMut.isPending ? 'spin' : ''} /> Reload Azure credentials
-        </button>
-      </PageHeader>
+    <div className="settings-page page-shell">
+      <SettingsHero
+        runtimeStatus={runtimeStatus}
+        subscriptionLabel={subLabel}
+        onReload={() => reloadMut.mutate()}
+        isReloading={reloadMut.isPending}
+      />
 
-      <RuntimeStatus status={runtimeStatus} />
-
-      <div className={`alert ${isAppService ? 'alert--success' : 'alert--warning'}`} style={{ marginBottom: '1rem' }}>
-        {isAppService ? <CheckCircle2 size={16} className="alert__icon" /> : <AlertTriangle size={16} className="alert__icon" />}
-        <span>
-          {isAppService ? (
-            <>
-              This app is deployed on <strong>Azure Web App</strong>. Azure API access uses <strong>managed identity</strong> by default.
-              Enable identity in the portal and assign <strong>Reader</strong> and <strong>Cost Management Reader</strong> on your subscription.
-              Set <strong>SETTINGS_ENCRYPTION_KEY</strong> to encrypt any secrets stored in the database.
-            </>
-          ) : (
-            <>
-              Enter your <strong>Azure app credentials</strong> on the Azure tab or your <strong>database username and password</strong> on the Database tab.
-              Values are saved to the database and encrypted when <strong>SETTINGS_ENCRYPTION_KEY</strong> is set.
-            </>
-          )}
-        </span>
-      </div>
+      {subscription && (
+        <DataFreshnessPanel subscription={subscription} subscriptionLabel={subLabel} />
+      )}
 
       {isLoading && <LoadingState message="Loading settings…" />}
       {isError && <QueryErrorState error={error} onRetry={refetch} />}
 
       {!isLoading && !isError && (
-        <>
-          <div className="settings-tabs" role="tablist" aria-label="Settings categories">
-            {TABS.map(({ id, label, Icon }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                className={`settings-tab${tab === id ? ' settings-tab--active' : ''}`}
-                onClick={() => { setTab(id); setSaveMsg(''); setTestMsg({ type: '', text: '' }); }}
-              >
-                <Icon size={15} /> {label}
-              </button>
+        <div className="settings-layout">
+          <nav className="settings-sidebar card" aria-label="Settings categories">
+            {TAB_SECTIONS.map((section) => (
+              <div key={section.id} className="settings-sidebar__section">
+                <div className="settings-sidebar__heading">{section.label}</div>
+                {section.tabs.map(({ id, label, Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === id}
+                    className={`settings-sidebar__tab${tab === id ? ' settings-sidebar__tab--active' : ''}`}
+                    onClick={() => { setTab(id); setSaveMsg(''); setTestMsg({ type: '', text: '' }); }}
+                  >
+                    <Icon size={16} aria-hidden />
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
             ))}
-          </div>
+          </nav>
 
-          <div className="card settings-panel">
-            <ActiveForm
-              data={{ ...tabData, ...draft }}
-              onChange={onChange}
-              isAppService={isAppService}
-            />
+          <div className="settings-main">
+            <header className="settings-section-header">
+              <h2 className="settings-section-header__title">{activeTabMeta.title}</h2>
+              <p className="settings-section-header__desc">{activeTabMeta.description}</p>
+            </header>
 
-            <StatusBanner type={testMsg.type} message={testMsg.text} />
-            {saveMsg && (
-              <StatusBanner
-                type={/saved|applied|active immediately|reloaded|Already using/i.test(saveMsg) ? 'success' : 'error'}
-                message={saveMsg}
-              />
-            )}
+            <div className="card settings-panel">
+              {tab === 'runtime' ? (
+                <RuntimeStatusCompact status={runtimeStatus} />
+              ) : tab === 'data' ? (
+                <DataManagementPanel
+                  subscription={subscription}
+                  subscriptionLabel={subLabel}
+                />
+              ) : tab === 'users' ? (
+                <UsersPanel />
+              ) : (
+                <>
+                  <ActiveForm
+                    data={{ ...tabData, ...draft }}
+                    onChange={onChange}
+                    isAppService={isAppService}
+                  />
 
-            <div className="settings-panel__actions">
-              {TEST_MAP[tab] && (
-                <button type="button" className="btn btn-secondary" onClick={() => testMut.mutate()} disabled={testMut.isPending}>
-                  <RefreshCw size={14} className={testMut.isPending ? 'spin' : ''} /> Test connection
-                </button>
+                  <StatusBanner type={testMsg.type} message={testMsg.text} />
+                  {saveMsg && (
+                    <StatusBanner
+                      type={/saved|applied|active immediately|reloaded|Already using/i.test(saveMsg) ? 'success' : 'error'}
+                      message={saveMsg}
+                    />
+                  )}
+
+                  <div className="settings-panel__actions">
+                    {TEST_MAP[tab] && (
+                      <button type="button" className="btn btn-secondary" onClick={() => testMut.mutate()} disabled={testMut.isPending}>
+                        <RefreshCw size={14} className={testMut.isPending ? 'spin' : ''} /> Test connection
+                      </button>
+                    )}
+                    {tab === 'database' && (
+                      <button type="button" className="btn btn-secondary" onClick={() => applyDbMut.mutate()} disabled={applyDbMut.isPending}>
+                        <RefreshCw size={14} className={applyDbMut.isPending ? 'spin' : ''} /> Apply connection
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-primary" onClick={() => saveMut.mutate(draft)} disabled={saveMut.isPending}>
+                      <Save size={14} /> Save to database
+                    </button>
+                  </div>
+
+                  {tabData.updated_at && (
+                    <p className="settings-panel__meta">
+                      Last saved: {new Date(tabData.updated_at).toLocaleString()}
+                    </p>
+                  )}
+                </>
               )}
-              {tab === 'database' && (
-                <button type="button" className="btn btn-secondary" onClick={() => applyDbMut.mutate()} disabled={applyDbMut.isPending}>
-                  <RefreshCw size={14} className={applyDbMut.isPending ? 'spin' : ''} /> Apply connection
-                </button>
-              )}
-              <button type="button" className="btn btn-primary" onClick={() => saveMut.mutate(draft)} disabled={saveMut.isPending}>
-                <Save size={14} /> Save to database
-              </button>
             </div>
-
-            {tabData.updated_at && (
-              <p className="settings-panel__meta">
-                Last saved: {new Date(tabData.updated_at).toLocaleString()}
-              </p>
-            )}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

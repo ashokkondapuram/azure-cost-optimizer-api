@@ -7,6 +7,7 @@ Allows operators to:
   - Assign profiles per subscription or resource group
 """
 from __future__ import annotations
+import uuid
 from sqlalchemy.orm import Session
 from app.models import EngineConfig
 import json
@@ -14,16 +15,16 @@ import json
 
 def get_effective_config(db: Session, profile: str = "default") -> dict:
     """Load rule overrides for a named profile from DB."""
-    rows = db.query(EngineConfig).filter(
-        EngineConfig.profile == profile,
-        EngineConfig.enabled  == True,
-    ).all()
-    overrides = {}
+    rows = db.query(EngineConfig).filter(EngineConfig.profile == profile).all()
+    overrides: dict = {}
     for row in rows:
         try:
-            overrides[row.rule_id] = json.loads(row.overrides_json)
+            rule_overrides = json.loads(row.overrides_json or "{}")
         except Exception:
-            pass
+            rule_overrides = {}
+        if not row.enabled:
+            rule_overrides["enabled"] = False
+        overrides[row.rule_id] = rule_overrides
     return overrides
 
 
@@ -45,6 +46,7 @@ def upsert_rule_config(
         row.description    = description
     else:
         row = EngineConfig(
+            id=str(uuid.uuid4()),
             profile=profile, rule_id=rule_id,
             overrides_json=json.dumps(overrides),
             enabled=enabled, description=description,

@@ -1,17 +1,21 @@
 import React from 'react';
-const CFG = {
-  prod:    { label:'Production', bg:'#fde7e9', color:'#c0392b', dot:'#c0392b' },
-  staging: { label:'Staging',    bg:'#fff4ce', color:'#d67f00', dot:'#d67f00' },
-  dev:     { label:'Dev',        bg:'#dff6dd', color:'#107c10', dot:'#107c10' },
+import { Shield, FlaskConical, Code2 } from 'lucide-react';
+
+const ENV_CONFIG = {
+  prod: { label: 'Production', className: 'prod', Icon: Shield },
+  staging: { label: 'Staging', className: 'staging', Icon: FlaskConical },
+  dev: { label: 'Dev', className: 'dev', Icon: Code2 },
 };
+
 export default function EnvBadge({ env }) {
-  const c = CFG[env] || CFG['dev'];
+  const cfg = ENV_CONFIG[env] || ENV_CONFIG.dev;
+  const { label, className, Icon } = cfg;
+
   return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:5,
-      background:c.bg, color:c.color, padding:'3px 9px',
-      borderRadius:20, fontSize:'0.7rem', fontWeight:700 }}>
-      <span style={{ width:6, height:6, borderRadius:'50%', background:c.dot }} />
-      {c.label}
+    <span className={`env-badge env-badge--${className}`}>
+      <Icon className="env-badge__icon" size={11} aria-hidden="true" />
+      <span className="env-badge__dot" aria-hidden="true" />
+      {label}
     </span>
   );
 }
