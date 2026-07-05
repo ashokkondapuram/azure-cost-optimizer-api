@@ -6,7 +6,6 @@ aggregates, and per-resource (ResourceId) MTD costs for the billed-resources lis
 """
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import date, datetime, timezone
 
@@ -15,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from app.cost_utils import aggregate_cost_rows_by_resource_type, aggregate_cost_rows_by_service
 from app.http_client import arm_patient_sync
-from app.models import CostByResourceTypeSnapshot, CostByServiceSnapshot, CostDailyByServiceSnapshot, CostSnapshot, CostSyncRun
+from app.models import CostByResourceTypeSnapshot, CostDailyByServiceSnapshot, CostSnapshot
 from app.optimizer.component_map import CANONICAL_TO_COMPONENT
 from app.resource_type_map import internal_resource_type
 
@@ -116,7 +115,7 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
     Pull Azure Cost Management data for Dashboard, Cost explorer, and billed resources.
 
     5 API calls per subscription:
-      1. subscription MTD total (dedicated summary query — not batched)
+      1. subscription MTD total (dedicated summary query - not batched)
       2. MTD by ServiceName (by-service chart)
       3. MTD by ResourceType (resource-type chart)
       4. daily trend
@@ -145,7 +144,6 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
     month = today.strftime("%Y-%m")
     mtd_start = today.replace(day=1).isoformat()
     mtd_end = today.isoformat()
-    scope = f"/subscriptions/{subscription_id}"
 
     counts = {
         "cost_by_service": 0,
@@ -213,9 +211,39 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
         "services": service_changes[:25],
     }
 
+    # FIX: When the API returns no data, record an empty CostSyncRun for audit
+    # visibility and log a diagnostic hint, then return instead of silently dropping.
     if not export_rows and not type_rows and subscription_pretax == 0:
-        log.warning("cost_explorer_sync.empty_api_response", subscription_id=subscription_id)
+        log.warning(
+            "cost_explorer_sync.empty_api_response",
+            subscription_id=subscription_id,
+            hint="Verify the service principal has Cost Management Reader role on this subscription.",
+        )
+        try:
+            _record_cost_sync_run(
+                db,
+                subscription_id,
+                month,
+                mtd_start,
+                mtd_end,
+                current_services,
+                service_changes,
+                previous_synced_at,
+                subscription_total_billing=0.0,
+                subscription_total_usd=0.0,
+                subscription_currency=subscription_currency,
+            )
+            db.commit()
+        except Exception as rec_exc:
+            log.exception(
+                "cost_explorer_sync.record_empty_run_failed",
+                subscription_id=subscription_id,
+                error=str(rec_exc),
+            )
         return counts
+
+    # Track which write sections fail for partial-failure visibility
+    write_errors: list[str] = []
 
     try:
         service_agg = aggregate_cost_rows_by_service(by_service_resp)
@@ -223,6 +251,7 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
             db, subscription_id, month, service_agg,
         )
     except Exception as exc:
+        write_errors.append("cost_by_service")
         log.exception("cost_explorer_sync.mtd_by_service_failed", subscription_id=subscription_id, error=str(exc))
 
     try:
@@ -231,6 +260,7 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
             db, subscription_id, month, type_agg,
         )
     except Exception as exc:
+        write_errors.append("cost_by_resource_type")
         log.exception("cost_explorer_sync.mtd_by_resource_type_failed", subscription_id=subscription_id, error=str(exc))
 
     try:
@@ -242,6 +272,7 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
             mtd_end=mtd_end,
         )
     except Exception as exc:
+        write_errors.append("daily_snapshots")
         log.exception("cost_explorer_sync.daily_snapshots_failed", subscription_id=subscription_id, error=str(exc))
 
     try:
@@ -257,7 +288,16 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
             db, subscription_id, month,
         )
     except Exception as exc:
+        write_errors.append("cost_by_resource")
         log.exception("cost_explorer_sync.mtd_by_resource_failed", subscription_id=subscription_id, error=str(exc))
+
+    if write_errors:
+        log.warning(
+            "cost_explorer_sync.partial_write",
+            subscription_id=subscription_id,
+            failed_sections=write_errors,
+        )
+        counts["partial_write_errors"] = write_errors
 
     try:
         _record_cost_sync_run(
@@ -279,7 +319,6 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
     db.commit()
     try:
         from app.perf_cache import invalidate_subscription
-
         invalidate_subscription(subscription_id)
     except Exception as exc:
         log.warning("cost_explorer_sync.cache_invalidate_failed", subscription_id=subscription_id, error=str(exc)[:200])

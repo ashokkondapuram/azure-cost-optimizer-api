@@ -15,7 +15,9 @@ from app.component_sync_schedule import (
     interval_minutes_for_component,
     pick_next_due_component,
 )
+from app.db_locks import SCHEDULER_ADVISORY_LOCK_ID, release_lock, try_acquire_lock
 from app.optimizer.component_map import sync_types_for_component
+from app.scheduler_utils import env_bool, list_subscription_ids
 
 log = structlog.get_logger()
 
@@ -25,18 +27,10 @@ _last_component_sync_at: dict[str, datetime] = {}
 _last_component_sync_result: dict[str, Any] | None = None
 
 
-def _env_bool(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def component_sync_enabled() -> bool:
     if os.getenv("SCHEDULED_COMPONENT_SYNC_ENABLED") is not None:
-        return _env_bool("SCHEDULED_COMPONENT_SYNC_ENABLED", False)
+        return env_bool("SCHEDULED_COMPONENT_SYNC_ENABLED", False)
     from app.operations_scheduler import scheduled_operations_enabled
-
     return scheduled_operations_enabled()
 
 
@@ -45,14 +39,7 @@ def component_sync_tick_seconds() -> float:
 
 
 def analysis_after_component_sync() -> bool:
-    return _env_bool("SCHEDULED_ANALYSIS_AFTER_COMPONENT_SYNC", True)
-
-
-def _list_subscription_ids(db: Session) -> list[str]:
-    from app.subscription_store import list_subscriptions_db
-
-    subs = list_subscriptions_db(db)
-    return sorted({(s.get("subscriptionId") or "").strip().lower() for s in subs if s.get("subscriptionId")})
+    return env_bool("SCHEDULED_ANALYSIS_AFTER_COMPONENT_SYNC", True)
 
 
 def _as_utc(when: datetime) -> datetime:
@@ -107,7 +94,7 @@ def run_component_sync(component: str) -> dict[str, Any]:
     from app.database import SessionLocal
     from app.db_sync import sync_scoped
 
-    global _last_component_sync_at, _last_component_sync_result
+    global _last_component_sync_result
 
     types = sync_types_for_component(component)
     if not types:
@@ -120,9 +107,7 @@ def run_component_sync(component: str) -> dict[str, Any]:
     errors: list[dict[str, str]] = []
     lock_held = False
     try:
-        from app.operations_scheduler import _release_scheduler_lock, _try_acquire_scheduler_lock
-
-        lock_held = _try_acquire_scheduler_lock(db)
+        lock_held = try_acquire_lock(db, SCHEDULER_ADVISORY_LOCK_ID)
         if not lock_held:
             result = {"status": "skipped", "reason": "lock_held", "component": component}
             _last_component_sync_result = result
@@ -130,7 +115,7 @@ def run_component_sync(component: str) -> dict[str, Any]:
 
         reload_credential(db)
         token = get_token(db)
-        subs = _list_subscription_ids(db)
+        subs = list_subscription_ids(db)
         if not subs:
             result = {"status": "skipped", "reason": "no_subscriptions", "component": component}
             _last_component_sync_result = result
@@ -198,9 +183,7 @@ def run_component_sync(component: str) -> dict[str, Any]:
     finally:
         if lock_held:
             try:
-                from app.operations_scheduler import _release_scheduler_lock
-
-                _release_scheduler_lock(db)
+                release_lock(db, SCHEDULER_ADVISORY_LOCK_ID)
             except Exception:
                 pass
         db.close()

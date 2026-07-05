@@ -12,16 +12,23 @@ from datetime import datetime, timezone
 from typing import Any
 
 import structlog
-from sqlalchemy import text
 from sqlalchemy.orm import Session
+
+from app.db_locks import (
+    ENGINE_SCORING_ADVISORY_LOCK_ID,
+    SCHEDULER_ADVISORY_LOCK_ID,
+    release_lock,
+    try_acquire_lock,
+)
+from app.scheduler_utils import env_bool, list_subscription_ids
 
 log = structlog.get_logger()
 
 _started = False
 _start_lock = threading.Lock()
-SCHEDULER_ADVISORY_LOCK_ID = 8247331
-ENGINE_SCORING_ADVISORY_LOCK_ID = 8247332
 
+# Thread-safe status state
+_status_lock = threading.Lock()
 _last_sync_at: datetime | None = None
 _last_analysis_at: datetime | None = None
 _last_rollout_check_at: datetime | None = None
@@ -32,61 +39,61 @@ _last_rollout_check_result: dict[str, Any] | None = None
 _last_engine_scoring_result: dict[str, Any] | None = None
 
 
-def _env_bool(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {"1", "true", "yes", "on"}
+def _set_status(**kwargs: Any) -> None:
+    """Thread-safe update of scheduler status globals."""
+    global _last_sync_at, _last_analysis_at, _last_rollout_check_at, _last_engine_scoring_at
+    global _last_sync_result, _last_analysis_result, _last_rollout_check_result, _last_engine_scoring_result
+    with _status_lock:
+        for k, v in kwargs.items():
+            globals()[k] = v
 
 
 def _default_operations_enabled() -> bool:
     from app.settings import get_settings
-
     return get_settings().is_production
 
 
 def scheduled_operations_enabled() -> bool:
     if os.getenv("SCHEDULED_OPERATIONS_ENABLED") is not None:
-        return _env_bool("SCHEDULED_OPERATIONS_ENABLED", False)
+        return env_bool("SCHEDULED_OPERATIONS_ENABLED", False)
     return _default_operations_enabled()
 
 
 def scheduled_sync_enabled() -> bool:
     """Full inventory+cost sync (sync_all). Disabled when component sync is active."""
     if os.getenv("SCHEDULED_SYNC_ENABLED") is not None:
-        return _env_bool("SCHEDULED_SYNC_ENABLED", False)
+        return env_bool("SCHEDULED_SYNC_ENABLED", False)
     from app.component_sync_worker import component_sync_enabled
-
     if component_sync_enabled():
-        return _env_bool("SCHEDULED_FULL_SYNC_ENABLED", False)
+        return env_bool("SCHEDULED_FULL_SYNC_ENABLED", False)
     return scheduled_operations_enabled()
 
 
 def scheduled_analysis_enabled() -> bool:
     if os.getenv("SCHEDULED_ANALYSIS_ENABLED") is not None:
-        return _env_bool("SCHEDULED_ANALYSIS_ENABLED", False)
+        return env_bool("SCHEDULED_ANALYSIS_ENABLED", False)
     return scheduled_operations_enabled()
 
 
 def scheduled_analysis_after_sync() -> bool:
-    return _env_bool("SCHEDULED_ANALYSIS_AFTER_SYNC", True)
+    return env_bool("SCHEDULED_ANALYSIS_AFTER_SYNC", True)
 
 
 def scheduled_rollout_observation_enabled() -> bool:
     if os.getenv("SCHEDULED_ROLLOUT_OBSERVATION_ENABLED") is not None:
-        return _env_bool("SCHEDULED_ROLLOUT_OBSERVATION_ENABLED", False)
+        return env_bool("SCHEDULED_ROLLOUT_OBSERVATION_ENABLED", False)
     return scheduled_operations_enabled()
 
 
 def scheduled_engine_scoring_enabled() -> bool:
     """Run advanced scoring + decision engine on a fixed interval (DB-only, no Azure APIs)."""
     if os.getenv("SCHEDULED_ENGINE_SCORING_ENABLED") is not None:
-        return _env_bool("SCHEDULED_ENGINE_SCORING_ENABLED", False)
+        return env_bool("SCHEDULED_ENGINE_SCORING_ENABLED", False)
     return scheduled_operations_enabled()
 
 
 def scheduled_engine_scoring_after_analysis() -> bool:
-    return _env_bool("SCHEDULED_ENGINE_SCORING_AFTER_ANALYSIS", True)
+    return env_bool("SCHEDULED_ENGINE_SCORING_AFTER_ANALYSIS", True)
 
 
 def _rollout_observation_interval_seconds() -> float:
@@ -109,59 +116,34 @@ def _startup_delay_seconds() -> float:
     return max(15.0, float(os.getenv("SCHEDULED_STARTUP_DELAY_SECONDS", "60")))
 
 
-def _list_subscription_ids(db: Session) -> list[str]:
-    from app.subscription_store import list_subscriptions_db
+# Stagger offsets (seconds) to prevent thundering-herd at startup
+_ANALYSIS_STAGGER_SEC = 30.0
+_ROLLOUT_STAGGER_SEC = 45.0
+_ENGINE_SCORING_STAGGER_SEC = 60.0
 
-    subs = list_subscriptions_db(db)
-    ids = sorted({(s.get("subscriptionId") or "").strip().lower() for s in subs if s.get("subscriptionId")})
-    return [sid for sid in ids if sid]
 
+# ---------------------------------------------------------------------------
+# Advisory lock helpers (delegated to db_locks, kept here for backward compat)
+# ---------------------------------------------------------------------------
 
 def _try_acquire_scheduler_lock(db: Session) -> bool:
-    dialect = db.get_bind().dialect.name
-    if dialect == "postgresql":
-        return bool(
-            db.execute(
-                text("SELECT pg_try_advisory_lock(:lock_id)"),
-                {"lock_id": SCHEDULER_ADVISORY_LOCK_ID},
-            ).scalar()
-        )
-    return True
+    return try_acquire_lock(db, SCHEDULER_ADVISORY_LOCK_ID)
 
 
 def _release_scheduler_lock(db: Session) -> None:
-    dialect = db.get_bind().dialect.name
-    if dialect == "postgresql":
-        db.execute(
-            text("SELECT pg_advisory_unlock(:lock_id)"),
-            {"lock_id": SCHEDULER_ADVISORY_LOCK_ID},
-        )
+    release_lock(db, SCHEDULER_ADVISORY_LOCK_ID)
 
 
 def _try_acquire_engine_scoring_lock(db: Session) -> bool:
-    dialect = db.get_bind().dialect.name
-    if dialect == "postgresql":
-        return bool(
-            db.execute(
-                text("SELECT pg_try_advisory_lock(:lock_id)"),
-                {"lock_id": ENGINE_SCORING_ADVISORY_LOCK_ID},
-            ).scalar()
-        )
-    return True
+    return try_acquire_lock(db, ENGINE_SCORING_ADVISORY_LOCK_ID)
 
 
 def _release_engine_scoring_lock(db: Session) -> None:
-    dialect = db.get_bind().dialect.name
-    if dialect == "postgresql":
-        db.execute(
-            text("SELECT pg_advisory_unlock(:lock_id)"),
-            {"lock_id": ENGINE_SCORING_ADVISORY_LOCK_ID},
-        )
+    release_lock(db, ENGINE_SCORING_ADVISORY_LOCK_ID)
 
 
 def _has_active_analysis_job(db: Session, subscription_id: str) -> bool:
     from app.batch_analyzer import has_active_analysis_job
-
     return has_active_analysis_job(db, subscription_id)
 
 
@@ -171,23 +153,21 @@ def run_scheduled_sync() -> list[str]:
     from app.database import SessionLocal
     from app.db_sync import sync_all
 
-    global _last_sync_at, _last_sync_result
-
     db = SessionLocal()
     synced: list[str] = []
     errors: list[dict[str, str]] = []
     try:
         if not _try_acquire_scheduler_lock(db):
             log.info("scheduled_sync.skipped", reason="lock_held")
-            _last_sync_result = {"status": "skipped", "reason": "lock_held", "synced": []}
+            _set_status(_last_sync_result={"status": "skipped", "reason": "lock_held", "synced": []})
             return synced
 
         reload_credential(db)
         token = get_token(db)
-        subs = _list_subscription_ids(db)
+        subs = list_subscription_ids(db)
         if not subs:
             log.info("scheduled_sync.skipped", reason="no_subscriptions")
-            _last_sync_result = {"status": "skipped", "reason": "no_subscriptions", "synced": []}
+            _set_status(_last_sync_result={"status": "skipped", "reason": "no_subscriptions", "synced": []})
             return synced
 
         log.info("scheduled_sync.start", subscriptions=len(subs))
@@ -200,12 +180,14 @@ def run_scheduled_sync() -> list[str]:
                 errors.append({"subscription_id": sub, "error": str(exc)[:500]})
                 log.exception("scheduled_sync.subscription_failed", subscription_id=sub, error=str(exc))
 
-        _last_sync_at = datetime.now(timezone.utc)
-        _last_sync_result = {
-            "status": "ok" if synced else "failed",
-            "synced": synced,
-            "errors": errors,
-        }
+        _set_status(
+            _last_sync_at=datetime.now(timezone.utc),
+            _last_sync_result={
+                "status": "ok" if synced else "failed",
+                "synced": synced,
+                "errors": errors,
+            },
+        )
         return synced
     finally:
         try:
@@ -220,17 +202,15 @@ def run_scheduled_analysis(subscription_ids: list[str] | None = None) -> dict[st
     from app.batch_analyzer import create_analysis_job, execute_batch_job
     from app.database import SessionLocal
 
-    global _last_analysis_at, _last_analysis_result
-
     db = SessionLocal()
     try:
-        subs = subscription_ids or _list_subscription_ids(db)
+        subs = subscription_ids or list_subscription_ids(db)
     finally:
         db.close()
 
     if not subs:
-        result = {"status": "skipped", "reason": "no_subscriptions", "completed": [], "skipped": [], "errors": []}
-        _last_analysis_result = result
+        result: dict[str, Any] = {"status": "skipped", "reason": "no_subscriptions", "completed": [], "skipped": [], "errors": []}
+        _set_status(_last_analysis_result=result)
         return result
 
     completed: list[str] = []
@@ -239,6 +219,7 @@ def run_scheduled_analysis(subscription_ids: list[str] | None = None) -> dict[st
 
     log.info("scheduled_analysis.start", subscriptions=len(subs))
     for sub in subs:
+        # Single session per subscription unit-of-work
         db = SessionLocal()
         try:
             if _has_active_analysis_job(db, sub):
@@ -263,14 +244,16 @@ def run_scheduled_analysis(subscription_ids: list[str] | None = None) -> dict[st
             errors.append({"subscription_id": sub, "error": str(exc)[:500]})
             log.exception("scheduled_analysis.subscription_failed", subscription_id=sub, error=str(exc))
 
-    _last_analysis_at = datetime.now(timezone.utc)
     result = {
         "status": "ok" if completed else ("partial" if errors else "skipped"),
         "completed": completed,
         "skipped": skipped,
         "errors": errors,
     }
-    _last_analysis_result = result
+    _set_status(
+        _last_analysis_at=datetime.now(timezone.utc),
+        _last_analysis_result=result,
+    )
 
     if (
         completed
@@ -292,52 +275,60 @@ def run_scheduled_rollout_observation() -> dict[str, Any]:
     from app.database import SessionLocal
     from app.rollout_observer import check_all_subscriptions
 
-    global _last_rollout_check_at, _last_rollout_check_result
-
     db = SessionLocal()
     try:
         result = check_all_subscriptions(db)
-        _last_rollout_check_at = datetime.now(timezone.utc)
-        _last_rollout_check_result = result
+        _set_status(
+            _last_rollout_check_at=datetime.now(timezone.utc),
+            _last_rollout_check_result=result,
+        )
         return result
     finally:
         db.close()
 
 
 def run_scheduled_engine_scoring(subscription_ids: list[str] | None = None) -> dict[str, Any]:
-    """Run advanced scoring then decision engine for each subscription (database only)."""
+    """Run advanced scoring then decision engine for each subscription (database only).
+
+    FIX: Advisory lock is now held on a single session for the entire operation
+    lifetime, preventing the lock-released-on-wrong-connection bug.
+    """
     from app.advanced_scoring import score_subscription
     from app.database import SessionLocal
     from app.optimizer.decision_engine import generate_optimization_actions
 
-    global _last_engine_scoring_at, _last_engine_scoring_result
-
-    db = SessionLocal()
+    # Resolve subscription list on a short-lived session
+    db_list = SessionLocal()
     try:
-        subs = subscription_ids or _list_subscription_ids(db)
-        if not subs:
-            result = {
-                "status": "skipped",
-                "reason": "no_subscriptions",
-                "completed": [],
-                "errors": [],
-            }
-            _last_engine_scoring_result = result
-            return result
+        subs = subscription_ids or list_subscription_ids(db_list)
+    finally:
+        db_list.close()
 
-        if not _try_acquire_engine_scoring_lock(db):
+    if not subs:
+        result: dict[str, Any] = {
+            "status": "skipped",
+            "reason": "no_subscriptions",
+            "completed": [],
+            "errors": [],
+        }
+        _set_status(_last_engine_scoring_result=result)
+        return result
+
+    # Hold the advisory lock on a dedicated session kept open for the full scoring run
+    db_lock = SessionLocal()
+    lock_held = False
+    try:
+        lock_held = _try_acquire_engine_scoring_lock(db_lock)
+        if not lock_held:
             log.info("scheduled_engine_scoring.skipped", reason="lock_held")
             result = {"status": "skipped", "reason": "lock_held", "completed": [], "errors": []}
-            _last_engine_scoring_result = result
+            _set_status(_last_engine_scoring_result=result)
             return result
-    finally:
-        db.close()
 
-    completed: list[dict[str, Any]] = []
-    errors: list[dict[str, str]] = []
+        completed: list[dict[str, Any]] = []
+        errors: list[dict[str, str]] = []
 
-    log.info("scheduled_engine_scoring.start", subscriptions=len(subs))
-    try:
+        log.info("scheduled_engine_scoring.start", subscriptions=len(subs))
         for sub in subs:
             db = SessionLocal()
             try:
@@ -365,29 +356,30 @@ def run_scheduled_engine_scoring(subscription_ids: list[str] | None = None) -> d
                 )
             finally:
                 db.close()
-    finally:
-        db2 = SessionLocal()
-        try:
-            _release_engine_scoring_lock(db2)
-        except Exception:
-            pass
-        finally:
-            db2.close()
 
-    _last_engine_scoring_at = datetime.now(timezone.utc)
-    result = {
-        "status": "ok" if completed and not errors else ("partial" if completed else "failed"),
-        "completed": completed,
-        "errors": errors,
-    }
-    _last_engine_scoring_result = result
-    return result
+        result = {
+            "status": "ok" if completed and not errors else ("partial" if completed else "failed"),
+            "completed": completed,
+            "errors": errors,
+        }
+        _set_status(
+            _last_engine_scoring_at=datetime.now(timezone.utc),
+            _last_engine_scoring_result=result,
+        )
+        return result
+
+    finally:
+        if lock_held:
+            try:
+                _release_engine_scoring_lock(db_lock)
+            except Exception:
+                pass
+        db_lock.close()
 
 
 def _cost_scheduler_status() -> dict[str, Any]:
     try:
         from app.cost_scheduler import get_cost_scheduler_status
-
         return get_cost_scheduler_status()
     except Exception:
         return {"enabled": False}
@@ -396,7 +388,6 @@ def _cost_scheduler_status() -> dict[str, Any]:
 def _resource_discovery_status() -> dict[str, Any]:
     try:
         from app.resource_discovery_worker import get_resource_discovery_status
-
         return get_resource_discovery_status()
     except Exception:
         return {"enabled": False}
@@ -414,42 +405,43 @@ def get_scheduler_status() -> dict[str, Any]:
     else:
         sync_mode = "disabled"
 
-    return {
-        "enabled": scheduled_operations_enabled(),
-        "sync": {
-            "enabled": full_sync_on,
-            "interval_hours": float(os.getenv("SCHEDULED_SYNC_HOURS", "24")),
-            "mode": sync_mode,
-            "last_run_at": _last_sync_at.isoformat() if _last_sync_at else None,
-            "last_result": _last_sync_result,
-        },
-        "component_sync": get_component_sync_status(),
-        "cost_refresh": _cost_scheduler_status(),
-        "resource_discovery": _resource_discovery_status(),
-        "analysis": {
-            "enabled": scheduled_analysis_enabled(),
-            "interval_hours": float(os.getenv("SCHEDULED_ANALYSIS_HOURS", "6")),
-            "after_sync": scheduled_analysis_after_sync(),
-            "last_run_at": _last_analysis_at.isoformat() if _last_analysis_at else None,
-            "last_result": _last_analysis_result,
-        },
-        "rollout_observation": {
-            "enabled": scheduled_rollout_observation_enabled(),
-            "interval_hours": float(os.getenv("ROLLOUT_OBSERVATION_HOURS", "6")),
-            "last_run_at": _last_rollout_check_at.isoformat() if _last_rollout_check_at else None,
-            "last_result": _last_rollout_check_result,
-        },
-        "engine_scoring": {
-            "enabled": scheduled_engine_scoring_enabled(),
-            "interval_hours": float(os.getenv("SCHEDULED_ENGINE_SCORING_HOURS", "3")),
-            "after_analysis": scheduled_engine_scoring_after_analysis(),
-            "last_run_at": _last_engine_scoring_at.isoformat() if _last_engine_scoring_at else None,
-            "last_result": _last_engine_scoring_result,
-            "steps": ["advanced_scoring", "decision_engine"],
-            "azure_api_calls": False,
-        },
-        "started": _started,
-    }
+    with _status_lock:
+        return {
+            "enabled": scheduled_operations_enabled(),
+            "sync": {
+                "enabled": full_sync_on,
+                "interval_hours": float(os.getenv("SCHEDULED_SYNC_HOURS", "24")),
+                "mode": sync_mode,
+                "last_run_at": _last_sync_at.isoformat() if _last_sync_at else None,
+                "last_result": _last_sync_result,
+            },
+            "component_sync": get_component_sync_status(),
+            "cost_refresh": _cost_scheduler_status(),
+            "resource_discovery": _resource_discovery_status(),
+            "analysis": {
+                "enabled": scheduled_analysis_enabled(),
+                "interval_hours": float(os.getenv("SCHEDULED_ANALYSIS_HOURS", "6")),
+                "after_sync": scheduled_analysis_after_sync(),
+                "last_run_at": _last_analysis_at.isoformat() if _last_analysis_at else None,
+                "last_result": _last_analysis_result,
+            },
+            "rollout_observation": {
+                "enabled": scheduled_rollout_observation_enabled(),
+                "interval_hours": float(os.getenv("ROLLOUT_OBSERVATION_HOURS", "6")),
+                "last_run_at": _last_rollout_check_at.isoformat() if _last_rollout_check_at else None,
+                "last_result": _last_rollout_check_result,
+            },
+            "engine_scoring": {
+                "enabled": scheduled_engine_scoring_enabled(),
+                "interval_hours": float(os.getenv("SCHEDULED_ENGINE_SCORING_HOURS", "3")),
+                "after_analysis": scheduled_engine_scoring_after_analysis(),
+                "last_run_at": _last_engine_scoring_at.isoformat() if _last_engine_scoring_at else None,
+                "last_result": _last_engine_scoring_result,
+                "steps": ["advanced_scoring", "decision_engine"],
+                "azure_api_calls": False,
+            },
+            "started": _started,
+        }
 
 
 def _sync_loop(interval_seconds: float) -> None:
@@ -466,7 +458,7 @@ def _sync_loop(interval_seconds: float) -> None:
 
 
 def _analysis_loop(interval_seconds: float) -> None:
-    time.sleep(_startup_delay_seconds() + 30.0)
+    time.sleep(_startup_delay_seconds() + _ANALYSIS_STAGGER_SEC)
     while True:
         try:
             if scheduled_analysis_enabled():
@@ -477,7 +469,7 @@ def _analysis_loop(interval_seconds: float) -> None:
 
 
 def _rollout_observation_loop(interval_seconds: float) -> None:
-    time.sleep(_startup_delay_seconds() + 45.0)
+    time.sleep(_startup_delay_seconds() + _ROLLOUT_STAGGER_SEC)
     while True:
         try:
             if scheduled_rollout_observation_enabled():
@@ -488,7 +480,7 @@ def _rollout_observation_loop(interval_seconds: float) -> None:
 
 
 def _engine_scoring_loop(interval_seconds: float) -> None:
-    time.sleep(_startup_delay_seconds() + 60.0)
+    time.sleep(_startup_delay_seconds() + _ENGINE_SCORING_STAGGER_SEC)
     while True:
         try:
             if scheduled_engine_scoring_enabled():
@@ -546,8 +538,6 @@ def start() -> None:
             log.info("scheduled_analysis.started", every_hours=interval / 3600.0)
         elif scheduled_analysis_enabled() and scheduled_sync_enabled():
             log.info("scheduled_analysis.chained_after_sync")
-
-        from app.component_sync_worker import start_component_sync_worker
 
         start_component_sync_worker(startup_delay=_startup_delay_seconds())
 
