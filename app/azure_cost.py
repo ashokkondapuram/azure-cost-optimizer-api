@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import threading
 import time
 from typing import Any
@@ -23,23 +24,49 @@ log = structlog.get_logger()
 COST_API_VERSION = os.getenv("AZURE_COST_API_VERSION", "2024-08-01")
 COST_API = "azure_cost_management"
 
-_cost_query_lock = threading.Lock()
+# FIX 1: Use RLock so _pause_between_cost_queries can safely call
+# cost_adaptive_multiplier() (which also acquires this lock) without deadlocking.
+_cost_query_lock = threading.RLock()
 _last_cost_query_at = 0.0
 _adaptive_multiplier = 1.0
 
+# FIX 2: Transient 5xx status codes that warrant an automatic retry.
+_RETRYABLE_5XX = {500, 502, 503, 504}
+_MAX_5XX_RETRIES = 3
+_5XX_BACKOFF_BASE_SEC = 5.0
+
+# FIX 4: Loose UUID pattern for subscription ID validation.
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.IGNORECASE
+)
+
 
 def _float_env(name: str, default: float) -> float:
-    try:
-        return max(0.0, float(os.getenv(name, str(default))))
-    except (TypeError, ValueError):
-        return default
+    v = os.getenv(name)
+    if v is not None:
+        try:
+            result = float(v)
+            if result < 0:
+                log.warning("cost_api.env_negative", name=name, value=v, using=default)
+                return default
+            return result
+        except (TypeError, ValueError):
+            log.warning("cost_api.env_invalid", name=name, value=v, using=default)
+    return default
 
 
 def _int_env(name: str, default: int) -> int:
-    try:
-        return max(1, int(os.getenv(name, str(default))))
-    except (TypeError, ValueError):
-        return default
+    v = os.getenv(name)
+    if v is not None:
+        try:
+            result = int(v)
+            if result < 1:
+                log.warning("cost_api.env_below_min", name=name, value=v, using=default)
+                return default
+            return result
+        except (TypeError, ValueError):
+            log.warning("cost_api.env_invalid", name=name, value=v, using=default)
+    return default
 
 
 def cost_query_delay_sec() -> float:
@@ -92,10 +119,15 @@ def _record_cost_429() -> None:
 
 
 def _pause_between_cost_queries(label: str = "query") -> None:
-    """Serialize Cost Management traffic with a configurable gap between calls."""
+    """Serialize Cost Management traffic with a configurable gap between calls.
+
+    FIX 1: Compute delay inside the RLock so cost_adaptive_multiplier() re-entry
+    is safe (RLock allows the same thread to re-acquire without deadlocking).
+    """
     global _last_cost_query_at
-    delay = cost_query_delay_sec() * cost_adaptive_multiplier()
     with _cost_query_lock:
+        # Both reads happen while the lock is held — safe with RLock.
+        delay = cost_query_delay_sec() * _adaptive_multiplier
         elapsed = time.monotonic() - _last_cost_query_at
         if elapsed < delay:
             wait = delay - elapsed
@@ -103,7 +135,7 @@ def _pause_between_cost_queries(label: str = "query") -> None:
                 "cost_api.throttle_wait",
                 seconds=round(wait, 1),
                 phase=label,
-                adaptive_multiplier=round(cost_adaptive_multiplier(), 2),
+                adaptive_multiplier=round(_adaptive_multiplier, 2),
             )
             time.sleep(wait)
         _last_cost_query_at = time.monotonic()
@@ -134,7 +166,12 @@ def resource_type_filter(arm_resource_types: list[str]) -> dict:
 
 
 def merge_query_responses(responses: list[dict]) -> dict:
-    """Merge batched Cost Management query responses into one normalized payload."""
+    """Merge already-normalized batched Cost Management responses into one payload.
+
+    FIX 6: Input responses are already normalized by _run_query(); this function
+    merges raw properties without calling normalize_query_response() again to
+    avoid double-aliasing column names.
+    """
     if not responses:
         return normalize_query_response({"properties": {"columns": [], "rows": []}})
     base = responses[0]
@@ -146,14 +183,15 @@ def merge_query_responses(responses: list[dict]) -> dict:
         if not columns:
             columns = list(page_props.get("columns") or [])
         rows.extend(page_props.get("rows") or [])
-    merged = {
+    # Return merged result directly — no second normalize_query_response() call.
+    return {
         "id": base.get("id"),
         "name": base.get("name"),
         "type": base.get("type"),
         "properties": {"columns": columns, "rows": rows},
         "source": COST_API,
     }
-    return normalize_query_response(merged)
+
 
 _COLUMN_ALIASES = {
     "ResourceGroupName": "ResourceGroup",
@@ -175,10 +213,17 @@ def _normalize_subscription_id(subscription_id: str) -> str:
 
 
 def _normalize_scope(scope: str, subscription_id: str | None = None) -> str:
+    """Build an ARM scope path from a scope string or subscription ID.
+
+    FIX 4: Validate that bare subscription IDs match the expected UUID format
+    before constructing the scope path, catching misconfigured env vars early.
+    """
     s = (scope or "").strip()
     if s.startswith("/"):
         return s
     sub = _normalize_subscription_id(subscription_id or s)
+    if sub and not _UUID_RE.match(sub):
+        log.warning("cost_api.invalid_subscription_id", subscription_id=sub)
     return f"/subscriptions/{sub}"
 
 
@@ -218,36 +263,64 @@ def _cost_request(
     throttle_label: str = "cost_api",
     _retried: bool = False,
 ) -> dict:
+    """Execute a single Cost Management HTTP request with throttling, 401 token
+    refresh, and FIX 2: automatic retry with exponential backoff on transient 5xx.
+    """
     _pause_between_cost_queries(throttle_label)
-    try:
-        data = _request(method, url, headers, params=params, payload=payload)
-        _record_cost_success()
-        return data
-    except AzureAPIError as exc:
-        if exc.status == 429:
-            _record_cost_429()
-            log.warning(
-                "cost_api.rate_limited",
-                throttle_label=throttle_label,
-                adaptive_multiplier=round(cost_adaptive_multiplier(), 2),
-            )
-        if exc.status == 401 and not _retried:
-            log.warning("cost_api.token_refresh", reason="401_from_azure")
-            reload_credential()
-            clear_arm_cache()
-            ctx = current_arm_auth()
-            db = ctx.get("db")
-            fresh = _headers(db, ctx.get("token") or get_token(db))
-            return _cost_request(
-                method,
-                url,
-                fresh,
-                params=params,
-                payload=payload,
-                throttle_label=throttle_label,
-                _retried=True,
-            )
-        raise CostExportReadError(f"Azure Cost Management error [{exc.status}]: {exc.message}") from exc
+
+    last_exc: AzureAPIError | None = None
+    for attempt in range(1, _MAX_5XX_RETRIES + 1):
+        try:
+            data = _request(method, url, headers, params=params, payload=payload)
+            _record_cost_success()
+            return data
+        except AzureAPIError as exc:
+            last_exc = exc
+
+            # FIX 2: Retry transient 5xx errors with exponential backoff.
+            if exc.status in _RETRYABLE_5XX and attempt < _MAX_5XX_RETRIES:
+                wait = _5XX_BACKOFF_BASE_SEC * (2 ** (attempt - 1))
+                log.warning(
+                    "cost_api.transient_error_retry",
+                    status=exc.status,
+                    attempt=attempt,
+                    wait_sec=wait,
+                    throttle_label=throttle_label,
+                )
+                time.sleep(wait)
+                continue
+
+            if exc.status == 429:
+                _record_cost_429()
+                log.warning(
+                    "cost_api.rate_limited",
+                    throttle_label=throttle_label,
+                    adaptive_multiplier=round(cost_adaptive_multiplier(), 2),
+                )
+
+            if exc.status == 401 and not _retried:
+                log.warning("cost_api.token_refresh", reason="401_from_azure")
+                reload_credential()
+                clear_arm_cache()
+                ctx = current_arm_auth()
+                db = ctx.get("db")
+                fresh = _headers(db, ctx.get("token") or get_token(db))
+                return _cost_request(
+                    method,
+                    url,
+                    fresh,
+                    params=params,
+                    payload=payload,
+                    throttle_label=throttle_label,
+                    _retried=True,
+                )
+
+            break  # Non-retryable error — exit the retry loop.
+
+    assert last_exc is not None
+    raise CostExportReadError(
+        f"Azure Cost Management error [{last_exc.status}]: {last_exc.message}"
+    ) from last_exc
 
 
 def _run_query(
@@ -336,6 +409,28 @@ def _column_index(columns: list[dict]) -> dict[str, int]:
     }
 
 
+def _make_cell_lookup(cols: dict[str, int]):
+    """FIX 5: Shared _cell helper extracted from daily row converters.
+
+    Returns a callable: _cell(row, *column_names, default=...) -> value
+    """
+    def _cell(row: list, *names: str, default: Any = "") -> Any:
+        for name in names:
+            idx = cols.get(name)
+            if idx is not None and idx < len(row):
+                return row[idx]
+        return default
+    return _cell
+
+
+def _parse_date_str(raw: Any) -> str:
+    """Normalise a Cost Management date value to YYYY-MM-DD string."""
+    date_str = str(raw or "")[:10]
+    if len(date_str) == 8 and date_str.isdigit():
+        date_str = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+    return date_str
+
+
 def daily_query_to_export_rows(response: dict, *, default_currency: str = "CAD") -> list[dict]:
     """Convert a daily Cost Management query response to normalized export-style rows."""
     props = normalize_query_response(response).get("properties") or {}
@@ -343,19 +438,11 @@ def daily_query_to_export_rows(response: dict, *, default_currency: str = "CAD")
     if not cols:
         return []
 
-    def _cell(row: list, *names: str, default: Any = "") -> Any:
-        for name in names:
-            idx = cols.get(name)
-            if idx is not None and idx < len(row):
-                return row[idx]
-        return default
-
+    _cell = _make_cell_lookup(cols)
     rows: list[dict] = []
     for row in props.get("rows") or []:
         raw_date = _cell(row, "UsageDate", "BillingMonth", "ChargePeriodStart", "Date", default="")
-        date_str = str(raw_date or "")[:10]
-        if len(date_str) == 8 and date_str.isdigit():
-            date_str = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        date_str = _parse_date_str(raw_date)
         pretax = float(_cell(row, "PreTaxCost", "Cost", default=0) or 0)
         usd = float(_cell(row, "CostUSD", default=0) or 0)
         currency = str(_cell(row, "Currency", "BillingCurrency", default=default_currency) or default_currency)
@@ -383,19 +470,11 @@ def daily_subscription_rows_from_response(response: dict, *, default_currency: s
     if not cols:
         return []
 
-    def _cell(row: list, *names: str, default: Any = "") -> Any:
-        for name in names:
-            idx = cols.get(name)
-            if idx is not None and idx < len(row):
-                return row[idx]
-        return default
-
+    _cell = _make_cell_lookup(cols)
     out: list[dict] = []
     for row in props.get("rows") or []:
         raw_date = _cell(row, "UsageDate", "BillingMonth", "ChargePeriodStart", "Date", default="")
-        date_str = str(raw_date or "")[:10]
-        if len(date_str) == 8 and date_str.isdigit():
-            date_str = f"{date_str[:4]}-{date_str[4:6]}-{date_str[6:8]}"
+        date_str = _parse_date_str(raw_date)
         if not date_str or len(date_str) < 10:
             continue
         pretax = float(_cell(row, "PreTaxCost", "Cost", default=0) or 0)
@@ -622,6 +701,12 @@ class AzureCostClient:
         return result
 
     def query_forecast(self, subscription_id: str, timeframe: str = "MonthToDate") -> dict:
+        """Fetch a daily spend forecast.
+
+        Returns a normalized response dict. On failure, returns an error dict
+        with 'error' and 'error_status' keys so callers can distinguish
+        "no forecast configured" (403) from transient failures.
+        """
         scope_path = _normalize_scope("", subscription_id)
         url = f"{BASE}{scope_path}/providers/Microsoft.CostManagement/forecast"
         params = {"api-version": COST_API_VERSION}
@@ -639,13 +724,27 @@ class AzureCostClient:
             data["source"] = COST_API
             return normalize_query_response(data)
         except CostExportReadError as exc:
-            log.warning("cost_client.query_forecast_failed", subscription_id=subscription_id, error=str(exc))
-            return {"properties": {"columns": [], "rows": []}, "source": COST_API, "error": str(exc)}
+            # Extract the numeric status code if present in the message.
+            status_match = re.search(r"\[(\d+)\]", str(exc))
+            error_status = int(status_match.group(1)) if status_match else None
+            log.warning(
+                "cost_client.query_forecast_failed",
+                subscription_id=subscription_id,
+                error=str(exc),
+                error_status=error_status,
+            )
+            return {
+                "properties": {"columns": [], "rows": []},
+                "source": COST_API,
+                "error": str(exc),
+                "error_status": error_status,
+            }
 
     def list_budgets(self, subscription_id: str) -> list:
         scope_path = _normalize_scope("", subscription_id)
         url = f"{BASE}{scope_path}/providers/Microsoft.Consumption/budgets"
-        params = {"api-version": "2024-08-01"}
+        # FIX 3: Use COST_API_VERSION constant instead of a hardcoded string.
+        params = {"api-version": COST_API_VERSION}
         headers = _headers(self._db, self._token)
         try:
             from app.http_client import get_all_pages
