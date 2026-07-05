@@ -8,13 +8,11 @@ Includes:
   - Finding history + remediation status tracking
 """
 # ── stdlib ────────────────────────────────────────────────────────────────────
-import json
-import os
 import re
 import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Annotated, Any, Literal, Optional, Union
+from typing import Annotated, Any, Optional, Union
 
 # ── third-party ───────────────────────────────────────────────────────────────
 import structlog
@@ -29,7 +27,7 @@ from fastapi import (
     Query,
     Request,
 )
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -55,6 +53,7 @@ from app.cost_db import (
     get_latest_cost_changes,
     mtd_period_for_timeframe,
     _date_range_for_timeframe,
+    resource_cost_map_from_db,
 )
 from app.cost_timeframes import list_timeframe_catalog
 from app.cost_live_query import (
@@ -76,7 +75,7 @@ from app.dashboard import (
 )
 from app.azure_resources import AzureResourcesClient
 from app.vm_utils import filter_standalone_vms
-from app.http_client import AzureAPIError, arm_fetch_workers
+from app.http_client import AzureAPIError
 from app.database import get_db, engine, migrate_schema
 from app.settings import get_settings
 from app.logging_config import configure_logging
@@ -87,9 +86,10 @@ from app.validators import (
     validate_finding_status,
 )
 from app.models import (
-    Base, CostRecord, K8sUtilization, K8sSnapshot,
-    OptimizationRun, EngineConfig, OptimizationFinding,
-    SubscriptionCache, AnalysisJob,
+    Base,
+    OptimizationRun,
+    OptimizationFinding,
+    AnalysisJob,
 )
 from app.billed_resources import list_billed_resources_page
 from app.resource_store import (
@@ -97,25 +97,19 @@ from app.resource_store import (
     get_resources_db_page,
     get_resource_counts,
     list_all_resources_db,
-    list_cost_resources_db,
     get_resources_by_type_prefix_db,
     get_aks_clusters_db,
     apply_costs_to_resources,
 )
-from app.cost_db import resource_cost_map_from_db
-from app.auth import arm_bearer_token
-from app.db_sync import sync_all, sync_scoped, sync_costs, enrich_aks_arm_clusters
-from app.arm_live_reads import fetch_live_resources, paginate_list
-from app.arm_resource_enrichment import enrich_arm_resources_for_type
-from app.db_clear import clear_synced_data
+from app.auth import get_token as get_arm_token
+from app.db_sync import sync_all, sync_scoped, sync_costs
+from app.arm_live_reads import fetch_live_resources
 from app.analysis import run_db_analysis
-# fix #1: persist_optimization_run must be imported at module level so that
-# _run_live_analysis (and any background task referencing it) never raises
-# a NameError at runtime.
 from app.analysis_persist import persist_optimization_run
 from app.batch_analyzer import (
     create_analysis_job,
     execute_batch_job,
+    expire_stale_analysis_jobs,
     queue_post_sync_analysis,
     queue_rule_config_reanalysis,
     serialize_job,
@@ -133,7 +127,6 @@ from app.optimizer.rule_catalog import (
 from app.resources import list_technical_fetch_specs
 from app.optimizer.rule_registry import ALL_KNOWN_RULE_IDS, is_known_rule
 from app.ai_analysis import enrich_analysis_with_ai
-from app.optimizer.unified_engine import append_cost_export_findings
 from app.optimizer.engine import OptimizationEngine
 from app.optimizer.extended_engine import ExtendedOptimizationEngine
 from app.optimizer.engine_config import get_effective_config, upsert_rule_config, delete_rule_config
@@ -150,10 +143,7 @@ from app.services.system_settings import (
     test_azure_connection,
     test_database_connection,
 )
-from app.production_routes import configure_production_routes
 from app.openapi_config import configure_openapi
-from app.api_explorer import build_api_explorer_context
-from app.azure_live_api import register_azure_live_routes
 from app.spa_utils import should_serve_spa, spa_index_response
 from app import auth as azure_auth
 from app.user_auth import (
@@ -170,13 +160,13 @@ from app.user_auth import (
     ROLE_ADMIN,
     ROLE_VIEWER,
 )
-# fix G: move previously lazy in-handler imports to module level
 from app.resource_type_catalog import parse_resource_types_param, resource_types_catalog
+from app.cost_explorer_worker import request_cost_sync
 
 # ---------------------------------------------------------------------------
 # Module-level: settings object only — no DDL, no logging side-effects.
-# fix #9: configure_logging and validate_startup moved into lifespan so they
-# do not fire when main.py is imported by the test suite.
+# configure_logging and validate_startup live in lifespan so they do not
+# fire when main.py is imported by the test suite.
 # ---------------------------------------------------------------------------
 settings = get_settings()
 log = structlog.get_logger()
@@ -190,7 +180,6 @@ log = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ── startup ──────────────────────────────────────────────────────────
-    # fix #9: logging + startup validation live here, not at module level.
     configure_logging(
         level=settings.log_level,
         json_logs=settings.is_production,
@@ -216,7 +205,10 @@ async def lifespan(app: FastAPI):
         ensure_default_admin(db)
         ensure_default_viewer(db)
         azure_auth.reload_credential(db)
-        from app.subscription_store import ensure_subscription_cache_row, _default_subscription_from_settings
+        from app.subscription_store import (
+            ensure_subscription_cache_row,
+            _default_subscription_from_settings,
+        )
         default_sub = _default_subscription_from_settings(db)
         if default_sub:
             ensure_subscription_cache_row(db, default_sub)
@@ -233,8 +225,6 @@ async def lifespan(app: FastAPI):
     resource_discovery_worker.start()
 
     # Clear orphaned analysis jobs left running after a process restart.
-    from app.batch_analyzer import expire_stale_analysis_jobs
-
     _startup_db = SessionLocal()
     try:
         expired = expire_stale_analysis_jobs(_startup_db)
@@ -264,8 +254,6 @@ app = FastAPI(
 configure_openapi(app)
 
 
-# fix I: assign require_admin_user return to _ for consistency with every
-# other admin endpoint (raises on failure, but consistent style).
 @app.get("/api/openapi.json", include_in_schema=False, tags=["Admin"],
          summary="OpenAPI schema (SPA path, admin only)")
 def openapi_json_for_spa(request: Request):
@@ -277,13 +265,17 @@ app.add_middleware(DynamicCORSMiddleware)
 app.add_middleware(AppAuthMiddleware)
 app.middleware("http")(cache_control_middleware)
 
+# These singletons are intentionally module-level for shared HTTP connection
+# pool reuse. They do not hold credentials directly — credentials are resolved
+# lazily per-request via get_arm_token(db). Instantiation here is safe because
+# no credential loading occurs at construction time.
 cost_client     = AzureCostClient()
 resource_client = AzureResourcesClient()
 
 
 @app.exception_handler(AzureAPIError)
 async def azure_error_handler(request, exc: AzureAPIError):
-    # Upstream Azure 502/503/504 are provider outages — return 503, not 502, to the SPA.
+    # Upstream Azure 502/503/504 are provider outages — return 503 to the SPA.
     status = 503 if exc.status in {502, 503, 504} else exc.status
     return JSONResponse(
         status_code=status,
@@ -291,7 +283,6 @@ async def azure_error_handler(request, exc: AzureAPIError):
     )
 
 
-# fix E: log method + full URL (including query string) for better debuggability.
 @app.exception_handler(Exception)
 async def unhandled_error_handler(request, exc: Exception):
     log.exception(
@@ -308,23 +299,20 @@ async def unhandled_error_handler(request, exc: Exception):
 # ─── Schemas ──────────────────────────────────────────────────────────────────
 
 class K8sUtilizationIn(BaseModel):
-    cluster_name: Optional[str] = None
-    node_name: str
-    pod_name: Optional[str] = None
-    namespace: Optional[str] = None
-    cpu_usage: Optional[str] = None
-    memory_usage: Optional[str] = None
+    cluster_name:   Optional[str] = None
+    node_name:      str = Field(..., min_length=1, max_length=253)
+    pod_name:       Optional[str] = None
+    namespace:      Optional[str] = None
+    cpu_usage:      Optional[str] = None
+    memory_usage:   Optional[str] = None
 
 
-# fix A: max_items is NOT a valid Pydantic v2 Field constraint and is silently
-# ignored. Use max_length on list fields — Pydantic v2 applies max_length to
-# sequences correctly (it is the documented constraint for list size).
 class K8sSnapshotIn(BaseModel):
-    cluster_name: str = Field(..., min_length=1, max_length=253)
-    collected_at: Optional[str] = None
-    summary: dict = Field(default_factory=dict)
-    nodes: list = Field(default_factory=list, max_length=500)
-    pods: list = Field(default_factory=list, max_length=5000)
+    cluster_name:   str = Field(..., min_length=1, max_length=253)
+    collected_at:   Optional[str] = None
+    summary:        dict = Field(default_factory=dict)
+    nodes:          list[dict] = Field(default_factory=list, max_length=500)
+    pods:           list[dict] = Field(default_factory=list, max_length=5000)
 
 
 def _scoped_subscription(db: Session, subscription_id: str) -> str:
@@ -332,11 +320,13 @@ def _scoped_subscription(db: Session, subscription_id: str) -> str:
     return ensure_subscription_known(db, subscription_id)
 
 
-# fix #8 / F: validate the *original* stripped string, then slice only after
-# the regex passes. Slicing before validation produced a truncated string in
-# the error message (e.g. '2026-1-1ex' instead of '2026-1-1extra') and could
-# also accept malformed-but-10-char inputs that still fail date parsing later.
+# _DATE_RE enforces exactly YYYY-MM-DD — anchors mean len is implicitly 10.
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+# ISO 8601 duration: P[nD][T[nH][nM][nS]] — e.g. P7D, P1DT12H, PT30M
+_ISO8601_DURATION_RE = re.compile(
+    r"^P(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+S)?)?$"
+)
 
 
 def _cost_range_kwargs(
@@ -349,20 +339,20 @@ def _cost_range_kwargs(
     kw: dict = {"timeframe": timeframe}
     if (from_date or "").strip():
         raw = from_date.strip()
-        if not _DATE_RE.match(raw[:10]) or len(raw) < 10:
+        if not _DATE_RE.match(raw):
             raise HTTPException(
                 status_code=422,
                 detail=f"from_date must be YYYY-MM-DD; got {from_date!r}",
             )
-        kw["from_date"] = raw[:10]
+        kw["from_date"] = raw
     if (to_date or "").strip():
         raw = to_date.strip()
-        if not _DATE_RE.match(raw[:10]) or len(raw) < 10:
+        if not _DATE_RE.match(raw):
             raise HTTPException(
                 status_code=422,
                 detail=f"to_date must be YYYY-MM-DD; got {to_date!r}",
             )
-        kw["to_date"] = raw[:10]
+        kw["to_date"] = raw
     if timeframe == "Custom" and (not kw.get("from_date") or not kw.get("to_date")):
         raise HTTPException(
             status_code=422,
@@ -376,17 +366,13 @@ def _cost_range_kwargs(
 
 def _live_cost_token(db: Session) -> str | None:
     try:
-        from app.auth import get_token
-
-        return get_token(db)
+        return get_arm_token(db)
     except Exception as exc:
         log.warning("cost_api.token_unavailable", error=str(exc)[:300])
         return None
 
 
 def _enqueue_cost_sync(subscription_id: str, *, reason: str) -> None:
-    from app.cost_explorer_worker import request_cost_sync
-
     request_cost_sync(subscription_id, reason=reason)
 
 
@@ -396,16 +382,10 @@ def _require_admin_live_arm(
     subscription_id: str,
 ):
     """Gate live Azure Resource Manager reads behind admin + subscription scope."""
-    require_admin_user(request)
+    _ = require_admin_user(request)
     return _scoped_subscription(db, subscription_id)
 
 
-# fix #4: simplify _verify_k8s_agent_token — remove the dead production branch.
-# Old logic: `if is_production and not expected → 503` then
-#            `if auth_enabled and not expected → 503` was unreachable in prod
-#            because the first guard already fired.
-# New logic: single ordered set of guards that is easy to follow and safe to
-# reorder without breaking behaviour.
 def _verify_k8s_agent_token(
     api_key: Optional[str] = None,
     db: Optional[Session] = None,
@@ -447,10 +427,12 @@ def _verify_k8s_read_access(
 
 
 class RuleConfigIn(BaseModel):
-    rule_id:     str  = Field(..., description="Rule ID e.g. VM_IDLE, AKS_NO_AUTOSCALER")
+    rule_id:     str = Field(..., description="Rule ID e.g. VM_IDLE, AKS_NO_AUTOSCALER")
     enabled:     bool = True
-    overrides:   dict = Field(default_factory=dict,
-                              description="Threshold overrides e.g. {\"cpu_idle_pct\": 3.0}")
+    overrides:   dict[str, float | int | bool | str] = Field(
+        default_factory=dict,
+        description='Scalar threshold overrides e.g. {"cpu_idle_pct": 3.0}',
+    )
     description: Optional[str] = None
 
 
@@ -462,9 +444,9 @@ class AnalyzeRequest(BaseModel):
         "db",
         description="db = analyze synced database inventory (default) | live = fetch from Azure (admin)",
     )
-    rule_overrides:   dict = Field(
+    rule_overrides:   dict[str, dict[str, float | int | bool | str]] = Field(
         default_factory=dict,
-        description="Per-rule runtime overrides: {\"VM_IDLE\": {\"cpu_idle_pct\": 3.0}}"
+        description='Per-rule runtime overrides: {"VM_IDLE": {"cpu_idle_pct": 3.0}}',
     )
     components:       Optional[list[str]] = Field(
         None,
@@ -475,7 +457,7 @@ class AnalyzeRequest(BaseModel):
         True,
         description="Generate AI recommendations from rule findings and evidence (requires Azure OpenAI config).",
     )
-    timespan_metrics: str  = Field("P7D",  description="ISO 8601 duration for metric lookback e.g. P7D, P1D")
+    timespan_metrics: str  = Field("P7D", description="ISO 8601 duration for metric lookback e.g. P7D, P1D")
 
     @field_validator("subscription_id")
     @classmethod
@@ -490,6 +472,16 @@ class AnalyzeRequest(BaseModel):
             raise ValueError("data_source must be 'db' or 'live'")
         return v
 
+    @field_validator("timespan_metrics")
+    @classmethod
+    def _validate_timespan(cls, value: str) -> str:
+        v = (value or "").strip().upper()
+        if not _ISO8601_DURATION_RE.match(v) or v == "P":
+            raise ValueError(
+                f"timespan_metrics must be an ISO 8601 duration (e.g. P7D, P1DT12H); got {value!r}"
+            )
+        return v
+
 
 class FindingStatusIn(BaseModel):
     status: str = Field(..., description="open | acknowledged | resolved | ignored")
@@ -500,10 +492,615 @@ class FindingStatusIn(BaseModel):
         return validate_finding_status(value)
 
 
-# fix H: add per-item max_length cap on string list fields to prevent a single
-# oversized item from slipping through the list-level length constraint.
 class BulkFindingStatusIn(BaseModel):
     finding_ids: list[Annotated[str, Field(max_length=200)]] = Field(
         ..., min_length=1, max_length=500
     )
-    status: str = Field(..
+    status: str = Field(..., description="open | acknowledged | resolved | ignored")
+
+    @field_validator("status")
+    @classmethod
+    def _validate_status(cls, value: str) -> str:
+        return validate_finding_status(value)
+
+
+class ResourceTagsIn(BaseModel):
+    tags: dict[str, str] = Field(default_factory=dict, description="Tag key-value pairs")
+
+
+class FindingExecutionIn(BaseModel):
+    action_type: str = Field(..., description="resize | delete | deallocate | tag | other")
+    before_state: dict[str, Any] = Field(default_factory=dict)
+
+
+class FindingValidationIn(BaseModel):
+    after_state: dict[str, Any] = Field(default_factory=dict)
+    regressed: bool = False
+
+
+class ActionWorkflowIn(BaseModel):
+    workflow_status: str | None = Field(None, description="proposed | approved | executed | rejected | deferred")
+    owner: str | None = None
+    note: str | None = None
+    clear_owner: bool = False
+
+    @field_validator("workflow_status")
+    @classmethod
+    def _validate_workflow(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        v = value.strip().lower()
+        valid = {"proposed", "approved", "executed", "rejected", "deferred"}
+        if v not in valid:
+            raise ValueError(f"workflow_status must be one of: {sorted(valid)}")
+        return v
+
+
+class BulkActionWorkflowIn(BaseModel):
+    action_ids: list[Annotated[str, Field(max_length=200)]] = Field(
+        ..., min_length=1, max_length=500
+    )
+    workflow_status: str = Field(..., description="proposed | approved | executed | rejected | deferred")
+    note: str | None = None
+
+    @field_validator("workflow_status")
+    @classmethod
+    def _validate_workflow(cls, value: str) -> str:
+        v = value.strip().lower()
+        valid = {"proposed", "approved", "executed", "rejected", "deferred"}
+        if v not in valid:
+            raise ValueError(f"workflow_status must be one of: {sorted(valid)}")
+        return v
+
+
+class BulkActionAssignIn(BaseModel):
+    action_ids: list[Annotated[str, Field(max_length=200)]] = Field(
+        ..., min_length=1, max_length=500
+    )
+    owner: str = Field(..., min_length=1, max_length=200)
+    note: str | None = None
+
+
+class BatchResourceLookupIn(BaseModel):
+    subscription_id: str
+    resource_ids: list[Annotated[str, Field(max_length=500)]] = Field(
+        ..., min_length=1, max_length=25
+    )
+    timespan: str = Field("P7D", description="ISO 8601 duration for metrics, e.g. P7D")
+    include_metrics: bool = True
+    include_advanced_analysis: bool = True
+
+
+class BulkResourceTagsIn(BaseModel):
+    subscription_id: str
+    resource_ids: list[Annotated[str, Field(max_length=500)]] = Field(
+        ..., min_length=1, max_length=50
+    )
+    tags: dict[str, str] = Field(default_factory=dict)
+
+
+class AzureSettingsIn(BaseModel):
+    auth_mode: Optional[str] = Field(None, description="managed_identity | default_credential | service_principal")
+    tenant_id: Optional[str] = None
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = Field(None, description="Leave blank to keep the stored secret")
+    default_subscription_id: Optional[str] = None
+
+
+class DatabaseSettingsIn(BaseModel):
+    dialect: Optional[str] = Field("postgresql", description="postgresql | sqlite")
+    host: Optional[str] = None
+    port: Optional[int] = None
+    database: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = Field(None, description="Leave blank to keep the stored password")
+    ssl_mode: Optional[str] = None
+
+
+class ApplicationSettingsIn(BaseModel):
+    app_env: Optional[str] = None
+    cors_allowed_origins: Optional[str] = None
+    request_timeout_seconds: Optional[int] = None
+    log_level: Optional[str] = None
+
+
+class KubernetesSettingsIn(BaseModel):
+    agent_token: Optional[str] = Field(None, description="Leave blank to keep the stored token")
+    require_agent_token: Optional[bool] = None
+
+
+class AiSettingsIn(BaseModel):
+    ai_enabled: Optional[bool] = None
+    ai_auth_mode: Optional[str] = Field(None, description="api_key | azure_ad")
+    openai_key: Optional[str] = Field(None, description="Leave blank to keep the stored key")
+    openai_endpoint: Optional[str] = None
+    openai_deployment: Optional[str] = None
+    openai_api_version: Optional[str] = None
+    ai_enrich_all_findings: Optional[bool] = None
+    ai_max_findings_per_run: Optional[int] = Field(None, ge=1, le=200)
+    ai_batch_size: Optional[int] = Field(None, ge=1, le=25)
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., min_length=1, max_length=128)
+    password: str = Field(..., min_length=1, max_length=256)
+
+    @field_validator("username")
+    @classmethod
+    def _strip_username(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("username must not be blank")
+        return stripped
+
+
+class CreateUserRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64)
+    password: str = Field(..., min_length=8, max_length=256)
+    display_name: Optional[str] = Field(None, max_length=128)
+    role: str = Field(ROLE_VIEWER, description="admin or viewer")
+
+
+class ResetUserPasswordRequest(BaseModel):
+    password: str = Field(..., min_length=8, max_length=256)
+
+
+# ─── Health ───────────────────────────────────────────────────────────────────
+
+@app.get("/health", tags=["System"])
+def health():
+    return {"status": "ok", "version": __version__}
+
+
+@app.get("/health/live", tags=["System"])
+def health_live():
+    return {"status": "ok"}
+
+
+@app.get("/health/ready", tags=["System"])
+def health_ready(db: Session = Depends(get_db)):
+    checks: dict[str, str] = {}
+    if (settings.is_production or settings.auth_enabled) and not settings.jwt_configured:
+        checks["auth"] = "jwt_secret_missing"
+    try:
+        db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        log.warning("readiness_check_failed", error=str(exc))
+        checks["database"] = "error"
+    if any(value != "ok" for value in checks.values()):
+        return JSONResponse(
+            status_code=503,
+            content={"status": "not_ready", **checks},
+        )
+    return {"status": "ready", **checks}
+
+
+# ─── Application auth ─────────────────────────────────────────────────────────
+
+@app.post("/auth/login", tags=["Auth"], summary="Sign in with username and password")
+def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    from app.user_auth import check_login_rate_limit, record_login_failure, clear_login_failures
+
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Skip rate limiting for unresolvable IPs (e.g. behind a proxy returning None)
+    # to avoid locking all users into a shared bucket.
+    if client_ip != "unknown":
+        if not check_login_rate_limit(db, client_ip):
+            raise HTTPException(status_code=429, detail="Too many sign-in attempts. Try again later.")
+
+    user = authenticate_user(db, body.username, body.password)
+    if not user:
+        if client_ip != "unknown":
+            record_login_failure(db, client_ip)
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    if client_ip != "unknown":
+        clear_login_failures(db, client_ip)
+
+    if (settings.is_production or settings.auth_enabled) and not settings.jwt_configured:
+        log.error("login_blocked", reason="jwt_secret_missing")
+        raise HTTPException(
+            status_code=503,
+            detail="Sign-in is not configured. Ask your administrator to set JWT_SECRET in App Service settings.",
+        )
+
+    try:
+        token = create_access_token(user_id=user.id, username=user.username, role=user.role)
+    except RuntimeError as exc:
+        log.error("login_blocked", reason=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    # Only persist last_login_at once we know the token can be issued.
+    user.last_login_at = datetime.now(timezone.utc)
+    db.commit()
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "display_name": user.display_name or user.username,
+            "role": user.role,
+        },
+    }
+
+
+@app.get("/auth/me", tags=["Auth"], summary="Current signed-in user")
+def auth_me(request: Request):
+    user = require_authenticated_user(request)
+    return {
+        "id": user["id"],
+        "username": user["username"],
+        "display_name": user.get("display_name") or user["username"],
+        "role": user["role"],
+        "is_admin": user.get("role") == ROLE_ADMIN,
+    }
+
+
+@app.get("/auth/users", tags=["Auth"], summary="List application users (admin only)")
+def list_users(request: Request, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    return list_app_users(db)
+
+
+@app.post("/auth/users", tags=["Auth"], summary="Create an application user (admin only)")
+def create_user(
+    request: Request,
+    body: CreateUserRequest,
+    db: Session = Depends(get_db),
+):
+    _ = require_admin_user(request)
+    try:
+        user = create_app_user(
+            db,
+            username=body.username,
+            password=body.password,
+            display_name=body.display_name,
+            role=body.role,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "ok", "user": serialize_app_user(user)}
+
+
+@app.patch("/auth/users/{user_id}/password", tags=["Auth"],
+           summary="Reset a user's password (admin only)")
+def reset_user_password(
+    request: Request,
+    user_id: str = Path(...),
+    body: ResetUserPasswordRequest = Body(...),
+    db: Session = Depends(get_db),
+):
+    _ = require_admin_user(request)
+    try:
+        user = reset_app_user_password(db, user_id, body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"status": "ok", "user": serialize_app_user(user)}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SYSTEM SETTINGS  (Azure, database, application, Kubernetes)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/settings/status", tags=["Settings"],
+         summary="Runtime status for database, CORS, and encryption")
+def settings_status(request: Request):
+    _ = require_admin_user(request)
+    return get_runtime_status()
+
+
+@app.get("/settings", tags=["Settings"],
+         summary="Get all system settings (secrets masked)")
+def list_all_settings(request: Request, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    return get_all_settings(db, masked=True)
+
+
+@app.get("/settings/{category}", tags=["Settings"],
+         summary="Get settings for a category")
+def get_settings_category(request: Request, category: str = Path(...), db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    if category not in SETTING_CATEGORIES:
+        raise HTTPException(404, f"Unknown category. Valid: {list(SETTING_CATEGORIES)}")
+    return get_category_settings(db, category, masked=True)
+
+
+@app.put("/settings/{category}", tags=["Settings"],
+         summary="Save settings for a category to the database")
+def put_settings_category(
+    request: Request,
+    category: str = Path(...),
+    body: Union[
+        AzureSettingsIn,
+        DatabaseSettingsIn,
+        ApplicationSettingsIn,
+        KubernetesSettingsIn,
+        AiSettingsIn,
+    ] = Body(...),
+    db: Session = Depends(get_db),
+):
+    _ = require_admin_user(request)
+    if category not in SETTING_CATEGORIES:
+        raise HTTPException(404, f"Unknown category. Valid: {list(SETTING_CATEGORIES)}")
+    try:
+        saved = save_category_settings(db, category, body.model_dump(exclude_none=True))
+    except RuntimeError as exc:
+        raise HTTPException(400, str(exc)) from exc
+
+    if category == "azure":
+        azure_auth.reload_credential(db)
+    if category in {"application", "kubernetes", "ai"}:
+        invalidate_runtime_config()
+    return {"category": category, "settings": saved, "message": "Settings saved."}
+
+
+@app.post("/settings/azure", tags=["Settings"],
+          summary="Save Azure connection settings")
+def save_azure_settings(request: Request, body: AzureSettingsIn, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    payload = body.model_dump(exclude_none=True)
+    if "client_secret" in payload and payload["client_secret"] == "":
+        payload.pop("client_secret")
+    saved = save_category_settings(db, "azure", payload)
+    azure_auth.reload_credential(db)
+    return {"category": "azure", "settings": saved, "message": "Azure settings saved."}
+
+
+@app.post("/settings/database", tags=["Settings"],
+          summary="Save database connection settings")
+def save_database_settings(request: Request, body: DatabaseSettingsIn, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    payload = body.model_dump(exclude_none=True)
+    if "password" in payload and payload["password"] == "":
+        payload.pop("password")
+    saved = save_category_settings(db, "database", payload)
+    return {
+        "category": "database",
+        "settings": saved,
+        "message": "Database settings saved. Click Apply connection to switch without restarting.",
+        "connection_url": mask_database_url(build_database_url(get_system_config(db, "database"))),
+    }
+
+
+@app.post("/settings/application", tags=["Settings"],
+          summary="Save application settings")
+def save_application_settings(request: Request, body: ApplicationSettingsIn, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    saved = save_category_settings(db, "application", body.model_dump(exclude_none=True))
+    invalidate_runtime_config()
+    return {
+        "category": "application",
+        "settings": saved,
+        "message": "Application settings saved. CORS changes are active immediately.",
+    }
+
+
+@app.post("/settings/kubernetes", tags=["Settings"],
+          summary="Save Kubernetes agent settings")
+def save_kubernetes_settings(request: Request, body: KubernetesSettingsIn, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    payload = body.model_dump(exclude_none=True)
+    if "agent_token" in payload and payload["agent_token"] == "":
+        payload.pop("agent_token")
+    saved = save_category_settings(db, "kubernetes", payload)
+    invalidate_runtime_config()
+    return {"category": "kubernetes", "settings": saved, "message": "Kubernetes settings saved."}
+
+
+@app.post("/settings/ai", tags=["Settings"],
+          summary="Save Azure OpenAI settings for analysis enrichment")
+def save_ai_settings(request: Request, body: AiSettingsIn, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    payload = body.model_dump(exclude_none=True)
+    if "openai_key" in payload and payload["openai_key"] == "":
+        payload.pop("openai_key")
+    saved = save_category_settings(db, "ai", payload)
+    invalidate_runtime_config()
+    return {"category": "ai", "settings": saved, "message": "AI settings saved."}
+
+
+@app.post("/settings/ai/test", tags=["Settings"],
+          summary="Test Azure OpenAI connection")
+def test_ai_settings(
+    request: Request,
+    body: Optional[AiSettingsIn] = None,
+    db: Session = Depends(get_db),
+):
+    _ = require_admin_user(request)
+    cfg = get_system_config(db, "ai")
+    if body:
+        updates = body.model_dump(exclude_none=True)
+        if updates.get("openai_key") == "":
+            updates.pop("openai_key", None)
+        cfg.update(updates)
+    result = verify_ai_connection(cfg, db=db)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("message") or "AI connection test failed.")
+    return result
+
+
+@app.post("/settings/azure/test", tags=["Settings"],
+          summary="Test Azure connection with provided or stored settings")
+def test_azure_settings(
+    request: Request,
+    body: Optional[AzureSettingsIn] = None,
+    db: Session = Depends(get_db),
+):
+    _ = require_admin_user(request)
+    config = get_system_config(db, "azure")
+    if body:
+        overrides = body.model_dump(exclude_none=True)
+        if overrides.get("client_secret") == "":
+            overrides.pop("client_secret", None)
+        config.update(overrides)
+    result = test_azure_connection(config)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("message", "Azure connection failed"))
+    return result
+
+
+@app.post("/settings/database/test", tags=["Settings"],
+          summary="Test database connection with provided or stored settings")
+def test_database_settings(
+    request: Request,
+    body: Optional[DatabaseSettingsIn] = None,
+    db: Session = Depends(get_db),
+):
+    _ = require_admin_user(request)
+    config = get_system_config(db, "database")
+    if body:
+        overrides = body.model_dump(exclude_none=True)
+        if overrides.get("password") == "":
+            overrides.pop("password", None)
+        config.update(overrides)
+    result = test_database_connection(config)
+    if not result.get("ok"):
+        raise HTTPException(400, result.get("message", "Database connection failed"))
+    return result
+
+
+@app.post("/settings/database/apply", tags=["Settings"],
+          summary="Apply stored database connection without restarting the API")
+def apply_database_settings(request: Request, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    try:
+        result = apply_database_connection(db)
+    except Exception as exc:
+        raise HTTPException(400, f"Could not apply database connection: {exc}") from exc
+    invalidate_runtime_config()
+    return result
+
+
+@app.post("/settings/reload", tags=["Settings"],
+          summary="Reload Azure credentials from stored settings")
+def reload_settings(request: Request, db: Session = Depends(get_db)):
+    _ = require_admin_user(request)
+    azure_auth.reload_credential(db)
+    return {"status": "ok", "message": "Azure credentials reloaded from database settings."}
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  COST MANAGEMENT  (Azure Cost Management API — synced to PostgreSQL)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _cost_api_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, CostExportNotConfiguredError):
+        log.error("cost_api.not_configured", error=str(exc))
+        return HTTPException(status_code=503, detail=str(exc))
+    if isinstance(exc, CostExportReadError):
+        detail = str(exc)
+        status = 403 if "authorization" in detail.lower() or "403" in detail else 502
+        log.error("cost_api.read_failed", error=detail, status=status)
+        return HTTPException(status_code=status, detail=detail)
+    log.exception("cost_api.unexpected_error")
+    return HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/costs/timeframes", tags=["Cost Management"],
+         summary="Supported cost explorer timeframes")
+def list_cost_timeframes():
+    return {"timeframes": list_timeframe_catalog()}
+
+
+@app.get("/costs", tags=["Cost Management"],
+         summary="Query actual costs from the database (synced from Azure Cost Management)")
+def get_costs(
+    request: Request,
+    subscription_id: Optional[str] = Query(None),
+    timeframe:       str = Query("MonthToDate"),
+    from_date:       Optional[str] = Query(None, description="YYYY-MM-DD (required for Custom)"),
+    to_date:         Optional[str] = Query(None, description="YYYY-MM-DD (required for Custom)"),
+    granularity:     str = Query("Daily"),
+    resource_types:  Optional[str] = Query(None, description="Comma-separated canonical resource types"),
+    db: Session = Depends(get_db),
+):
+    if should_serve_spa(request, api_query_present=subscription_id is not None):
+        spa = spa_index_response()
+        if spa:
+            return spa
+    if not subscription_id:
+        raise HTTPException(status_code=422, detail="subscription_id is required")
+    subscription_id = _scoped_subscription(db, subscription_id)
+    range_kw = _cost_range_kwargs(timeframe, from_date, to_date, resource_types=resource_types)
+    live_kw = live_range_kw(range_kw)
+    token = _live_cost_token(db)
+    scope = f"/subscriptions/{subscription_id}"
+    db_data, source = resolve_cost_db_then_live(
+        db_call=lambda: daily_cost_response_from_db(db, subscription_id, **range_kw),
+        live_call=lambda: query_daily_costs_live(
+            db, subscription_id, token=token, **live_kw,
+        ),
+    )
+    if db_data:
+        if source != "database":
+            _enqueue_cost_sync(subscription_id, reason="live_fallback_daily")
+        log.info(
+            "cost_api.get_costs",
+            subscription_id=subscription_id,
+            timeframe=timeframe,
+            source=source,
+            rows=len(db_data.get("properties", {}).get("rows", [])),
+        )
+        return {
+            "id": None, "scope": scope, "timeframe": timeframe,
+            "granularity": granularity, "data": db_data, "source": source,
+        }
+    _enqueue_cost_sync(subscription_id, reason="no_synced_rows")
+    log.info(
+        "cost_api.get_costs",
+        subscription_id=subscription_id,
+        timeframe=timeframe,
+        source="database",
+        note="no_synced_rows",
+    )
+    empty = empty_daily_cost_response()
+    return {
+        "id": None, "scope": scope, "timeframe": timeframe,
+        "granularity": granularity, "data": empty, "source": "database",
+        "sync_required": True,
+    }
+
+
+@app.get("/costs/resource-group", tags=["Cost Management"],
+         summary="Daily costs for a resource group (database after sync)")
+def get_rg_costs(
+    subscription_id: str = Query(...),
+    resource_group:  str = Query(...),
+    timeframe:       str = Query("MonthToDate"),
+    from_date:       Optional[str] = Query(None),
+    to_date:         Optional[str] = Query(None),
+    granularity:     str = Query("Daily"),
+    db: Session = Depends(get_db),
+):
+    subscription_id = _scoped_subscription(db, subscription_id)
+    range_kw = _cost_range_kwargs(timeframe, from_date, to_date)
+    scope = f"/subscriptions/{subscription_id}/resourceGroups/{resource_group}"
+    db_data = daily_cost_by_resource_group_from_db(
+        db, subscription_id, resource_group, **range_kw,
+    )
+    if db_data:
+        log.info(
+            "cost_api.get_rg_costs",
+            subscription_id=subscription_id,
+            resource_group=resource_group,
+            timeframe=timeframe,
+            source="database",
+        )
+        return {"id": None, "scope": scope, "data": db_data, "source": "database"}
+    log.info(
+        "cost_api.get_rg_costs",
+        subscription_id=subscription_id,
+        resource_group=resource_group,
+        timeframe=timeframe,
+        source="database",
+        note="no_synced_rows",
+    )
+    empty = empty_daily_cost_response()
+    return {
+        "id": None, "scope": scope, "data": empty, "source": "database",
+        "sync_required": True,
+    }
