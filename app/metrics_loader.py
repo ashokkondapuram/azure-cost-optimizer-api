@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import structlog
 from collections import defaultdict
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import K8sUtilization, OptimizationFinding, OptimizationRun
@@ -237,9 +239,6 @@ def load_cached_resource_facts(db: Session, subscription_id: str) -> dict[str, d
 
     Sources: open findings evidence, then the latest optimization run snapshot.
     """
-    import json
-    from sqlalchemy import func
-
     sub = subscription_id.lower()
     out: dict[str, dict[str, float]] = {}
 

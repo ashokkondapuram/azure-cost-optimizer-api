@@ -54,18 +54,6 @@ def build_findings_summary(db: Session, subscription_id: str | None = None) -> d
         .group_by(OptimizationFinding.status)
         .all()
     )
-    by_severity = dict(
-        db.query(OptimizationFinding.severity, func.count(OptimizationFinding.id))
-        .filter(*filt)
-        .group_by(OptimizationFinding.severity)
-        .all()
-    )
-    by_category = dict(
-        db.query(OptimizationFinding.category, func.count(OptimizationFinding.id))
-        .filter(*filt)
-        .group_by(OptimizationFinding.category)
-        .all()
-    )
 
     open_filt = [*filt, OptimizationFinding.status == "open"]
     open_rows = (
@@ -75,6 +63,15 @@ def build_findings_summary(db: Session, subscription_id: str | None = None) -> d
     )
     deduped_open = dedupe_open_findings_for_display(open_rows)
     open_count = len(deduped_open)
+
+    # Severity and category breakdowns scoped to open findings only
+    by_severity: dict[str, int] = {}
+    by_category: dict[str, int] = {}
+    for f in deduped_open:
+        sev = str(f.severity or "unknown")
+        cat = str(f.category or "unknown")
+        by_severity[sev] = by_severity.get(sev, 0) + 1
+        by_category[cat] = by_category.get(cat, 0) + 1
 
     acknowledged_count = int(by_status_raw.get("acknowledged") or 0)
     ignored_count = int(by_status_raw.get("ignored") or 0)
@@ -131,8 +128,8 @@ def build_findings_summary(db: Session, subscription_id: str | None = None) -> d
         "open_findings": int(open_count),
         "total_estimated_savings_usd": round(float(total_savings), 2),
         "by_status": {str(k or "unknown"): int(v) for k, v in by_status.items()},
-        "by_severity": {str(k or "unknown"): int(v) for k, v in by_severity.items()},
-        "by_category": {str(k or "unknown"): int(v) for k, v in by_category.items()},
+        "by_severity": by_severity,
+        "by_category": by_category,
         "governance_findings": int(governance_count),
         "with_savings_findings": int(with_savings_count),
         "cost_optimization_findings": int(cost_optimization_count),

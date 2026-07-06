@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
@@ -144,8 +145,6 @@ def collapse_open_finding_rows(
     now: datetime | None = None,
 ) -> dict[tuple[str, str, str], list[Any]]:
     """Group open rows by identity key; resolve duplicate open rows in-place."""
-    from collections import defaultdict
-
     grouped: dict[tuple[str, str, str], list[Any]] = defaultdict(list)
     for row in rows:
         if (getattr(row, "status", None) or "").lower() != "open":

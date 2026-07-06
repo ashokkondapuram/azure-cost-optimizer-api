@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -58,15 +58,13 @@ def recent_executions_for_resource(
     days: int = 14,
 ) -> list[RecommendationExecution]:
     """Find executions linked to findings on a resource within the lookback window."""
-    rid = (resource_id or "").lower()
-    cutoff = _utc_now().replace(hour=0, minute=0, second=0, microsecond=0)
-    from datetime import timedelta
-    cutoff = cutoff - timedelta(days=days)
+    rid = normalize_arm_id_lower(resource_id)
+    cutoff = _utc_now().replace(hour=0, minute=0, second=0, microsecond=0) - timedelta(days=days)
     return (
         db.query(RecommendationExecution)
         .join(OptimizationFinding, OptimizationFinding.id == RecommendationExecution.finding_id)
         .filter(
-            OptimizationFinding.resource_id == rid,
+            func.lower(OptimizationFinding.resource_id) == rid,
             RecommendationExecution.executed_at >= cutoff,
         )
         .order_by(RecommendationExecution.executed_at.desc())
@@ -121,6 +119,27 @@ def serialize_execution(row: RecommendationExecution) -> dict:
     }
 
 
+def _bulk_rule_ids_for_executions(
+    db: Session,
+    executions: list[RecommendationExecution],
+) -> dict[str, str]:
+    """Batch-load rule_ids for a list of executions — one query instead of N."""
+    finding_ids = list({ex.finding_id for ex in executions})
+    if not finding_ids:
+        return {}
+    rows = (
+        db.query(OptimizationFinding.id, OptimizationFinding.rule_id)
+        .filter(OptimizationFinding.id.in_(finding_ids))
+        .all()
+    )
+    return {fid: (rule_id or "").upper() for fid, rule_id in rows}
+
+
+def normalize_arm_id_lower(resource_id: str) -> str:
+    """Lowercase-normalize an ARM resource id for case-insensitive DB comparisons."""
+    return (resource_id or "").strip().lower()
+
+
 def escalate_persisted_findings_after_execution(
     db: Session,
     findings: list[dict],
@@ -137,18 +156,29 @@ def escalate_persisted_findings_after_execution(
     severity_rank = {"INFO": 0, "LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
     out: list[dict] = []
 
+    # Collect all resource IDs up front and batch-load executions per resource
+    rid_to_executions: dict[str, list[RecommendationExecution]] = {}
     for finding in findings:
-        rid = (finding.get("resource_id") or "").lower()
+        rid = normalize_arm_id_lower(finding.get("resource_id") or "")
+        if rid and rid not in rid_to_executions:
+            rid_to_executions[rid] = recent_executions_for_resource(db, rid, days=days)
+
+    # Batch-resolve rule_ids for all executions in one query
+    all_executions = [ex for exs in rid_to_executions.values() for ex in exs]
+    execution_rule_ids = _bulk_rule_ids_for_executions(db, all_executions)
+
+    for finding in findings:
+        rid = normalize_arm_id_lower(finding.get("resource_id") or "")
         rule_id = (finding.get("rule_id") or "").upper()
         if not rid or not rule_id:
             out.append(finding)
             continue
 
-        executions = recent_executions_for_resource(db, rid, days=days)
+        executions = rid_to_executions.get(rid, [])
         matched = [
             ex for ex in executions
             if ex.validation_status == "confirmed"
-            and _execution_rule_id(db, ex) == rule_id
+            and execution_rule_ids.get(ex.finding_id, "") == rule_id
         ]
         if not matched:
             out.append(finding)
@@ -172,8 +202,3 @@ def escalate_persisted_findings_after_execution(
         out.append(updated)
 
     return out
-
-
-def _execution_rule_id(db: Session, execution: RecommendationExecution) -> str:
-    row = db.query(OptimizationFinding).filter(OptimizationFinding.id == execution.finding_id).first()
-    return (row.rule_id or "").upper() if row else ""
