@@ -40,8 +40,9 @@ ARM_GET_API_VERSIONS: dict[str, str] = {
     "microsoft.network/privatelinkservices": "2024-05-01",
     "microsoft.network/privatednszones": "2024-06-01",
     # Databases
-    "microsoft.sql/servers": "2023-08-01-preview",
-    "microsoft.sql/servers/databases": "2023-08-01-preview",
+    # FIX: was "2023-08-01-preview" (preview-only, never GA'd) — use stable 2021-11-01
+    "microsoft.sql/servers": "2021-11-01",
+    "microsoft.sql/servers/databases": "2021-11-01",
     "microsoft.documentdb/databaseaccounts": "2024-05-15",
     "microsoft.dbforpostgresql/flexibleservers": "2024-08-01",
     "microsoft.cache/redis": "2024-11-01",
@@ -54,12 +55,15 @@ ARM_GET_API_VERSIONS: dict[str, str] = {
     "microsoft.operationalinsights/workspaces": "2025-02-01",
     "microsoft.insights/components": "2020-02-02",
     # Integration
-    "microsoft.apimanagement/service": "2024-06-01-preview",
+    # FIX: was "2024-06-01-preview" — use stable 2024-05-01
+    "microsoft.apimanagement/service": "2024-05-01",
     "microsoft.datafactory/factories": "2018-06-01",
     "microsoft.logic/workflows": "2019-05-01",
     # Messaging
-    "microsoft.eventhub/namespaces": "2024-05-01-preview",
-    "microsoft.servicebus/namespaces": "2022-10-01-preview",
+    # FIX: was "2024-05-01-preview" — use stable 2024-01-01
+    "microsoft.eventhub/namespaces": "2024-01-01",
+    # FIX: was "2022-10-01-preview" — use stable 2022-10-01
+    "microsoft.servicebus/namespaces": "2022-10-01",
     # Analytics
     "microsoft.databricks/workspaces": "2024-05-01",
     "microsoft.synapse/workspaces": "2021-06-01",
@@ -67,7 +71,8 @@ ARM_GET_API_VERSIONS: dict[str, str] = {
     "microsoft.machinelearningservices/workspaces": "2024-10-01",
     # Backup & Search
     "microsoft.recoveryservices/vaults": "2024-04-01",
-    "microsoft.search/searchservices": "2024-06-01-preview",
+    # FIX: was "2024-06-01-preview" — use stable 2023-11-01
+    "microsoft.search/searchservices": "2023-11-01",
 }
 
 ARM_GET_DEFAULT_API_VERSION = "2024-05-01"

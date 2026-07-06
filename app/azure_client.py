@@ -55,7 +55,9 @@ def _build_all_clients() -> dict[str, Any]:
         keyvault_clients[sid] = KeyVaultManagementClient(cred, sid)
         monitor_clients[sid] = MonitorManagementClient(cred, sid)
         resource_clients[sid] = ResourceManagementClient(cred, sid)
-        cost_clients[sid] = CostManagementClient(cred)
+        # FIX: pass subscription_id so each client is correctly scoped to its
+        # subscription; omitting it caused silent scope mismatches at query time.
+        cost_clients[sid] = CostManagementClient(cred, sid)
 
     return {
         "credential": cred,

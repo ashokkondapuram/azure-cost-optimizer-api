@@ -22,6 +22,10 @@ from app.http_client import BASE, AzureAPIError, _request, clear_cache as clear_
 log = structlog.get_logger()
 
 COST_API_VERSION = os.getenv("AZURE_COST_API_VERSION", "2024-08-01")
+# FIX: Microsoft.Consumption/budgets uses its own stable api-version, separate
+# from the Cost Management query api-version. Using COST_API_VERSION (2024-08-01)
+# here returned 400 UnsupportedApiVersion on all tested subscriptions.
+BUDGETS_API_VERSION = os.getenv("AZURE_BUDGETS_API_VERSION", "2023-05-01")
 COST_API = "azure_cost_management"
 
 # FIX 1: Use RLock so _pause_between_cost_queries can safely call
@@ -743,8 +747,10 @@ class AzureCostClient:
     def list_budgets(self, subscription_id: str) -> list:
         scope_path = _normalize_scope("", subscription_id)
         url = f"{BASE}{scope_path}/providers/Microsoft.Consumption/budgets"
-        # FIX 3: Use COST_API_VERSION constant instead of a hardcoded string.
-        params = {"api-version": COST_API_VERSION}
+        # FIX: Microsoft.Consumption/budgets uses its own stable api-version.
+        # The Cost Management query version (COST_API_VERSION = 2024-08-01)
+        # caused 400 UnsupportedApiVersion on this provider namespace.
+        params = {"api-version": BUDGETS_API_VERSION}
         headers = _headers(self._db, self._token)
         try:
             from app.http_client import get_all_pages
@@ -768,6 +774,7 @@ class AzureCostClient:
 
 __all__ = [
     "AzureCostClient",
+    "BUDGETS_API_VERSION",
     "COST_API",
     "COST_API_VERSION",
     "CostExportNotConfiguredError",
