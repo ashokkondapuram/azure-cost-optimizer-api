@@ -17,6 +17,21 @@ _LOW_VALUE_GOVERNANCE_RULES = frozenset({
     "STORAGE_MISSING_TAGS_EXTENDED",
 })
 
+# Governance rules that remain high-signal even when estimated_savings_usd == 0.
+# These are excluded from the blanket governance score penalty.
+_IMPORTANT_GOVERNANCE_RULES = frozenset({
+    "MISSING_COST_ALLOCATION_TAGS",
+    "RESOURCE_MISSING_REQUIRED_TAGS",
+    "SUBSCRIPTION_MISSING_BUDGET_ALERT",
+    "RESOURCE_UNTAGGED_COST_CENTER",
+})
+
+# Named threshold constants — avoid magic-number coupling between callers.
+FINDING_VALUE_MIN_SCORE: float = 48.0
+# Shortcut threshold: findings above this savings+confidence bar are accepted
+# even if their raw value score is slightly below FINDING_VALUE_MIN_SCORE.
+FINDING_SAVINGS_SHORTCUT_THRESHOLD: float = FINDING_VALUE_MIN_SCORE - 5.0
+
 
 def parse_finding_evidence(finding: Any) -> dict[str, Any]:
     """Return evidence dict from an ORM row or API payload."""
@@ -50,15 +65,19 @@ def _is_rightsizing_finding(finding: Any, evidence: dict[str, Any]) -> bool:
     return action in {"downgrade", "cross_family", "upgrade"}
 
 
-def finding_value_score(finding: Any) -> float:
-    """Higher scores indicate findings worth surfacing in advanced analysis."""
+def finding_value_score(finding: Any, *, _evidence: dict[str, Any] | None = None) -> float:
+    """Higher scores indicate findings worth surfacing in advanced analysis.
+
+    Pass a pre-parsed ``_evidence`` dict to avoid redundant json.loads calls
+    when both this function and the caller already have evidence available.
+    """
     savings = float(_field(finding, "estimated_savings_usd") or 0)
     confidence = int(_field(finding, "confidence_score") or 0)
     waste = int(_field(finding, "waste_score") or 0)
     severity = str(_field(finding, "severity") or "").upper()
     category = str(_field(finding, "category") or "").upper()
     rule_id = str(_field(finding, "rule_id") or "")
-    evidence = parse_finding_evidence(finding)
+    evidence = _evidence if _evidence is not None else parse_finding_evidence(finding)
     data_quality = str(evidence.get("data_quality") or "")
 
     score = 0.0
@@ -89,7 +108,13 @@ def finding_value_score(finding: Any) -> float:
 
     if rule_id in _LOW_VALUE_GOVERNANCE_RULES:
         score -= 35.0
-    elif category == "GOVERNANCE" and savings <= 0 and severity in {"LOW", "INFO"}:
+    elif (
+        category == "GOVERNANCE"
+        and savings <= 0
+        and severity in {"LOW", "INFO"}
+        and rule_id not in _IMPORTANT_GOVERNANCE_RULES
+    ):
+        # Only penalise low-signal governance findings; preserve high-signal ones.
         score -= 28.0
 
     if severity == "INFO":
@@ -102,15 +127,24 @@ def finding_value_score(finding: Any) -> float:
     return max(0.0, round(score, 2))
 
 
-def is_valuable_finding(finding: Any, *, min_score: float = 48.0) -> bool:
-    """True when a finding is actionable enough for advanced analysis."""
+def is_valuable_finding(
+    finding: Any,
+    *,
+    min_score: float = FINDING_VALUE_MIN_SCORE,
+    _evidence: dict[str, Any] | None = None,
+) -> bool:
+    """True when a finding is actionable enough for advanced analysis.
+
+    Pass a pre-parsed ``_evidence`` dict to avoid redundant json.loads calls.
+    """
     savings = float(_field(finding, "estimated_savings_usd") or 0)
     confidence = int(_field(finding, "confidence_score") or 0)
     waste = int(_field(finding, "waste_score") or 0)
     severity = str(_field(finding, "severity") or "").upper()
     category = str(_field(finding, "category") or "").upper()
     rule_id = str(_field(finding, "rule_id") or "")
-    evidence = parse_finding_evidence(finding)
+    # Parse once and reuse for both the shortcut checks and finding_value_score.
+    evidence = _evidence if _evidence is not None else parse_finding_evidence(finding)
 
     if rule_id in _LOW_VALUE_GOVERNANCE_RULES and savings <= 0:
         return False
@@ -119,7 +153,7 @@ def is_valuable_finding(finding: Any, *, min_score: float = 48.0) -> bool:
     if (
         savings >= 15.0
         and confidence >= 55
-        and finding_value_score(finding) >= min_score - 5
+        and finding_value_score(finding, _evidence=evidence) >= FINDING_SAVINGS_SHORTCUT_THRESHOLD
     ):
         return True
     if _is_rightsizing_finding(finding, evidence) and evidence.get("data_quality") == "full_monitor":
@@ -130,25 +164,35 @@ def is_valuable_finding(finding: Any, *, min_score: float = 48.0) -> bool:
         return True
     if waste >= 70 and confidence >= 75:
         return True
-    return finding_value_score(finding) >= min_score
+    return finding_value_score(finding, _evidence=evidence) >= min_score
 
 
 def filter_valuable_findings(
     findings: list[Any],
     *,
     limit: int = 5,
-    min_score: float = 48.0,
+    min_score: float = FINDING_VALUE_MIN_SCORE,
 ) -> list[Any]:
     """Return the highest-value findings for advanced analysis."""
+    # Parse evidence once per finding to avoid repeated json.loads in the
+    # is_valuable_finding / finding_value_score call chain.
+    scored: list[tuple[Any, dict[str, Any], float]] = []
+    for f in findings:
+        ev = parse_finding_evidence(f)
+        if not is_valuable_finding(f, min_score=min_score, _evidence=ev):
+            continue
+        score = finding_value_score(f, _evidence=ev)
+        scored.append((f, ev, score))
+
     ranked = sorted(
-        (f for f in findings if is_valuable_finding(f, min_score=min_score)),
-        key=lambda f: (
-            -finding_value_score(f),
-            -float(_field(f, "estimated_savings_usd") or 0),
-            -int(_field(f, "confidence_score") or 0),
+        scored,
+        key=lambda t: (
+            -t[2],
+            -float(_field(t[0], "estimated_savings_usd") or 0),
+            -int(_field(t[0], "confidence_score") or 0),
         ),
     )
-    return ranked[: max(1, limit)] if ranked else []
+    return [f for f, _ev, _sc in ranked[: max(1, limit)]] if ranked else []
 
 
 def serialize_finding_summary(finding: Any) -> dict[str, Any]:
@@ -167,7 +211,7 @@ def serialize_finding_summary(finding: Any) -> dict[str, Any]:
         "waste_score": int(_field(finding, "waste_score") or 0),
         "action_priority": _field(finding, "action_priority"),
         "impact": _field(finding, "impact"),
-        "value_score": finding_value_score(finding),
+        "value_score": finding_value_score(finding, _evidence=evidence),
         "data_quality": evidence.get("data_quality"),
         "pricing_backed": (
             evidence.get("pricing_status") == "available"

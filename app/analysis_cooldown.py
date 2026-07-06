@@ -6,6 +6,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import AnalysisJob
@@ -95,11 +97,17 @@ def _as_utc(when: datetime | None) -> datetime | None:
 
 
 def last_completed_full_analysis(db: Session, subscription_id: str) -> AnalysisJob | None:
+    """Return the most-recent completed full-analysis job for a subscription.
+
+    Candidates are fetched newest-first in a single DB query.  Only the 25
+    most-recent completed jobs are inspected (Python-side) to resolve the
+    full-analysis flag from components_json, keeping the scan cheap.
+    """
     sub = subscription_id.strip().lower()
     rows = (
         db.query(AnalysisJob)
         .filter(
-            AnalysisJob.subscription_id == sub,
+            func.lower(AnalysisJob.subscription_id) == sub,
             AnalysisJob.status == "completed",
         )
         .order_by(AnalysisJob.completed_at.desc())
@@ -110,6 +118,40 @@ def last_completed_full_analysis(db: Session, subscription_id: str) -> AnalysisJ
         if job_is_full_analysis(row):
             return row
     return None
+
+
+def _last_completed_full_analysis_bulk(
+    db: Session,
+    subscription_ids: list[str],
+) -> dict[str, AnalysisJob]:
+    """Fetch the most-recent completed full-analysis job for each subscription
+    in a single DB round-trip.
+
+    Returns a mapping of normalised subscription_id → AnalysisJob (only
+    subscriptions that have at least one completed full-analysis job are
+    represented).
+    """
+    if not subscription_ids:
+        return {}
+    normalised = [s.strip().lower() for s in subscription_ids]
+    rows = (
+        db.query(AnalysisJob)
+        .filter(
+            func.lower(AnalysisJob.subscription_id).in_(normalised),
+            AnalysisJob.status == "completed",
+        )
+        .order_by(AnalysisJob.completed_at.desc())
+        .limit(25 * len(normalised))
+        .all()
+    )
+    best: dict[str, AnalysisJob] = {}
+    for row in rows:
+        sub = (row.subscription_id or "").strip().lower()
+        if sub in best:
+            continue
+        if job_is_full_analysis(row):
+            best[sub] = row
+    return best
 
 
 def full_analysis_cooldown_status(db: Session, subscription_id: str) -> dict[str, Any]:
@@ -149,6 +191,7 @@ def assert_full_analysis_allowed(
     scope_resource_types: list[str] | None,
     skip_monitor_fetch: bool = False,
 ) -> None:
+    """Raise HTTP 429 (with Retry-After) when the cooldown is still active."""
     if not is_full_analysis_request(
         scope_components,
         scope_resource_types,
@@ -163,9 +206,69 @@ def assert_full_analysis_allowed(
     last_run = status.get("last_run_at")
     next_allowed = status.get("next_allowed_at")
     hours = int(status.get("cooldown_hours") or 24)
-    raise ValueError(
+
+    # Calculate remaining seconds for Retry-After header.
+    retry_after: int | None = None
+    if next_allowed:
+        try:
+            delta = datetime.fromisoformat(next_allowed) - datetime.now(timezone.utc)
+            retry_after = max(1, int(delta.total_seconds()))
+        except Exception:
+            pass
+
+    detail = (
         f"Full analysis already ran within the last {hours} hours. "
         f"Last run: {last_run}. "
         f"Next full analysis available after {next_allowed}. "
         f"Scoped analysis or rule refresh can still run."
     )
+    headers: dict[str, str] = {}
+    if retry_after is not None:
+        headers["Retry-After"] = str(retry_after)
+    raise HTTPException(status_code=429, detail=detail, headers=headers)
+
+
+def batch_assert_full_analysis_allowed(
+    db: Session,
+    subscription_ids: list[str],
+    *,
+    scope_components: list[str] | None,
+    scope_resource_types: list[str] | None,
+    skip_monitor_fetch: bool = False,
+) -> dict[str, str]:
+    """Check cooldown for multiple subscriptions in a single DB query.
+
+    Returns a mapping of subscription_id → error message for every subscription
+    that is still in cooldown.  Subscriptions that may proceed are absent from
+    the returned dict.
+    """
+    if not is_full_analysis_request(
+        scope_components,
+        scope_resource_types,
+        skip_monitor_fetch=skip_monitor_fetch,
+    ):
+        return {}
+    if cooldown_disabled():
+        return {}
+
+    hours = full_analysis_cooldown_hours()
+    cooldown = timedelta(hours=hours)
+    now = datetime.now(timezone.utc)
+
+    last_jobs = _last_completed_full_analysis_bulk(db, subscription_ids)
+    blocked: dict[str, str] = {}
+    for sub in subscription_ids:
+        key = sub.strip().lower()
+        job = last_jobs.get(key)
+        if job is None:
+            continue
+        last_at = _as_utc(job.completed_at)
+        if last_at is None:
+            continue
+        next_allowed = last_at + cooldown
+        if now < next_allowed:
+            blocked[sub] = (
+                f"Full analysis already ran within the last {int(hours)} hours. "
+                f"Next allowed after {next_allowed.isoformat()}."
+            )
+    return blocked

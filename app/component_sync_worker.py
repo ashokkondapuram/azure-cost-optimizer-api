@@ -87,6 +87,31 @@ def _persist_component_sync(db: Session, component: str, when: datetime, status:
     db.commit()
 
 
+def _bust_subscription_caches(subscription_ids: list[str]) -> None:
+    """Proactively evict stale cache entries for every just-synced subscription.
+
+    Both the cost-query cache and the HTTP ETag / Cache-Control header cache
+    are invalidated so that the next request sees fresh post-sync data instead
+    of waiting for the TTL to expire naturally.
+    """
+    from app.cost_query_cache import invalidate_subscription_cost_cache
+
+    for sub in subscription_ids:
+        try:
+            invalidate_subscription_cost_cache(sub)
+        except Exception as exc:
+            log.warning(
+                "scheduled_component_sync.cache_bust_failed",
+                subscription_id=sub,
+                error=str(exc),
+            )
+    if subscription_ids:
+        log.info(
+            "scheduled_component_sync.cache_busted",
+            subscriptions=len(subscription_ids),
+        )
+
+
 def run_component_sync(component: str) -> dict[str, Any]:
     """Sync one optimization component for all subscriptions."""
     from app.auth import get_token, reload_credential
@@ -139,6 +164,10 @@ def run_component_sync(component: str) -> dict[str, Any]:
             synced_at = datetime.now(timezone.utc)
             _last_component_sync_at[component] = synced_at
             _persist_component_sync(db, component, synced_at, "ok")
+            # Bust caches for all successfully synced subscriptions so the
+            # next API request sees fresh post-sync data.
+            _bust_subscription_caches(synced)
+
         result: dict[str, Any] = {
             "status": "ok" if synced else "failed",
             "component": component,
