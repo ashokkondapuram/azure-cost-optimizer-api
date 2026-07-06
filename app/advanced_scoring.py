@@ -8,6 +8,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 import structlog
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.finding_quality import is_valuable_finding
@@ -250,6 +251,11 @@ def serialize_scorecard(row: OptimizationScoring) -> dict[str, Any]:
         try:
             evidence = json.loads(evidence)
         except json.JSONDecodeError:
+            log.warning(
+                "scoring_evidence_json.corrupt",
+                resource_id=row.resource_id,
+                evaluation_date=row.evaluation_date,
+            )
             evidence = {}
     return {
         "id": row.id,
@@ -344,12 +350,23 @@ def list_scoreboard(
         .all()
     )
 
-    tier_summary: dict[str, int] = defaultdict(int)
-    for row in db.query(OptimizationScoring).filter(
-        OptimizationScoring.subscription_id == sub,
-        OptimizationScoring.evaluation_date == eval_date,
-    ).all():
-        tier_summary[row.recommendation_tier or "unknown"] += 1
+    # Aggregate tier counts in a single GROUP BY query — avoids a full table scan
+    # on every paginated call.
+    tier_rows = (
+        db.query(
+            OptimizationScoring.recommendation_tier,
+            func.count(OptimizationScoring.id).label("cnt"),
+        )
+        .filter(
+            OptimizationScoring.subscription_id == sub,
+            OptimizationScoring.evaluation_date == eval_date,
+        )
+        .group_by(OptimizationScoring.recommendation_tier)
+        .all()
+    )
+    tier_summary: dict[str, int] = {
+        (t or "unknown"): cnt for t, cnt in tier_rows
+    }
 
     return {
         "subscription_id": sub,
@@ -358,7 +375,7 @@ def list_scoreboard(
         "total": total,
         "offset": offset,
         "limit": limit,
-        "tier_summary": dict(tier_summary),
+        "tier_summary": tier_summary,
         "total_estimated_monthly_savings": round(
             sum(r.cost_savings_monthly or 0 for r in rows), 2,
         ),

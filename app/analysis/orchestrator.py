@@ -8,8 +8,8 @@ from typing import Any, Callable
 from sqlalchemy.orm import Session
 
 from app.analysis_persist import persist_optimization_run
-
-log = structlog.get_logger()
+from app.analysis_summary import merge_analysis_results, summarize_findings
+from app.optimizer.component_map import ANALYSIS_BATCHES, resolve_batches, resource_types_for_components
 from app.analysis.resource_graph import assign_action_chains, build_disk_snapshot_links, build_resource_graph
 from app.cost_db import daily_rate_by_service, resource_cost_map_from_db, resource_daily_cost_histories
 from app.optimizer.engine_config import get_effective_config
@@ -31,6 +31,8 @@ from app.utilization_history import (
 )
 from app.resource_store import list_all_resources_db, list_resources_by_types_db
 from app.resource_type_map import arm_provider_type
+
+log = structlog.get_logger()
 
 # Canonical DB type → ARM resource type (for engine metadata)
 CANONICAL_TO_ARM: dict[str, str] = {
@@ -511,8 +513,6 @@ def run_engine_on_buckets(
     return result
 
 
-from app.analysis_summary import merge_analysis_results, summarize_findings
-from app.optimizer.component_map import ANALYSIS_BATCHES, resolve_batches, resource_types_for_components
 def filter_buckets(full: dict[str, list], bucket_keys: list[str]) -> dict[str, list]:
     """Return a bucket dict containing only the requested keys (others empty)."""
     base = empty_buckets()
@@ -551,7 +551,7 @@ def run_db_analysis(
     Returns the same shape as live analyze for API/UI compatibility.
 
     When ``fetch_monitor_metrics`` is False, reuses cached utilization facts from
-  prior runs (rule-config refresh — no Azure Monitor API calls).
+    prior runs (rule-config refresh — no Azure Monitor API calls).
     """
     sub = subscription_id.lower()
     scope_components = [c for c in (scope_components or []) if c]
@@ -655,8 +655,6 @@ def run_db_analysis(
 
     if engine_version == "extended" and buckets.get("vms"):
         from app.commitment_findings import dedupe_commitment_findings
-        from app.analysis_summary import summarize_findings
-        from app.optimizer.engine_config import get_effective_config
         from app.vm_sizing_persist import supplement_vm_rightsizing_findings
 
         merged_overrides = {**get_effective_config(db, profile), **(rule_overrides or {})}
@@ -677,7 +675,6 @@ def run_db_analysis(
         )
     elif engine_version == "extended":
         from app.commitment_findings import dedupe_commitment_findings
-        from app.analysis_summary import summarize_findings
 
         findings = dedupe_commitment_findings(result.get("findings") or [])
         if findings is not result.get("findings"):
@@ -696,8 +693,6 @@ def run_db_analysis(
         escalated = escalate_persisted_findings_after_execution(db, result.get("findings") or [])
         if escalated is not result.get("findings"):
             result["findings"] = escalated
-            from app.analysis_summary import summarize_findings
-
             result["summary"] = summarize_findings(
                 escalated,
                 engine_version,
