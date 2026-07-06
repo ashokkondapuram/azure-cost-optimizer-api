@@ -389,6 +389,19 @@ export const OVERVIEW_NAV = [
   { path: '/optimization-hub', title: 'Optimization hub', iconKey: 'actions' },
 ];
 
+/**
+ * Advanced tools nav group shown in the Overview section of the sidebar.
+ * Each item maps directly to a lazy-loaded route in App.js.
+ */
+export const ADVANCED_TOOLS_NAV = [
+  { path: '/waste-heatmap',   title: 'Waste heatmap',       iconKey: 'history' },
+  { path: '/tag-compliance',  title: 'Tag compliance',      iconKey: 'settings' },
+  { path: '/auto-scheduler',  title: 'Auto scheduler',      iconKey: 'history' },
+  { path: '/notifications',   title: 'Notification channels', iconKey: 'settings' },
+  { path: '/anomaly-detector', title: 'Anomaly detector',   iconKey: 'costs' },
+  { path: '/timeline',        title: 'Optimization timeline', iconKey: 'history' },
+];
+
 /** Collapsible sidebar group for optimization tools and admin settings. */
 export const SYSTEM_NAV_GROUP = {
   id: 'system',
@@ -397,6 +410,18 @@ export const SYSTEM_NAV_GROUP = {
   color: '#64748b',
   defaultOpen: false,
   adminOnly: true,
+};
+
+/**
+ * Advanced tools nav group definition (collapsible, always visible).
+ * Rendered by SidebarNav between Overview and Resources.
+ */
+export const ADVANCED_NAV_GROUP = {
+  id: 'advanced',
+  label: 'Advanced tools',
+  iconKey: 'optimization',
+  color: '#818cf8',
+  defaultOpen: false,
 };
 
 /** @deprecated Use SYSTEM_NAV_GROUP */
@@ -575,10 +600,12 @@ export const DEFAULT_NAV_OPEN = {
     NAV_RESOURCE_GROUPS.map((g) => [g.id, !!g.defaultOpen]),
   ),
   [SYSTEM_NAV_GROUP.id]: SYSTEM_NAV_GROUP.defaultOpen,
+  [ADVANCED_NAV_GROUP.id]: ADVANCED_NAV_GROUP.defaultOpen,
 };
 
 const OPTIMIZATION_PATHS = OPTIMIZATION_NAV_ITEMS.map((item) => item.path);
 const SYSTEM_PATHS = SYSTEM_NAV.map((item) => item.path);
+const ADVANCED_PATHS = ADVANCED_TOOLS_NAV.map((item) => item.path);
 
 export function isOptimizationPath(pathname) {
   return OPTIMIZATION_PATHS.some(
@@ -589,6 +616,10 @@ export function isOptimizationPath(pathname) {
 export function isSystemPath(pathname) {
   return isOptimizationPath(pathname)
     || SYSTEM_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+export function isAdvancedPath(pathname) {
+  return ADVANCED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 /** System nav (optimization tools + admin) is admin-only in the sidebar. */
@@ -613,6 +644,7 @@ export function systemNavGroupOpen(groups) {
 
 export function groupForPath(pathname) {
   if (isSystemPath(pathname)) return SYSTEM_NAV_GROUP.id;
+  if (isAdvancedPath(pathname)) return ADVANCED_NAV_GROUP.id;
   return Object.entries(NAV_GROUPS).find(([, g]) =>
     g.routes.some((r) => pathname === r || pathname.startsWith(`${r}/`)),
   )?.[0] ?? null;
@@ -624,11 +656,18 @@ export function getPageTitle(pathname) {
     '/findings': 'Recommendations',
     '/admin/api-explorer': 'API explorer',
     '/optimization-hub': 'Optimization hub',
+    // Advanced pages
+    '/waste-heatmap':    'Waste heatmap',
+    '/tag-compliance':   'Tag compliance',
+    '/auto-scheduler':   'Auto scheduler',
+    '/notifications':    'Notification channels',
+    '/anomaly-detector': 'Anomaly detector',
+    '/timeline':         'Optimization timeline',
   };
   if (extra[pathname]) return extra[pathname];
   const resource = Object.values(RESOURCE_PAGES).find((p) => p.path === pathname);
   if (resource) return resource.title;
-  const overview = [...OVERVIEW_NAV, ...OPTIMIZATION_NAV_ITEMS, ...SYSTEM_NAV].find((p) => p.path === pathname);
+  const overview = [...OVERVIEW_NAV, ...OPTIMIZATION_NAV_ITEMS, ...SYSTEM_NAV, ...ADVANCED_TOOLS_NAV].find((p) => p.path === pathname);
   return overview?.title || APP_NAME;
 }
 

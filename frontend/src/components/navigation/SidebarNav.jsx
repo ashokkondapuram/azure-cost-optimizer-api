@@ -5,7 +5,8 @@ import {
   LayoutDashboard, HardDrive, Database, Shield, DollarSign, Search,
   ChevronRight, Server, Container, KeyRound, AppWindow, Layers,
   GitBranch, CloudCog, Settings, Boxes, Globe, Network,
-  ChevronsDownUp, ChevronsUpDown,
+  ChevronsDownUp, ChevronsUpDown, Flame, Tag, CalendarClock,
+  Bell, TrendingUp, GitCommitHorizontal,
 } from 'lucide-react';
 import AssetIcon from '../AssetIcon';
 import usePersistedState from '../../hooks/usePersistedState';
@@ -14,6 +15,8 @@ import { AppCtx } from '../../App';
 import { fetchResourceCounts } from '../../api/azure';
 import {
   OVERVIEW_NAV,
+  ADVANCED_TOOLS_NAV,
+  ADVANCED_NAV_GROUP,
   NAV_GROUP_EXTRA_LINKS,
   SYSTEM_NAV_GROUP,
   systemNavGroupOpen,
@@ -72,6 +75,16 @@ const FALLBACK_ICONS = {
   backup: HardDrive,
   search: Search,
   keyvaults: KeyRound,
+};
+
+// Icons specifically for advanced tool nav items
+const ADVANCED_ITEM_ICONS = {
+  '/waste-heatmap':    Flame,
+  '/tag-compliance':   Tag,
+  '/auto-scheduler':   CalendarClock,
+  '/notifications':    Bell,
+  '/anomaly-detector': TrendingUp,
+  '/timeline':         GitCommitHorizontal,
 };
 
 function NavIcon({ iconKey, size = 14 }) {
@@ -164,7 +177,7 @@ export default function SidebarNav({ onNavClick }) {
     });
   };
 
-  const navLink = (path, label, iconKey, { end = false, sub = false } = {}) => (
+  const navLink = (path, label, iconKey, { end = false, sub = false, Icon = null } = {}) => (
     <NavLink
       key={path}
       to={path}
@@ -172,7 +185,7 @@ export default function SidebarNav({ onNavClick }) {
       className={({ isActive }) => `nav-item${sub ? ' nav-sub' : ''}${isActive ? ' active' : ''}`}
       onClick={onNavClick}
     >
-      <NavIcon iconKey={iconKey} size={sub ? 14 : 16} />
+      {Icon ? <Icon size={sub ? 14 : 16} /> : <NavIcon iconKey={iconKey} size={sub ? 14 : 16} />}
       {label}
     </NavLink>
   );
@@ -181,6 +194,23 @@ export default function SidebarNav({ onNavClick }) {
     <div className="sidebar-nav">
       <div className="sidebar-section">Overview</div>
       {OVERVIEW_NAV.map((item) => navLink(item.path, item.title, item.iconKey, { end: item.end }))}
+
+      {/* ── Advanced tools collapsible group ───────────────────────── */}
+      <NavGroup
+        id={ADVANCED_NAV_GROUP.id}
+        label={ADVANCED_NAV_GROUP.label}
+        iconKey={ADVANCED_NAV_GROUP.iconKey}
+        color={ADVANCED_NAV_GROUP.color}
+        open={!!groups[ADVANCED_NAV_GROUP.id]}
+        onToggle={() => toggleGroup(ADVANCED_NAV_GROUP.id)}
+      >
+        {ADVANCED_TOOLS_NAV.map((item) =>
+          navLink(item.path, item.title, item.iconKey, {
+            sub: true,
+            Icon: ADVANCED_ITEM_ICONS[item.path] || null,
+          }),
+        )}
+      </NavGroup>
 
       <div className="sidebar-section sidebar-section--row">
         <span>Resources</span>

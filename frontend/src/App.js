@@ -26,6 +26,7 @@ import { PAGE_ICONS, iconForRoute } from './config/assetIcons';
 import { getPageTitle, APP_NAME } from './config/appRegistry';
 import { formatUserRole } from './utils/roleLabels';
 import './styles/features.css';
+import './styles/advanced.css';
 
 const Dashboard          = lazy(() => import('./pages/Dashboard'));
 const CostExplorer       = lazy(() => import('./pages/CostExplorer'));
@@ -42,6 +43,14 @@ const Login              = lazy(() => import('./pages/Login'));
 const SavingsRealised    = lazy(() => import('./pages/SavingsRealised'));
 const DriftDetection     = lazy(() => import('./pages/DriftDetection'));
 const CrossSubscription  = lazy(() => import('./pages/CrossSubscription'));
+
+// ── Advanced pages (new) ────────────────────────────────────────────────────
+const WasteHeatmap         = lazy(() => import('./pages/WasteHeatmap'));
+const TagCompliancePage    = lazy(() => import('./pages/TagCompliancePage'));
+const AutoScheduler        = lazy(() => import('./pages/AutoScheduler'));
+const NotificationChannels = lazy(() => import('./pages/NotificationChannels'));
+const CostAnomalyDetector  = lazy(() => import('./pages/CostAnomalyDetector'));
+const OptimizationTimeline = lazy(() => import('./pages/OptimizationTimeline'));
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -180,6 +189,15 @@ function Shell() {
                 <Route path="/history" element={<RunHistory />} />
                 <Route path="/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
                 <Route path="/admin/api-explorer" element={<ProtectedRoute adminOnly><ApiExplorer /></ProtectedRoute>} />
+
+                {/* ── Advanced pages ───────────────────────────────────── */}
+                <Route path="/waste-heatmap"  element={<WasteHeatmap />} />
+                <Route path="/tag-compliance" element={<TagCompliancePage />} />
+                <Route path="/auto-scheduler" element={<AutoScheduler />} />
+                <Route path="/notifications"  element={<NotificationChannels />} />
+                <Route path="/anomaly-detector" element={<CostAnomalyDetector />} />
+                <Route path="/timeline"       element={<OptimizationTimeline />} />
+
                 {createResourceRoutes()}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
