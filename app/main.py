@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 from app.__version__ import __version__
 from app.middleware.dynamic_cors import DynamicCORSMiddleware
 from app.middleware.app_auth import AppAuthMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.http_cache import cache_control_middleware
 from app.runtime_config import invalidate_runtime_config, get_runtime_status
 from app.azure_cost import AzureCostClient, CostExportNotConfiguredError, CostExportReadError
@@ -266,9 +267,20 @@ def openapi_json_for_spa(request: Request):
     return app.openapi()
 
 
+# ── Middleware stack (outermost → innermost call order) ───────────────────────
+# SecurityHeadersMiddleware must wrap everything so headers are added even
+# when inner middleware short-circuits (e.g. CORS pre-flight, auth 401).
+app.add_middleware(SecurityHeadersMiddleware, is_production=settings.is_production)
 app.add_middleware(DynamicCORSMiddleware)
 app.add_middleware(AppAuthMiddleware)
 app.middleware("http")(cache_control_middleware)
+
+# Trust the Azure-injected X-Forwarded-For header from App Service / App Gateway
+# so that client_ip resolution in rate-limiting sees the real caller IP, not the
+# proxy address.  ONLY enable this when the app sits behind a known trusted proxy.
+if settings.is_production:
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+    app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 # Register advanced tools router
 # Provides: GET/POST /api/waste-heatmap, /api/tag-compliance,
@@ -465,6 +477,23 @@ def _verify_k8s_read_access(
         return
     if settings.is_production:
         raise HTTPException(status_code=401, detail="Sign in required")
+
+
+# ---------------------------------------------------------------------------
+# Helper: resolve the real client IP whether or not we sit behind a proxy.
+# ProxyHeadersMiddleware (added above for production) rewrites request.client
+# from X-Forwarded-For, so request.client.host is already the real IP by the
+# time we reach route handlers.  This helper centralises the fallback logic.
+# ---------------------------------------------------------------------------
+def _client_ip(request: Request) -> str:
+    if request.client and request.client.host:
+        return request.client.host
+    # Belt-and-suspenders fallback when ProxyHeadersMiddleware is not active
+    # (e.g. unit tests) — read the header directly.
+    forwarded = request.headers.get("X-Forwarded-For", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return "unknown"
 
 
 class RuleConfigIn(BaseModel):
@@ -737,11 +766,34 @@ class ResetUserPasswordRequest(BaseModel):
     password: str = Field(..., min_length=8, max_length=256)
 
 
+# Typed body for PUT /settings/{category} — avoids raw dict deserialization
+# before Pydantic validation runs (FastAPI rejects malformed JSON at HTTP layer).
+_SettingsBody = Annotated[
+    Union[
+        AzureSettingsIn,
+        DatabaseSettingsIn,
+        ApplicationSettingsIn,
+        KubernetesSettingsIn,
+        AiSettingsIn,
+    ],
+    Body(...),
+]
+
+
+class ApplyDatabaseIn(BaseModel):
+    """Confirmation guard for the live database-connection switch."""
+    confirm: bool = Field(
+        ...,
+        description="Must be true to apply the stored database connection without restarting.",
+    )
+
+
 # ─── Health ───────────────────────────────────────────────────────────────────
 
 @app.get("/health", tags=["System"])
 def health():
-    return {"status": "ok", "version": __version__}
+    # Version omitted — avoid disclosing build info to unauthenticated callers.
+    return {"status": "ok"}
 
 
 @app.get("/health/live", tags=["System"])
@@ -765,14 +817,15 @@ def health_ready(db: Session = Depends(get_db)):
             status_code=503,
             content={"status": "not_ready", **checks},
         )
-    return {"status": "ready", **checks}
+    # Version is exposed here — only reached by authenticated infra probes.
+    return {"status": "ready", "version": __version__, **checks}
 
 
 # ─── Application auth ─────────────────────────────────────────────────────────
 
 @app.post("/auth/login", tags=["Auth"], summary="Sign in with username and password")
 def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = _client_ip(request)
 
     # Skip rate limiting for unresolvable IPs (e.g. behind a proxy returning None)
     # to avoid locking all users into a shared bucket.
@@ -877,8 +930,6 @@ def reset_user_password(
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Category → model map used by the generic PUT /settings/{category} endpoint.
-# Explicit dispatch avoids Union-matching ambiguity where overlapping field
-# names could cause Pydantic to silently coerce the wrong model.
 _SETTINGS_MODEL_MAP: dict[str, type[BaseModel]] = {
     "azure":       AzureSettingsIn,
     "database":    DatabaseSettingsIn,
@@ -916,9 +967,13 @@ def get_settings_category(request: Request, category: str = Path(...), db: Sessi
 def put_settings_category(
     request: Request,
     category: str = Path(...),
-    body: dict = Body(...),
+    body: _SettingsBody = Body(...),
     db: Session = Depends(get_db),
 ):
+    """Generic settings upsert.  Body is validated by FastAPI against the typed
+    Union before this handler runs — malformed payloads are rejected at the HTTP
+    layer with HTTP 422 instead of reaching application logic.
+    """
     _ = require_admin_user(request)
     if category not in SETTING_CATEGORIES:
         raise HTTPException(404, f"Unknown category. Valid: {list(SETTING_CATEGORIES)}")
@@ -927,8 +982,10 @@ def put_settings_category(
     if model_cls is None:
         raise HTTPException(404, f"Unknown category. Valid: {list(_SETTINGS_MODEL_MAP)}")
 
+    # Re-validate against the category-specific model so that, e.g., an
+    # AiSettingsIn body sent to PUT /settings/azure is rejected cleanly.
     try:
-        parsed = model_cls.model_validate(body)
+        parsed = model_cls.model_validate(body.model_dump(exclude_none=True))
     except Exception as exc:
         raise HTTPException(422, str(exc)) from exc
 
@@ -1071,8 +1128,21 @@ def test_database_settings(
 
 @app.post("/settings/database/apply", tags=["Settings"],
           summary="Apply stored database connection without restarting the API")
-def apply_database_settings(request: Request, db: Session = Depends(get_db)):
+def apply_database_settings(
+    request: Request,
+    body: ApplyDatabaseIn,
+    db: Session = Depends(get_db),
+):
+    """Requires { \"confirm\": true } in the request body as a CSRF-style double-submit
+    guard — prevents an attacker from silently redirecting the DB connection via a
+    cross-site request against an admin browser session.
+    """
     _ = require_admin_user(request)
+    if not body.confirm:
+        raise HTTPException(
+            status_code=400,
+            detail='Set \"confirm\": true to apply the database connection change.',
+        )
     try:
         result = apply_database_connection(db)
     except Exception as exc:
@@ -1108,7 +1178,9 @@ def _cost_api_http_error(exc: Exception) -> HTTPException:
 
 @app.get("/costs/timeframes", tags=["Cost Management"],
          summary="Supported cost explorer timeframes")
-def list_cost_timeframes():
+def list_cost_timeframes(request: Request):
+    """Gated behind authentication — timeframe catalog is internal API surface."""
+    _ = require_authenticated_user(request)
     return {"timeframes": list_timeframe_catalog()}
 
 
