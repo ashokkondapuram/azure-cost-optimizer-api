@@ -339,6 +339,10 @@ def score_subscriptions_parallel(
     Each subscription runs in its own thread with a dedicated DB session.
     Results are returned in the same order as input.
     """
+    # Guard: nothing to do — ThreadPoolExecutor(max_workers=0) raises ValueError
+    if not subscription_ids:
+        return []
+
     from app.database import SessionLocal
 
     def score_one(sub_id: str) -> dict[str, Any]:
@@ -448,6 +452,10 @@ def list_scoreboard(
     sub = subscription_id.strip().lower()
     eval_date = _resolve_evaluation_date(db, sub, evaluation_date)
 
+    # Clamp pagination params before any DB interaction
+    safe_limit = max(1, min(limit, 500))
+    safe_offset = max(0, offset)
+
     q = db.query(OptimizationScoring).filter(
         OptimizationScoring.subscription_id == sub,
         OptimizationScoring.evaluation_date == eval_date,
@@ -467,19 +475,30 @@ def list_scoreboard(
             OptimizationScoring.overall_recommendation_score.desc(),
             OptimizationScoring.cost_savings_monthly.desc(),
         )
-        .offset(max(0, offset))
-        .limit(max(1, min(limit, 500)))
+        .offset(safe_offset)
+        .limit(safe_limit)
         .all()
     )
 
-    all_rows = db.query(OptimizationScoring).filter(
-        OptimizationScoring.subscription_id == sub,
-        OptimizationScoring.evaluation_date == eval_date,
-    ).all()
-    tier_summary: dict[str, int] = defaultdict(int)
-    for row in all_rows:
-        tier_summary[row.recommendation_tier or "unknown"] += 1
-
+    # Build tier summary from the filtered query (avoids a redundant full-table SELECT)
+    # Uses a lightweight GROUP BY aggregation instead of loading all rows into memory.
+    from sqlalchemy import case
+    tier_summary_rows = (
+        db.query(
+            OptimizationScoring.recommendation_tier,
+            func.count(OptimizationScoring.id).label("cnt"),
+        )
+        .filter(
+            OptimizationScoring.subscription_id == sub,
+            OptimizationScoring.evaluation_date == eval_date,
+        )
+        .group_by(OptimizationScoring.recommendation_tier)
+        .all()
+    )
+    tier_summary: dict[str, int] = {
+        (row.recommendation_tier or "unknown"): row.cnt
+        for row in tier_summary_rows
+    }
     maintenance_held_count = tier_summary.get("maintenance_hold", 0)
 
     return {
@@ -487,9 +506,9 @@ def list_scoreboard(
         "evaluation_date": eval_date,
         "count": len(rows),
         "total": total,
-        "offset": offset,
-        "limit": limit,
-        "tier_summary": dict(tier_summary),
+        "offset": safe_offset,
+        "limit": safe_limit,
+        "tier_summary": tier_summary,
         "maintenance_blocked_count": maintenance_held_count,
         "total_estimated_monthly_savings": round(
             sum(r.cost_savings_monthly or 0 for r in rows), 2,

@@ -37,14 +37,22 @@ _arm_auth_ctx: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
 
 @contextmanager
 def scoped_session(db=None):
-    """Yield a DB session, closing it only when we opened it."""
+    """Yield a DB session, closing it only when we opened it.
+
+    Exceptions from the caller's body propagate normally; the session is
+    always closed if we own it, but we never swallow errors.
+    """
     owned = db is None
     if owned:
         from app.database import SessionLocal
         db = SessionLocal()
     try:
         yield db
-    finally:
+    except Exception:
+        if owned:
+            db.close()
+        raise
+    else:
         if owned:
             db.close()
 
@@ -144,13 +152,18 @@ def get_credential(db=None):
 
 
 def reload_credential(db=None) -> None:
-    """Clear token cache and rebuild credential from latest settings."""
+    """Clear token cache and rebuild credential from latest settings.
+
+    Both _cache and _credential are reset inside a single lock acquisition so
+    no other thread can read a stale token between the two operations.
+    """
     global _credential
     with scoped_session(db) as session:
         with _lock:
             _cache.clear()
             _credential = None
             clear_token_cache(session)
+    # Rebuild outside the lock so token-fetch I/O does not block other threads
     get_credential(db)
     try:
         from app import azure_client
