@@ -7,6 +7,7 @@ import {
   GitBranch, CloudCog, Settings, Boxes, Globe, Network,
   ChevronsDownUp, ChevronsUpDown, Flame, Tag, CalendarClock,
   Bell, TrendingUp, GitCommitHorizontal, Wallet, PiggyBank, ShieldCheck,
+  BookMarked, ShieldCheck as GovernanceIcon, Layers as AllocationIcon, Download, BarChart2, Zap,
 } from 'lucide-react';
 import AssetIcon from '../AssetIcon';
 import usePersistedState from '../../hooks/usePersistedState';
@@ -79,16 +80,25 @@ const FALLBACK_ICONS = {
 
 // Icons specifically for advanced tool nav items
 const ADVANCED_ITEM_ICONS = {
-  '/waste-heatmap':    Flame,
-  '/tag-compliance':   Tag,
-  '/auto-scheduler':   CalendarClock,
-  '/notifications':    Bell,
-  '/anomaly-detector': TrendingUp,
-  '/timeline':         GitCommitHorizontal,
+  '/waste-heatmap':       Flame,
+  '/tag-compliance':      Tag,
+  '/auto-scheduler':      CalendarClock,
+  '/notifications':       Bell,
+  '/anomaly-detector':    TrendingUp,
+  '/timeline':            GitCommitHorizontal,
+  '/ai-analysis':         Zap,
   // Phase 2
-  '/budgets':          Wallet,
-  '/savings-planner':  PiggyBank,
-  '/policy':           ShieldCheck,
+  '/budgets':             Wallet,
+  '/savings-planner':     PiggyBank,
+  '/policy':              ShieldCheck,
+  // Week 4
+  '/reservation-advisor': BookMarked,
+  '/governance':          GovernanceIcon,
+  // Week 5
+  '/cost-allocation':     AllocationIcon,
+  '/export-center':       Download,
+  // Ongoing
+  '/demand-forecaster':   BarChart2,
 };
 
 function NavIcon({ iconKey, size = 14 }) {

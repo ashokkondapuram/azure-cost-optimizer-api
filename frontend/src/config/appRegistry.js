@@ -394,16 +394,25 @@ export const OVERVIEW_NAV = [
  * Each item maps directly to a lazy-loaded route in App.js.
  */
 export const ADVANCED_TOOLS_NAV = [
-  { path: '/waste-heatmap',    title: 'Waste heatmap',          iconKey: 'history' },
-  { path: '/tag-compliance',   title: 'Tag compliance',         iconKey: 'settings' },
-  { path: '/auto-scheduler',   title: 'Auto scheduler',         iconKey: 'history' },
-  { path: '/notifications',    title: 'Notification channels',  iconKey: 'settings' },
-  { path: '/anomaly-detector', title: 'Anomaly detector',       iconKey: 'costs' },
-  { path: '/timeline',         title: 'Optimization timeline',  iconKey: 'history' },
+  { path: '/waste-heatmap',       title: 'Waste heatmap',          iconKey: 'history' },
+  { path: '/tag-compliance',      title: 'Tag compliance',         iconKey: 'settings' },
+  { path: '/auto-scheduler',      title: 'Auto scheduler',         iconKey: 'history' },
+  { path: '/notifications',       title: 'Notification channels',  iconKey: 'settings' },
+  { path: '/anomaly-detector',    title: 'Anomaly detector',       iconKey: 'costs' },
+  { path: '/timeline',            title: 'Optimization timeline',  iconKey: 'history' },
+  { path: '/ai-analysis',         title: 'AI analysis',            iconKey: 'engine' },
   // Phase 2
-  { path: '/budgets',          title: 'Budget manager',         iconKey: 'costs' },
-  { path: '/savings-planner',  title: 'Savings planner',        iconKey: 'costs' },
-  { path: '/policy',           title: 'Policy enforcement',     iconKey: 'settings' },
+  { path: '/budgets',             title: 'Budget manager',         iconKey: 'costs' },
+  { path: '/savings-planner',     title: 'Savings planner',        iconKey: 'costs' },
+  { path: '/policy',              title: 'Policy enforcement',     iconKey: 'settings' },
+  // Week 4
+  { path: '/reservation-advisor', title: 'Reservation advisor',    iconKey: 'costs' },
+  { path: '/governance',          title: 'Governance dashboard',   iconKey: 'settings' },
+  // Week 5
+  { path: '/cost-allocation',     title: 'Cost allocation',        iconKey: 'costs' },
+  { path: '/export-center',       title: 'Export center',          iconKey: 'history' },
+  // Ongoing
+  { path: '/demand-forecaster',   title: 'Demand forecaster',      iconKey: 'costs' },
 ];
 
 /** Collapsible sidebar group for optimization tools and admin settings. */
@@ -668,10 +677,19 @@ export function getPageTitle(pathname) {
     '/notifications':    'Notification channels',
     '/anomaly-detector': 'Anomaly detector',
     '/timeline':         'Optimization timeline',
+    '/ai-analysis':      'AI analysis',
     // Phase 2
-    '/budgets':         'Budget manager',
-    '/savings-planner': 'Savings planner',
-    '/policy':          'Policy enforcement',
+    '/budgets':          'Budget manager',
+    '/savings-planner':  'Savings planner',
+    '/policy':           'Policy enforcement',
+    // Week 4
+    '/reservation-advisor': 'Reservation advisor',
+    '/governance':          'Governance dashboard',
+    // Week 5
+    '/cost-allocation':  'Cost allocation',
+    '/export-center':    'Export center',
+    // Ongoing
+    '/demand-forecaster': 'Demand forecaster',
   };
   if (extra[pathname]) return extra[pathname];
   const resource = Object.values(RESOURCE_PAGES).find((p) => p.path === pathname);
