@@ -35,6 +35,20 @@ _arm_auth_ctx: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
 )
 
 
+@contextmanager
+def scoped_session(db=None):
+    """Yield a DB session, closing it only when we opened it."""
+    owned = db is None
+    if owned:
+        from app.database import SessionLocal
+        db = SessionLocal()
+    try:
+        yield db
+    finally:
+        if owned:
+            db.close()
+
+
 def resolve_default_auth_mode() -> str:
     """Use managed identity on Azure App Service; credentials elsewhere unless overridden."""
     from app.platform import is_azure_app_service
@@ -58,11 +72,16 @@ def build_credential(config: dict):
         client_id = config.get("client_id")
         client_secret = config.get("client_secret")
         if tenant_id and client_id and client_secret:
-            return ClientSecretCredential(
-                tenant_id=tenant_id,
-                client_id=client_id,
-                client_secret=client_secret,
-            )
+            try:
+                return ClientSecretCredential(
+                    tenant_id=tenant_id,
+                    client_id=client_id,
+                    client_secret=client_secret,
+                )
+            except Exception as exc:
+                raise ValueError(
+                    f"Failed to build service principal credential: {exc}"
+                ) from exc
         raise ValueError(
             "Service principal auth requires tenant ID, client ID, and client secret."
         )
@@ -82,8 +101,7 @@ def _env_config() -> dict:
 
 def resolve_auth_config(db=None) -> dict:
     """Effective Azure auth settings — always prefer PostgreSQL settings when available."""
-    session, owned = _open_db_session(db)
-    try:
+    with scoped_session(db) as session:
         config = _env_config()
         try:
             from app.services.system_settings import get_effective_config
@@ -91,9 +109,6 @@ def resolve_auth_config(db=None) -> dict:
         except Exception:
             pass
         return config
-    finally:
-        if owned:
-            session.close()
 
 
 @contextmanager
@@ -111,39 +126,31 @@ def current_arm_auth() -> dict:
 
 
 def get_credential(db=None):
-    """Return Azure credential from DB settings, falling back to environment."""
+    """Return Azure credential from DB settings, falling back to environment.
+
+    Thread-safe: the global _credential is built exactly once under _lock.
+    """
     global _credential
+    # Fast path — already built (volatile read is fine; worst case we enter the lock once extra)
     if _credential is not None:
         return _credential
-
-    session, owned = _open_db_session(db)
-    try:
-        _credential = build_credential(resolve_auth_config(session))
-        return _credential
-    finally:
-        if owned:
-            session.close()
-
-
-def _open_db_session(db):
-    if db is not None:
-        return db, False
-    from app.database import SessionLocal
-    return SessionLocal(), True
+    with _lock:
+        # Double-checked locking: re-test inside the lock
+        if _credential is not None:
+            return _credential
+        with scoped_session(db) as session:
+            _credential = build_credential(resolve_auth_config(session))
+    return _credential
 
 
 def reload_credential(db=None) -> None:
     """Clear token cache and rebuild credential from latest settings."""
     global _credential
-    session, owned = _open_db_session(db)
-    try:
+    with scoped_session(db) as session:
         with _lock:
             _cache.clear()
             _credential = None
             clear_token_cache(session)
-    finally:
-        if owned:
-            session.close()
     get_credential(db)
     try:
         from app import azure_client
@@ -158,7 +165,9 @@ def reload_credential(db=None) -> None:
 
 
 def _cache_hit(cache_key: str, margin: int = REFRESH_MARGIN_SECONDS) -> str | None:
-    cached = _cache.get(cache_key)
+    # Read under lock to avoid seeing a partially-written dict entry
+    with _lock:
+        cached = _cache.get(cache_key)
     if cached and cached["expires_on"] - time.time() > margin:
         return cached["token"]
     return None
@@ -167,8 +176,7 @@ def _cache_hit(cache_key: str, margin: int = REFRESH_MARGIN_SECONDS) -> str | No
 def _store_token(cache_key: str, token: str, expires_on: float, db, *, scope: str) -> None:
     with _lock:
         _cache[cache_key] = {"token": token, "expires_on": expires_on}
-    session, owned = _open_db_session(db)
-    try:
+    with scoped_session(db) as session:
         write_cached_token(
             session,
             cache_key=cache_key,
@@ -176,15 +184,11 @@ def _store_token(cache_key: str, token: str, expires_on: float, db, *, scope: st
             token=token,
             expires_on=expires_on,
         )
-    finally:
-        if owned:
-            session.close()
 
 
 def _get_bearer_token(db=None, *, scope: str = ARM_SCOPE) -> str:
     """Return a valid bearer token — L1 memory, then PostgreSQL, then Azure AD."""
-    session, owned = _open_db_session(db)
-    try:
+    with scoped_session(db) as session:
         config = resolve_auth_config(session)
         cache_key = credential_cache_key(config, scope)
 
@@ -200,9 +204,10 @@ def _get_bearer_token(db=None, *, scope: str = ARM_SCOPE) -> str:
             return token
 
         with _lock:
-            hit = _cache_hit(cache_key)
-            if hit:
-                return hit
+            # Re-check inside lock (another thread may have fetched while we waited)
+            cached = _cache.get(cache_key)
+            if cached and cached["expires_on"] - time.time() > REFRESH_MARGIN_SECONDS:
+                return cached["token"]
 
             cred = get_credential(session)
             tok = cred.get_token(scope)
@@ -216,9 +221,6 @@ def _get_bearer_token(db=None, *, scope: str = ARM_SCOPE) -> str:
             expires_on=tok.expires_on,
         )
         return tok.token
-    finally:
-        if owned:
-            session.close()
 
 
 def get_token(db=None) -> str:
