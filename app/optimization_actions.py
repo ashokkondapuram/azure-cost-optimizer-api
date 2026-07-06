@@ -52,17 +52,6 @@ def _parse_json(value: Any, default: Any):
         return default
 
 
-def _parse_json(value: Any, default: Any):
-    if value is None:
-        return default
-    if isinstance(value, (dict, list)):
-        return value
-    try:
-        return json.loads(value)
-    except (TypeError, ValueError, json.JSONDecodeError):
-        return default
-
-
 def evidence_summary_from_row(row: OptimizationAction) -> dict[str, Any]:
     """Derive compact signal counts for list/table UI from persisted action evidence."""
     cost = _parse_json(row.cost_evidence, {})
