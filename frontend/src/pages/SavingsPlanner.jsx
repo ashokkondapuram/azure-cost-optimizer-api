@@ -8,19 +8,18 @@ import { PiggyBank, TrendingDown, Calendar, DollarSign } from 'lucide-react';
  * real data from /api/savings-plan/estimate once that endpoint exists.
  */
 
-const PAYG_RATE = 1.0;
 const RATES = {
-  payg:   { label: 'Pay-as-you-go', multiplier: 1.0,  discount: 0 },
-  one:    { label: '1-year savings plan', multiplier: 0.83, discount: 17 },
-  three:  { label: '3-year savings plan', multiplier: 0.70, discount: 30 },
+  payg:   { label: 'Pay-as-you-go',       multiplier: 1.0,  discount: 0 },
+  one:    { label: '1-year savings plan',  multiplier: 0.83, discount: 17 },
+  three:  { label: '3-year savings plan',  multiplier: 0.70, discount: 30 },
 };
 
 const SERVICE_PRESETS = [
-  { id: 'vms',      label: 'Virtual machines',    monthlyCost: 6200 },
-  { id: 'aks',      label: 'AKS clusters',         monthlyCost: 3100 },
-  { id: 'sql',      label: 'SQL databases',         monthlyCost: 1800 },
-  { id: 'storage',  label: 'Storage accounts',      monthlyCost:  420 },
-  { id: 'appsvcs',  label: 'App services',           monthlyCost:  780 },
+  { id: 'vms',      label: 'Virtual machines',  monthlyCost: 6200 },
+  { id: 'aks',      label: 'AKS clusters',       monthlyCost: 3100 },
+  { id: 'sql',      label: 'SQL databases',       monthlyCost: 1800 },
+  { id: 'storage',  label: 'Storage accounts',    monthlyCost:  420 },
+  { id: 'appsvcs',  label: 'App services',         monthlyCost:  780 },
 ];
 
 export default function SavingsPlanner() {
@@ -145,7 +144,15 @@ export default function SavingsPlanner() {
                   const saving = Math.round((derivedCost - derivedCost * r.multiplier) * 12 * (key === 'three' ? 3 : 1));
                   const isSelected = key === plan;
                   return (
-                    <tr key={key} style={{ borderBottom: '1px solid var(--border)', background: isSelected ? 'var(--primary-muted)' : 'transparent', cursor: 'pointer' }} onClick={() => setPlan(key)}>
+                    <tr
+                      key={key}
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        background: isSelected ? 'var(--primary-muted)' : 'transparent',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => setPlan(key)}
+                    >
                       <td style={{ padding: '0.55rem 0.6rem', fontWeight: isSelected ? 700 : 400 }}>{r.label}</td>
                       <td style={{ padding: '0.55rem 0.6rem', textAlign: 'right' }}>${monthly.toLocaleString()}</td>
                       <td style={{ padding: '0.55rem 0.6rem', textAlign: 'right' }}>${annual.toLocaleString()}</td>

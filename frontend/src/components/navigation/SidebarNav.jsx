@@ -133,4 +133,188 @@ function NavGroup({
         </button>
       </div>
       <div id={`nav-group-${id}`} className="nav-group__panel">
-        <div className="
+        <div className="nav-group__items">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+export default function SidebarNav({ onNavClick }) {
+  const location = useLocation();
+  const { subscription } = React.useContext(AppCtx);
+  const { isAdmin } = useAuth();
+  const [groups, setGroups] = usePersistedState('finops-nav-groups', DEFAULT_NAV_OPEN);
+
+  const { data: counts = {}, isLoading: countsLoading } = useQuery({
+    queryKey: ['resource-counts', subscription],
+    queryFn: () => fetchResourceCounts(subscription),
+    enabled: !!subscription,
+    staleTime: 5 * 60_000,
+  });
+
+  const navResourceGroups = useMemo(
+    () => (subscription ? visibleNavGroups(counts) : []),
+    [subscription, counts],
+  );
+
+  const showResourceNav = Boolean(subscription);
+
+  useEffect(() => {
+    const activeGroup = groupForPath(location.pathname);
+    if (activeGroup && !groups[activeGroup]) {
+      setGroups((prev) => ({ ...prev, [activeGroup]: true }));
+    }
+  }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleGroup = useCallback((id) => {
+    setGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, [setGroups]);
+
+  const allResourceOpen = showResourceNav
+    && NAV_RESOURCE_GROUPS.every((g) => groups[g.id]);
+  const toggleAllResources = () => {
+    const next = !allResourceOpen;
+    setGroups((prev) => {
+      const updated = { ...prev };
+      NAV_RESOURCE_GROUPS.forEach((g) => { updated[g.id] = next; });
+      return updated;
+    });
+  };
+
+  const navLink = (path, label, iconKey, { end = false, sub = false, Icon = null } = {}) => (
+    <NavLink
+      key={path}
+      to={path}
+      end={end}
+      className={({ isActive }) => `nav-item${sub ? ' nav-sub' : ''}${isActive ? ' active' : ''}`}
+      onClick={onNavClick}
+    >
+      {Icon ? <Icon size={sub ? 14 : 16} /> : <NavIcon iconKey={iconKey} size={sub ? 14 : 16} />}
+      {label}
+    </NavLink>
+  );
+
+  return (
+    <div className="sidebar-nav">
+      <div className="sidebar-section">Overview</div>
+      {OVERVIEW_NAV.map((item) => navLink(item.path, item.title, item.iconKey, { end: item.end }))}
+
+      {/* ── Advanced tools collapsible group ───────────────────────── */}
+      <NavGroup
+        id={ADVANCED_NAV_GROUP.id}
+        label={ADVANCED_NAV_GROUP.label}
+        iconKey={ADVANCED_NAV_GROUP.iconKey}
+        color={ADVANCED_NAV_GROUP.color}
+        open={!!groups[ADVANCED_NAV_GROUP.id]}
+        onToggle={() => toggleGroup(ADVANCED_NAV_GROUP.id)}
+      >
+        {ADVANCED_TOOLS_NAV.map((item) =>
+          navLink(item.path, item.title, item.iconKey, {
+            sub: true,
+            Icon: ADVANCED_ITEM_ICONS[item.path] || null,
+          }),
+        )}
+      </NavGroup>
+
+      <div className="sidebar-section sidebar-section--row">
+        <span>Resources</span>
+        {showResourceNav && (
+          <button
+            type="button"
+            className="sidebar-section__toggle"
+            onClick={toggleAllResources}
+            title={allResourceOpen ? 'Collapse all' : 'Expand all'}
+            aria-label={allResourceOpen ? 'Collapse all resource categories' : 'Expand all resource categories'}
+          >
+            {allResourceOpen ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
+          </button>
+        )}
+      </div>
+
+      {!showResourceNav && (
+        <p className="sidebar-nav__hint">Select a subscription to browse resources.</p>
+      )}
+
+      {showResourceNav && navResourceGroups.map((group) => {
+        const visibleIds = group.resourceIds;
+        const categorySyncTypes = syncTypesForResourceIds(visibleIds);
+        const fullGroup = NAV_RESOURCE_GROUPS.find((g) => g.id === group.id);
+        const badge = categoryResourceCount(fullGroup, counts, {
+          costOnly: Boolean(counts?.breakdown),
+        });
+
+        return (
+          <NavGroup
+            key={group.id}
+            id={group.id}
+            label={group.label}
+            iconKey={group.iconKey}
+            color={group.color}
+            badge={countsLoading ? 0 : badge}
+            open={!!groups[group.id]}
+            onToggle={() => toggleGroup(group.id)}
+            headerAction={isAdmin && !countsLoading && badge === 0 ? (
+              <CategorySyncButton
+                label={group.label}
+                syncTypes={categorySyncTypes}
+                variant="header"
+              />
+            ) : null}
+          >
+            {visibleIds.length === 0 ? (
+              <p className="nav-group__empty">
+                {isAdmin
+                  ? 'Nothing synced in this category yet. Use Sync beside the category name.'
+                  : 'No resources synced yet.'}
+              </p>
+            ) : (
+              <>
+                {visibleIds.map((resourceId) => {
+                  const page = RESOURCE_PAGES[resourceId];
+                  return navLink(page.path, page.navLabel, page.iconKey, { sub: true });
+                })}
+                {(NAV_GROUP_EXTRA_LINKS[group.id] || []).map((link) =>
+                  navLink(link.path, link.title, link.iconKey, { sub: true }),
+                )}
+              </>
+            )}
+          </NavGroup>
+        );
+      })}
+
+      {isSystemNavVisible(isAdmin) && (
+        <NavGroup
+          id={SYSTEM_NAV_GROUP.id}
+          label={SYSTEM_NAV_GROUP.label}
+          iconKey={SYSTEM_NAV_GROUP.iconKey}
+          color={SYSTEM_NAV_GROUP.color}
+          open={systemNavGroupOpen(groups)}
+          onToggle={() => {
+            setGroups((prev) => ({
+              ...prev,
+              [SYSTEM_NAV_GROUP.id]: !systemNavGroupOpen(prev),
+            }));
+          }}
+        >
+          {(() => {
+            let lastSection = null;
+            const entries = systemNavItems(isAdmin);
+            return entries.flatMap((item) => {
+              const nodes = [];
+              if (item.section && item.section !== lastSection) {
+                lastSection = item.section;
+                nodes.push(
+                  <p key={`section-${item.section}`} className="nav-group__section-label">
+                    {item.section}
+                  </p>,
+                );
+              }
+              nodes.push(navLink(item.path, item.title, item.iconKey, { sub: true }));
+              return nodes;
+            });
+          })()}
+        </NavGroup>
+      )}
+    </div>
+  );
+}
