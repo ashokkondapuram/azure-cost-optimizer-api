@@ -164,6 +164,9 @@ from app.user_auth import (
 )
 from app.resource_type_catalog import parse_resource_types_param, resource_types_catalog
 from app.cost_explorer_worker import request_cost_sync
+# ── Advanced tools router (waste heatmap, tag compliance, auto scheduler,
+#    notification channels, anomaly detector, optimization timeline) ───────────
+from app.routes_advanced import router as advanced_router
 
 # ---------------------------------------------------------------------------
 # Module-level: settings object only — no DDL, no logging side-effects.
@@ -266,6 +269,11 @@ def openapi_json_for_spa(request: Request):
 app.add_middleware(DynamicCORSMiddleware)
 app.add_middleware(AppAuthMiddleware)
 app.middleware("http")(cache_control_middleware)
+
+# Register advanced tools router
+# Provides: GET/POST /api/waste-heatmap, /api/tag-compliance,
+# /api/auto-scheduler, /api/notifications, /api/anomaly-detector, /api/timeline
+app.include_router(advanced_router)
 
 # These singletons are intentionally module-level for shared HTTP connection
 # pool reuse. They do not hold credentials directly — credentials are resolved
