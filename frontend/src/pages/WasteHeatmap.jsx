@@ -1,58 +1,94 @@
 import React, { useState, useContext } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { AppCtx } from '../App';
 import PageHeader from '../components/PageHeader';
-import { SubscriptionRequired } from '../components/QueryStates';
-import { Flame, Info } from 'lucide-react';
+import { SubscriptionRequired, LoadingState, ErrorState } from '../components/QueryStates';
+import { Flame } from 'lucide-react';
+import { fetchFindings } from '../api/azure';
 
 const CATEGORIES = ['Compute', 'Storage', 'Network', 'AKS', 'Database', 'Identity'];
 const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
 
 const SEV_COLOR = {
   CRITICAL: 'heatmap-cell--critical',
-  HIGH: 'heatmap-cell--high',
-  MEDIUM: 'heatmap-cell--medium',
-  LOW: 'heatmap-cell--low',
-  INFO: 'heatmap-cell--info',
+  HIGH:     'heatmap-cell--high',
+  MEDIUM:   'heatmap-cell--medium',
+  LOW:      'heatmap-cell--low',
+  INFO:     'heatmap-cell--info',
 };
 
-// Mock data: [category][severity] = { count, waste }
-const MOCK = {
-  Compute:  { CRITICAL: {count:8,  waste:9200}, HIGH: {count:14, waste:5400}, MEDIUM: {count:22, waste:2100}, LOW: {count:11, waste:580}, INFO: {count:3, waste:40} },
-  Storage:  { CRITICAL: {count:2,  waste:1400}, HIGH: {count:6,  waste:1100}, MEDIUM: {count:15, waste:700}, LOW: {count:20, waste:210}, INFO: {count:8, waste:20} },
-  Network:  { CRITICAL: {count:1,  waste:3200}, HIGH: {count:4,  waste:900},  MEDIUM: {count:9,  waste:310}, LOW: {count:7,  waste:90},  INFO: {count:2, waste:10} },
-  AKS:      { CRITICAL: {count:5,  waste:7800}, HIGH: {count:9,  waste:3200}, MEDIUM: {count:7,  waste:840}, LOW: {count:3,  waste:140}, INFO: {count:1, waste:5} },
-  Database: { CRITICAL: {count:0,  waste:0},    HIGH: {count:3,  waste:620},  MEDIUM: {count:8,  waste:290}, LOW: {count:12, waste:80},  INFO: {count:4, waste:15} },
-  Identity: { CRITICAL: {count:0,  waste:0},    HIGH: {count:1,  waste:200},  MEDIUM: {count:4,  waste:60},  LOW: {count:9,  waste:30},  INFO: {count:6, waste:8} },
-};
+/** Map finding component/category fields → heatmap category buckets */
+function bucketCategory(finding) {
+  const raw = (finding.component || finding.resource_type || finding.category || '').toLowerCase();
+  if (/vm|compute|virtual.machine|vmss/.test(raw))  return 'Compute';
+  if (/storage|disk|snapshot/.test(raw))            return 'Storage';
+  if (/network|ip|vnet|nic|lb|gateway|nsg/.test(raw)) return 'Network';
+  if (/aks|kubernetes|k8s|container/.test(raw))     return 'AKS';
+  if (/sql|postgres|cosmos|redis|database|db/.test(raw)) return 'Database';
+  if (/keyvault|identity|auth|security/.test(raw))  return 'Identity';
+  return null;
+}
+
+function bucketSeverity(finding) {
+  const s = (finding.severity || '').toUpperCase();
+  return SEVERITIES.includes(s) ? s : 'INFO';
+}
+
+function buildMatrix(findings) {
+  const matrix = {};
+  CATEGORIES.forEach(c => {
+    matrix[c] = {};
+    SEVERITIES.forEach(s => { matrix[c][s] = { count: 0, waste: 0 }; });
+  });
+  findings.forEach(f => {
+    const cat = bucketCategory(f);
+    const sev = bucketSeverity(f);
+    if (!cat) return;
+    matrix[cat][sev].count  += 1;
+    matrix[cat][sev].waste  += Number(f.estimated_monthly_savings || f.savings || 0);
+  });
+  return matrix;
+}
 
 export default function WasteHeatmap() {
   const { subscription, billingCurrency } = useContext(AppCtx);
   const currency = billingCurrency || 'CAD';
-  const [tooltip, setTooltip] = useState(null); // {category, severity, data}
-  const [view, setView] = useState('count'); // 'count' | 'waste'
+  const [tooltip, setTooltip] = useState(null);
+  const [view, setView]       = useState('count');
 
-  const maxCount = Math.max(...CATEGORIES.flatMap(c => SEVERITIES.map(s => MOCK[c][s].count)));
-  const maxWaste = Math.max(...CATEGORIES.flatMap(c => SEVERITIES.map(s => MOCK[c][s].waste)));
+  const { data: findings = [], isLoading, isError, error } = useQuery({
+    queryKey: ['findings-heatmap', subscription],
+    queryFn:  () => fetchFindings({ subscription_id: subscription, limit: 500 }),
+    enabled:  !!subscription,
+    staleTime: 5 * 60_000,
+    select: data => Array.isArray(data) ? data : (data?.items ?? []),
+  });
+
+  const matrix   = buildMatrix(findings);
+  const maxCount = Math.max(1, ...CATEGORIES.flatMap(c => SEVERITIES.map(s => matrix[c][s].count)));
+  const maxWaste = Math.max(1, ...CATEGORIES.flatMap(c => SEVERITIES.map(s => matrix[c][s].waste)));
 
   const intensity = (cat, sev) => {
-    const d = MOCK[cat][sev];
+    const d   = matrix[cat][sev];
     const val = view === 'count' ? d.count : d.waste;
     const max = view === 'count' ? maxCount : maxWaste;
     return max > 0 ? val / max : 0;
   };
 
-  const totalWaste = CATEGORIES.flatMap(c => SEVERITIES.map(s => MOCK[c][s].waste)).reduce((a,b)=>a+b,0);
-  const totalFindings = CATEGORIES.flatMap(c => SEVERITIES.map(s => MOCK[c][s].count)).reduce((a,b)=>a+b,0);
-  const criticalCells = CATEGORIES.filter(c => MOCK[c].CRITICAL.count > 0).length;
+  const totalWaste    = CATEGORIES.flatMap(c => SEVERITIES.map(s => matrix[c][s].waste)).reduce((a,b)=>a+b,0);
+  const totalFindings = CATEGORIES.flatMap(c => SEVERITIES.map(s => matrix[c][s].count)).reduce((a,b)=>a+b,0);
+  const criticalCells = CATEGORIES.filter(c => matrix[c].CRITICAL.count > 0).length;
 
   return (
     <div className="page-shell waste-heatmap-page">
       <PageHeader title="Waste Heatmap" subtitle="Visual breakdown of findings by category and severity" />
       {!subscription && <SubscriptionRequired message="Select a subscription." />}
-      {subscription && (
+      {subscription && isLoading && <LoadingState message="Loading findings…" />}
+      {subscription && isError   && <ErrorState message={error?.message || 'Failed to load findings.'} />}
+      {subscription && !isLoading && !isError && (
         <>
           <div className="grid-3" style={{ marginBottom: '1.25rem' }}>
-            <div className="stat-card danger"><div className="stat-label">Total Estimated Waste</div><div className="stat-value">{currency} {totalWaste.toLocaleString()}</div></div>
+            <div className="stat-card danger"><div className="stat-label">Total Estimated Waste</div><div className="stat-value">{currency} {totalWaste.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div></div>
             <div className="stat-card accent"><div className="stat-label">Total Findings</div><div className="stat-value">{totalFindings}</div></div>
             <div className="stat-card warning"><div className="stat-label">Critical Categories</div><div className="stat-value">{criticalCells}</div></div>
           </div>
@@ -67,45 +103,54 @@ export default function WasteHeatmap() {
               </div>
             </div>
 
-            <div className="heatmap-wrap" style={{ overflowX: 'auto' }}>
-              <table className="heatmap-table">
-                <thead>
-                  <tr>
-                    <th className="heatmap-th-label">Category \ Severity</th>
-                    {SEVERITIES.map(s => <th key={s} className={`heatmap-th heatmap-th--${s.toLowerCase()}`}>{s}</th>)}
-                  </tr>
-                </thead>
-                <tbody>
-                  {CATEGORIES.map(cat => (
-                    <tr key={cat}>
-                      <td className="heatmap-row-label">{cat}</td>
-                      {SEVERITIES.map(sev => {
-                        const d = MOCK[cat][sev];
-                        const pct = intensity(cat, sev);
-                        return (
-                          <td key={sev}
-                            className={`heatmap-cell ${SEV_COLOR[sev]}`}
-                            style={{ '--intensity': pct }}
-                            onMouseEnter={() => setTooltip({ cat, sev, d })}
-                            onMouseLeave={() => setTooltip(null)}
-                          >
-                            <span className="heatmap-cell__val">
-                              {view === 'count' ? d.count || '–' : d.waste > 0 ? `${currency} ${d.waste.toLocaleString()}` : '–'}
-                            </span>
-                          </td>
-                        );
-                      })}
+            {totalFindings === 0 ? (
+              <div className="empty-state" style={{ padding: '2rem' }}>
+                <Flame size={28} />
+                <p>No findings found for this subscription. Run an analysis to populate the heatmap.</p>
+              </div>
+            ) : (
+              <div className="heatmap-wrap" style={{ overflowX: 'auto' }}>
+                <table className="heatmap-table">
+                  <thead>
+                    <tr>
+                      <th className="heatmap-th-label">Category \ Severity</th>
+                      {SEVERITIES.map(s => <th key={s} className={`heatmap-th heatmap-th--${s.toLowerCase()}`}>{s}</th>)}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {CATEGORIES.map(cat => (
+                      <tr key={cat}>
+                        <td className="heatmap-row-label">{cat}</td>
+                        {SEVERITIES.map(sev => {
+                          const d   = matrix[cat][sev];
+                          const pct = intensity(cat, sev);
+                          return (
+                            <td key={sev}
+                              className={`heatmap-cell ${SEV_COLOR[sev]}`}
+                              style={{ '--intensity': pct }}
+                              onMouseEnter={() => setTooltip({ cat, sev, d })}
+                              onMouseLeave={() => setTooltip(null)}
+                            >
+                              <span className="heatmap-cell__val">
+                                {view === 'count'
+                                  ? (d.count || '–')
+                                  : (d.waste > 0 ? `${currency} ${d.waste.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '–')}
+                              </span>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {tooltip && (
               <div className="heatmap-tooltip">
                 <strong>{tooltip.cat} / {tooltip.sev}</strong>
                 <span>{tooltip.d.count} finding{tooltip.d.count !== 1 ? 's' : ''}</span>
-                <span>{currency} {tooltip.d.waste.toLocaleString()} estimated waste</span>
+                <span>{currency} {tooltip.d.waste.toLocaleString(undefined, { maximumFractionDigits: 0 })} estimated waste</span>
               </div>
             )}
 
