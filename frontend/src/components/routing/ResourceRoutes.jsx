@@ -39,6 +39,6 @@ export function createResourceRoutes() {
     ...Object.entries(LEGACY_RESOURCE_ROUTE_REDIRECTS).map(([from, to]) => (
       <Route key={`legacy-${from}`} path={from} element={<Navigate to={to} replace />} />
     )),
-    <Route key="findings-redirect" path="/findings" element={<Navigate to="/optimization-hub?tab=actions" replace />} />,
+    // NOTE: /findings redirect lives in App.js to avoid duplication
   ];
 }

@@ -73,7 +73,7 @@ export default function OptimizationTimeline() {
                     <span className="icon-inline" style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>
                       <User size={11} /> {e.actor}
                     </span>
-                    {e.savings && <span className="text-success" style={{ fontSize: '0.72rem', fontWeight: 700 }}>↓ CAD {e.savings} saved</span>}
+                    {e.savings != null && <span className="text-success" style={{ fontSize: '0.72rem', fontWeight: 700 }}>↓ CAD {e.savings} saved</span>}
                   </div>
                 </div>
               </div>

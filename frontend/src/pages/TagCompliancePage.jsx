@@ -1,5 +1,5 @@
 import React, { useState, useContext } from 'react';
-import { Tag, AlertTriangle, CheckCircle2, Wrench, Download } from 'lucide-react';
+import { Tag, AlertTriangle, CheckCircle2, Wrench, Download, Info } from 'lucide-react';
 import { AppCtx } from '../App';
 import PageHeader from '../components/PageHeader';
 import { SubscriptionRequired } from '../components/QueryStates';
