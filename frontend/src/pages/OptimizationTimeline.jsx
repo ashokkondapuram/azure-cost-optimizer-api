@@ -1,168 +1,414 @@
-import React, { useState, useContext } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Activity, Filter, CheckCircle2, XCircle, Clock, AlertTriangle, Zap, User, RefreshCw } from 'lucide-react';
-import { AppCtx } from '../App';
-import PageHeader from '../components/PageHeader';
-import { SubscriptionRequired, LoadingState, ErrorState } from '../components/QueryStates';
-import { fetchOptimizationActions, fetchFindings } from '../api/azure';
+/**
+ * Optimization Timeline page
+ *
+ * Shows month-over-month cost trends to visualise whether optimisation
+ * actions are translating into real spend reductions.
+ *
+ *  ┌─ KPI summary (net delta, best/worst month) ────────────────┐
+ *  ├─ Timeline bar chart (monthly totals, green = savings, red = over) ┤
+ *  ├─ Month comparisons (delta cards with trend arrows) ─────────┤
+ *  └─ Service breakdown (select any two months to compare) ──────┘
+ *
+ * Data: GET /savings/month-over-month/{id}
+ *       GET /savings/service-breakdown/{id}?base_month=&compare_month=
+ */
 
-const TYPE_LABELS = {
-  action_executed: 'Action Executed',
-  action_rejected: 'Action Rejected',
-  action_pending:  'Action Pending',
-  action_approved: 'Action Approved',
-  finding_open:    'Finding Open',
-  finding_resolved:'Finding Resolved',
-  finding_ignored: 'Finding Ignored',
-  drift_detected:  'Drift Detected',
-  other:           'Event',
+import React, { useState, useMemo, useCallback, useContext, useEffect } from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  Cell, ResponsiveContainer, ReferenceLine,
+} from 'recharts';
+import {
+  GitCommitHorizontal, TrendingDown, TrendingUp, Minus,
+  RefreshCw, AlertTriangle, DollarSign, ArrowDown, ArrowUp,
+} from 'lucide-react';
+import { fetchMonthOverMonth, fetchServiceBreakdown } from '../api/optimizationTimeline';
+
+let SubscriptionContext;
+try { ({ SubscriptionContext } = require('../context/SubscriptionContext')); } catch { SubscriptionContext = null; }
+function useCtxSub() {
+  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line
+  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
+}
+
+// ── helpers ────────────────────────────────────────────────────────────────
+const fmt = (n, cur = 'CAD') =>
+  n != null
+    ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n)
+    : '—';
+
+const fmtMonth = (ym) => {
+  try {
+    const [y, m] = ym.split('-');
+    return new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-CA', { month: 'short', year: '2-digit' });
+  } catch { return ym; }
 };
 
-function typeIcon(type) {
-  if (type === 'action_executed' || type === 'finding_resolved') return <CheckCircle2 size={14} className="text-success" />;
-  if (type === 'action_rejected' || type === 'finding_ignored')  return <XCircle size={14} className="text-danger" />;
-  if (type === 'finding_open')    return <AlertTriangle size={14} className="text-warning" />;
-  if (type === 'drift_detected')  return <Zap size={14} className="text-warning" />;
-  if (type === 'action_pending' || type === 'action_approved')   return <Clock size={14} className="text-primary" />;
-  return <Activity size={14} className="text-muted" />;
+function Skeleton({ className = '' }) {
+  return <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`} />;
 }
 
-/** Normalise an optimization action record → timeline event */
-export function actionToEvent(a) {
-  const status = (a.status || '').toLowerCase();
-  let type = 'other';
-  if (status === 'executed' || status === 'completed')   type = 'action_executed';
-  else if (status === 'rejected' || status === 'failed') type = 'action_rejected';
-  else if (status === 'approved')                        type = 'action_approved';
-  else if (status === 'pending')                         type = 'action_pending';
-  return {
-    id:       `action-${a.id || a.action_id}`,
-    ts:       a.updated_at || a.executed_at || a.created_at || '—',
-    actor:    a.assigned_to || a.executed_by || 'system',
-    type,
-    resource: a.resource_name || a.resource_id || '—',
-    detail:   a.title || a.description || a.action_type || '—',
-    outcome:  status === 'executed' || status === 'completed' ? 'success'
-              : status === 'rejected' || status === 'failed'  ? 'warning'
-              : 'info',
-    savings:  Number(a.estimated_savings || 0) || null,
-  };
+function KpiCard({ label, value, sub, icon: Icon, accent }) {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 shadow-sm">
+      <div className={`mt-0.5 rounded-lg p-2 ${accent}`}><Icon size={16} /></div>
+      <div>
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-50">{value}</p>
+        {sub && <p className="text-xs text-gray-400 dark:text-gray-500">{sub}</p>}
+      </div>
+    </div>
+  );
 }
 
-/** Normalise a finding record → timeline event */
-export function findingToEvent(f) {
-  const status = (f.status || '').toLowerCase();
-  let type = 'finding_open';
-  if (status === 'resolved')                               type = 'finding_resolved';
-  else if (status === 'ignored' || status === 'dismissed') type = 'finding_ignored';
-  return {
-    id:       `finding-${f.id || f.finding_id}`,
-    ts:       f.updated_at || f.created_at || '—',
-    actor:    f.updated_by || 'system',
-    type,
-    resource: f.resource_name || f.resource_id || '—',
-    detail:   f.title || f.description || '—',
-    outcome:  status === 'resolved' ? 'success'
-              : (status === 'ignored' || status === 'dismissed') ? 'warning'
-              : 'info',
-    savings:  Number(f.estimated_monthly_savings || f.savings || 0) || null,
-  };
+// ── Timeline bar chart ──────────────────────────────────────────────────────
+function CustomBarTooltip({ active, payload, label, currency }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 shadow-lg text-sm">
+      <p className="font-semibold text-gray-700 dark:text-gray-200">{fmtMonth(label)}</p>
+      <p className="tabular-nums text-gray-600 dark:text-gray-300">{fmt(payload[0]?.value, currency)}</p>
+    </div>
+  );
 }
 
-export default function OptimizationTimeline() {
-  const { subscription }    = useContext(AppCtx);
-  const [typeFilter, setTypeFilter] = useState('all');
+function TimelineChart({ timeline, loading, currency, onSelectMonth }) {
+  const [selected, setSelected] = useState(null);
+  const firstSpend = timeline?.[0]?.total_spend ?? 0;
 
-  const { data: actions = [], isLoading: la, isError: ea, refetch: ra } = useQuery({
-    queryKey: ['timeline-actions', subscription],
-    queryFn:  () => fetchOptimizationActions({ subscription_id: subscription, limit: 200 }),
-    enabled:  !!subscription,
-    staleTime: 3 * 60_000,
-    select: data => Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [],
-  });
-
-  const { data: findings = [], isLoading: lf, isError: ef, refetch: rf } = useQuery({
-    queryKey: ['timeline-findings', subscription],
-    queryFn:  () => fetchFindings({ subscription_id: subscription, limit: 200 }),
-    enabled:  !!subscription,
-    staleTime: 3 * 60_000,
-    select: data => Array.isArray(data?.items) ? data.items : Array.isArray(data) ? data : [],
-  });
-
-  const isLoading = la || lf;
-  const isError   = ea || ef;
-
-  const events = React.useMemo(() => [
-    ...actions .map(actionToEvent),
-    ...findings.map(findingToEvent),
-  ].sort((a, b) => {
-    if (a.ts < b.ts) return 1;
-    if (a.ts > b.ts) return -1;
-    return 0;
-  }), [actions, findings]);
-
-  const types    = ['all', ...new Set(events.map(e => e.type))];
-  const filtered = typeFilter === 'all' ? events : events.filter(e => e.type === typeFilter);
-  const refetch  = () => { ra(); rf(); };
+  if (loading) return <Skeleton className="h-64 rounded-xl" />;
+  if (!timeline?.length) return (
+    <div className="h-48 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">
+      No data — enter a subscription ID and click Load
+    </div>
+  );
 
   return (
-    <div className="page-shell opt-timeline-page">
-      <PageHeader title="Optimization Timeline" subtitle="Unified audit trail of findings, actions, and automated events">
-        <button className="btn btn-sm btn-ghost" onClick={refetch} title="Refresh"><RefreshCw size={13} /> Refresh</button>
-      </PageHeader>
-
-      {!subscription && <SubscriptionRequired />}
-      {subscription && isLoading && <LoadingState message="Loading timeline…" />}
-      {subscription && isError   && <ErrorState message="Failed to load timeline data." />}
-      {subscription && !isLoading && !isError && (
-        <>
-          <div className="toolbar" style={{ marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <Filter size={13} className="text-muted" />
-            {types.map(t => (
-              <button key={t} className={`chip${typeFilter===t?' active':''}`} onClick={() => setTypeFilter(t)}>
-                {t === 'all' ? 'All events' : (TYPE_LABELS[t] || t)}
-              </button>
+    <div>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={timeline} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+          onClick={(d) => {
+            if (d?.activePayload?.[0]) {
+              const m = d.activePayload[0].payload.month;
+              setSelected(m);
+              onSelectMonth && onSelectMonth(m);
+            }
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.2)" />
+          <ReferenceLine y={firstSpend} stroke="rgba(156,163,175,0.5)" strokeDasharray="4 4" label={{ value: 'baseline', fontSize: 10, fill: '#9ca3af', position: 'insideTopRight' }} />
+          <XAxis dataKey="month" tickFormatter={fmtMonth} tick={{ fontSize: 11 }} stroke="rgba(156,163,175,0.4)" />
+          <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} stroke="rgba(156,163,175,0.4)" width={52} />
+          <Tooltip content={<CustomBarTooltip currency={currency} />} />
+          <Bar dataKey="total_spend" radius={[4, 4, 0, 0]}>
+            {timeline.map((entry, i) => (
+              <Cell
+                key={entry.month}
+                fill={
+                  i === 0 ? '#6b7280'
+                  : entry.total_spend < timeline[i - 1]?.total_spend ? '#0d9488'
+                  : entry.total_spend > timeline[i - 1]?.total_spend ? '#ef4444'
+                  : '#6b7280'
+                }
+                opacity={selected === entry.month ? 1 : 0.82}
+              />
             ))}
-          </div>
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500 dark:text-gray-400">
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-teal-500" /> Savings vs prior month</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-red-400" /> Overspend vs prior month</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-3 rounded-sm bg-gray-400" /> Baseline / flat</span>
+      </div>
+    </div>
+  );
+}
 
-          {filtered.length === 0 ? (
-            <div className="empty-state" style={{ padding: '2rem' }}>
-              <Activity size={28} />
-              <p>
-                {events.length === 0
-                  ? 'No findings or actions yet. Run an analysis to populate the timeline.'
-                  : 'No events match the selected filter.'}
-              </p>
+// ── Comparison delta cards ───────────────────────────────────────────────────
+function ComparisonCards({ comparisons, loading, currency, onSelectPair }) {
+  if (loading) return <div className="flex gap-3">{Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-24 rounded-xl flex-1" />)}</div>;
+  if (!comparisons?.length) return null;
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      {comparisons.map((c) => {
+        const isSavings = c.status === 'savings';
+        const isFlat = c.status === 'flat';
+        return (
+          <button
+            key={c.from_month}
+            onClick={() => onSelectPair && onSelectPair(c.from_month, c.to_month)}
+            className={`text-left rounded-xl border p-3 shadow-sm transition-colors hover:ring-2 ${
+              isSavings
+                ? 'border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/10 hover:ring-teal-400'
+                : isFlat
+                ? 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:ring-gray-300'
+                : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10 hover:ring-red-300'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                {fmtMonth(c.from_month)} → {fmtMonth(c.to_month)}
+              </span>
+              {isSavings ? <TrendingDown size={14} className="text-teal-500" />
+               : isFlat   ? <Minus size={14} className="text-gray-400" />
+               : <TrendingUp size={14} className="text-red-500" />}
             </div>
-          ) : (
-            <div className="timeline">
-              {filtered.map((e, i) => (
-                <div key={e.id} className={`timeline-item timeline-item--${e.outcome}`}>
-                  <div className="timeline-item__dot">{typeIcon(e.type)}</div>
-                  {i < filtered.length - 1 && <div className="timeline-item__line" />}
-                  <div className="timeline-item__body">
-                    <div className="timeline-item__head">
-                      <span className="timeline-item__type">{TYPE_LABELS[e.type] || e.type}</span>
-                      <span className="timeline-item__ts">{e.ts}</span>
-                    </div>
-                    <div className="timeline-item__resource"><code>{e.resource}</code></div>
-                    <div className="timeline-item__detail">{e.detail}</div>
-                    <div className="timeline-item__footer">
-                      <span className="icon-inline" style={{ fontSize: '0.72rem', color: 'var(--text3)' }}>
-                        <User size={11} /> {e.actor}
-                      </span>
-                      {e.savings > 0 && (
-                        <span className="text-success" style={{ fontSize: '0.72rem', fontWeight: 700 }}>
-                          ↓ {e.savings.toLocaleString(undefined, { maximumFractionDigits: 0 })} saved/mo
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <p className={`text-lg font-bold tabular-nums ${
+              isSavings ? 'text-teal-600 dark:text-teal-400' : isFlat ? 'text-gray-500' : 'text-red-600 dark:text-red-400'
+            }`}>
+              {isSavings ? '' : isFlat ? '' : '+'}{fmt(c.delta, c.currency)}
+            </p>
+            <p className={`text-xs tabular-nums font-medium ${
+              isSavings ? 'text-teal-500' : isFlat ? 'text-gray-400' : 'text-red-400'
+            }`}>
+              {c.delta_pct > 0 ? '+' : ''}{c.delta_pct}%
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Click to compare services</p>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Service breakdown table ─────────────────────────────────────────────────
+function ServiceBreakdown({ subId, baseMonth, compareMonth, currency }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    if (!subId || !baseMonth || !compareMonth) return;
+    setLoading(true); setError(null);
+    fetchServiceBreakdown(subId, baseMonth, compareMonth)
+      .then(setData)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [subId, baseMonth, compareMonth]);
+
+  if (!baseMonth || !compareMonth) return null;
+  if (loading) return <Skeleton className="h-48 rounded-xl" />;
+  if (error) return <div className="text-xs text-red-500 px-2">{error}</div>;
+  if (!data?.services?.length) return null;
+
+  const items = showAll ? data.services : data.services.slice(0, 15);
+  const maxAbs = Math.max(...data.services.map((s) => Math.abs(s.delta)));
+
+  return (
+    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+          Service breakdown — {fmtMonth(baseMonth)} vs {fmtMonth(compareMonth)}
+        </h3>
+        <div className="flex gap-4 mt-1 text-xs">
+          <span className="flex items-center gap-1 text-teal-600"><ArrowDown size={11}/>Savings: {fmt(data.total_savings, currency)}</span>
+          <span className="flex items-center gap-1 text-red-500"><ArrowUp size={11}/>Overspend: {fmt(data.total_overspend, currency)}</span>
+        </div>
+      </div>
+      <div className="divide-y divide-gray-50 dark:divide-gray-800">
+        {items.map((svc) => {
+          const isSavings = svc.status === 'savings';
+          const barPct = maxAbs > 0 ? (Math.abs(svc.delta) / maxAbs) * 100 : 0;
+          return (
+            <div key={svc.service_name} className="flex items-center gap-3 px-4 py-2">
+              <span className="text-xs text-gray-700 dark:text-gray-300 w-48 shrink-0 truncate" title={svc.service_name}>{svc.service_name}</span>
+              <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full ${isSavings ? 'bg-teal-500' : 'bg-red-400'}`}
+                  style={{ width: `${barPct}%` }}
+                />
+              </div>
+              <span className={`text-xs tabular-nums font-semibold w-20 text-right shrink-0 ${
+                isSavings ? 'text-teal-600 dark:text-teal-400' : 'text-red-500'
+              }`}>
+                {svc.delta > 0 ? '+' : ''}{fmt(svc.delta, currency)}
+              </span>
+              {svc.delta_pct != null && (
+                <span className={`text-xs tabular-nums w-12 text-right shrink-0 ${
+                  isSavings ? 'text-teal-500' : 'text-red-400'
+                }`}>
+                  {svc.delta_pct > 0 ? '+' : ''}{svc.delta_pct}%
+                </span>
+              )}
             </div>
-          )}
-        </>
+          );
+        })}
+      </div>
+      {data.services.length > 15 && (
+        <div className="px-4 py-2 border-t border-gray-50 dark:border-gray-800">
+          <button onClick={() => setShowAll((s) => !s)} className="text-xs text-teal-600 hover:underline">
+            {showAll ? 'Show fewer' : `Show all ${data.services.length} services`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main page ───────────────────────────────────────────────────────────────
+export default function OptimizationTimeline() {
+  const ctxSub = useCtxSub();
+  const [subId, setSubId] = useState(ctxSub ?? '');
+  const [monthsBack, setMonthsBack] = useState(6);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedPair, setSelectedPair] = useState({ base: null, compare: null });
+
+  const load = useCallback(async () => {
+    if (!subId.trim()) return;
+    setLoading(true); setError(null);
+    try {
+      const d = await fetchMonthOverMonth(subId, monthsBack);
+      setData(d);
+      // Auto-select the last two months for service breakdown
+      const c = d.comparisons ?? [];
+      if (c.length >= 1) setSelectedPair({ base: c[c.length - 1].from_month, compare: c[c.length - 1].to_month });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [subId, monthsBack]);
+
+  const currency = data?.billing_currency ?? 'CAD';
+  const netDelta = data?.net_delta_vs_oldest;
+  const netStatus = data?.net_status;
+  const bestMonth = useMemo(() => {
+    if (!data?.comparisons?.length) return null;
+    return data.comparisons.reduce((best, c) => (!best || c.delta < best.delta ? c : best), null);
+  }, [data]);
+  const worstMonth = useMemo(() => {
+    if (!data?.comparisons?.length) return null;
+    return data.comparisons.reduce((worst, c) => (!worst || c.delta > worst.delta ? c : worst), null);
+  }, [data]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
+      {/* Header */}
+      <div className="mb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <GitCommitHorizontal size={20} className="text-teal-600" />
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Optimization Timeline</h1>
+        </div>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Month-over-month spend trends — see whether cost optimisation actions are translating into real savings.
+        </p>
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <input
+          type="text" value={subId} onChange={(e) => setSubId(e.target.value)}
+          placeholder="Subscription ID"
+          className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 w-80"
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-gray-600 dark:text-gray-400">Months:</label>
+          {[3, 6, 9, 12].map((n) => (
+            <button
+              key={n}
+              onClick={() => setMonthsBack(n)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+                monthsBack === n
+                  ? 'bg-teal-600 text-white'
+                  : 'border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              {n}m
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={load} disabled={loading}
+          className="flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 px-4 py-1.5 text-sm font-medium text-white transition-colors"
+        >
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          {loading ? 'Loading…' : 'Load'}
+        </button>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+          <AlertTriangle size={15} className="mt-0.5 shrink-0" />{error}
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
+        {loading ? Array.from({length:3}).map((_,i) => <Skeleton key={i} className="h-16 rounded-xl" />) : (
+          <>
+            <KpiCard
+              label={`Net ${netStatus === 'savings' ? 'savings' : 'change'} (${monthsBack}m)`}
+              value={netDelta != null ? fmt(Math.abs(netDelta), currency) : '—'}
+              sub={netStatus === 'savings' ? 'vs oldest month' : netStatus === 'overspend' ? 'overspend vs oldest' : 'flat'}
+              icon={netStatus === 'savings' ? TrendingDown : netStatus === 'overspend' ? TrendingUp : Minus}
+              accent={netStatus === 'savings' ? 'bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400' : netStatus === 'overspend' ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}
+            />
+            <KpiCard
+              label="Best month"
+              value={bestMonth ? `${fmtMonth(bestMonth.to_month)}` : '—'}
+              sub={bestMonth ? `${fmt(Math.abs(bestMonth.delta), currency)} saved` : 'no data'}
+              icon={ArrowDown}
+              accent="bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400"
+            />
+            <KpiCard
+              label="Worst month"
+              value={worstMonth?.delta > 0 ? `${fmtMonth(worstMonth.to_month)}` : '—'}
+              sub={worstMonth?.delta > 0 ? `${fmt(worstMonth.delta, currency)} over` : 'all months improved'}
+              icon={ArrowUp}
+              accent="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
+            />
+          </>
+        )}
+      </div>
+
+      {/* Chart */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-4 mb-5">
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Monthly spend — {monthsBack}m window</h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Click a bar to drill into service-level changes for that month.</p>
+        <TimelineChart
+          timeline={data?.timeline}
+          loading={loading}
+          currency={currency}
+          onSelectMonth={(m) => {
+            const idx = (data?.timeline ?? []).findIndex((t) => t.month === m);
+            if (idx > 0) setSelectedPair({ base: data.timeline[idx - 1].month, compare: m });
+          }}
+        />
+      </div>
+
+      {/* Comparison delta cards */}
+      <div className="mb-5">
+        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">Month-over-month comparisons</h2>
+        <ComparisonCards
+          comparisons={data?.comparisons}
+          loading={loading}
+          currency={currency}
+          onSelectPair={(base, compare) => setSelectedPair({ base, compare })}
+        />
+      </div>
+
+      {/* Service breakdown */}
+      {selectedPair.base && selectedPair.compare && (
+        <ServiceBreakdown
+          subId={subId}
+          baseMonth={selectedPair.base}
+          compareMonth={selectedPair.compare}
+          currency={currency}
+        />
+      )}
+
+      {/* Empty state */}
+      {!loading && !data && !error && (
+        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500 gap-3">
+          <GitCommitHorizontal size={40} strokeWidth={1.5} />
+          <p className="text-sm font-medium">Enter a subscription ID and click Load</p>
+        </div>
       )}
     </div>
   );
