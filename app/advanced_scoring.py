@@ -17,6 +17,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 import structlog
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.finding_quality import is_valuable_finding
@@ -372,6 +373,11 @@ def serialize_scorecard(row: OptimizationScoring) -> dict[str, Any]:
         try:
             evidence = json.loads(evidence)
         except json.JSONDecodeError:
+            log.warning(
+                "scoring_evidence_json.corrupt",
+                resource_id=row.resource_id,
+                evaluation_date=row.evaluation_date,
+            )
             evidence = {}
     return {
         "id": row.id,
