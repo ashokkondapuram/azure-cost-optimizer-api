@@ -203,6 +203,14 @@ def _bulk_upsert_arm_list(
     written = bulk_upsert_snapshots(db, subscription_id, mappings)
     from app.resource_pricing import upsert_resource_pricing_profile
     for m in mappings:
+        # Bug 5 fix: _snapshot_mapping stores sku_json as a dict; avoid the wasteful
+        # json.loads round-trip and guard explicitly against a None value (which `or "{}"`
+        # would silently swallow, hiding a real data issue).
+        raw_sku_json = m.get("sku_json")
+        if isinstance(raw_sku_json, str):
+            sku_json_dict = json.loads(raw_sku_json) if raw_sku_json is not None else {}
+        else:
+            sku_json_dict = raw_sku_json if raw_sku_json is not None else {}
         upsert_resource_pricing_profile(
             db,
             subscription_id=subscription_id,
@@ -210,7 +218,7 @@ def _bulk_upsert_arm_list(
             resource_name=m["resource_name"],
             canonical_type=canonical_type,
             sku_label=m.get("sku"),
-            sku_json=json.loads(m.get("sku_json") or "{}"),
+            sku_json=sku_json_dict,
             cost_mtd=float(m.get("monthly_cost_usd") or 0.0),
         )
     return written
@@ -539,19 +547,23 @@ def _dedupe_resource_snapshots(db: Session, subscription_id: str) -> int:
     deactivated = 0
     for row in rows:
         rid = (row.resource_id or "").strip().lower()
-        logical = (
+        # Bug 4 fix: normalize the logical key *before* set operations so that
+        # trailing-pipe variants (e.g. "compute/vm||" vs "compute/vm||") are
+        # treated as the same key and don't produce false misses.
+        logical_raw = (
             f"{row.resource_type}|{(row.resource_name or '').strip().lower()}"
             f"|{(row.resource_group or '').strip().lower()}"
         )
+        logical = logical_raw.strip("|")
         duplicate = False
         if rid:
             if rid in seen_ids:
                 duplicate = True
             else:
                 seen_ids.add(rid)
-        if logical.strip("|") and logical in seen_logical:
+        if logical and logical in seen_logical:
             duplicate = True
-        elif logical.strip("|"):
+        elif logical:
             seen_logical.add(logical)
 
         if duplicate:
@@ -1515,7 +1527,9 @@ def _persist_mtd_by_service_agg(
     for svc, amounts in by_service.items():
         pretax = float(amounts.get("pretax") or 0.0)
         usd = float(amounts.get("usd") or 0.0)
-        currency = str(amounts.get("currency") or "CAD")
+        # Bug 1 fix: default currency should be "USD", not "CAD".
+        # "CAD" is tenant-specific and must never be a global fallback.
+        currency = str(amounts.get("currency") or "USD")
         existing = (
             db.query(CostByServiceSnapshot)
             .filter(
@@ -1587,7 +1601,8 @@ def _persist_mtd_by_resource_agg(
             continue
         pretax = float(amounts.get("pretax") or 0.0)
         usd = float(amounts.get("usd") or 0.0)
-        currency = str(amounts.get("currency") or "CAD")
+        # Bug 1 fix (resource agg): same CAD → USD correction.
+        currency = str(amounts.get("currency") or "USD")
         service_name = amounts.get("service_name") or "Other"
         resource_group = amounts.get("resource_group") or ""
         resource_type = amounts.get("resource_type") or ""
@@ -1749,7 +1764,8 @@ def _persist_mtd_by_service_response(
         return 0
 
     written = 0
-    default_currency = svc_raw.get("billing_currency") or "CAD"
+    # Bug 1 fix (service response): CAD → USD as the safe global default.
+    default_currency = svc_raw.get("billing_currency") or "USD"
     for row in table_rows:
         svc = service_name_from_cost_row(
             row, idx, names=[c.get("name") if isinstance(c, dict) else c for c in cols],
@@ -1827,9 +1843,10 @@ def _service_totals_from_mtd_rows(mtd_rows: list[dict]) -> dict[str, dict]:
     agg: dict[str, dict] = {}
     for row in mtd_rows:
         svc = row.get("service_name") or "Other"
+        # Bug 2 fix: bucket default currency was "CAD"; must be "USD".
         bucket = agg.setdefault(
             svc,
-            {"service_name": svc, "billing": 0.0, "usd": 0.0, "currency": row.get("currency") or "CAD"},
+            {"service_name": svc, "billing": 0.0, "usd": 0.0, "currency": row.get("currency") or "USD"},
         )
         bucket["billing"] += float(row.get("cost") or 0.0)
         bucket["usd"] += float(row.get("cost_usd") or 0.0)
@@ -1932,9 +1949,17 @@ def _record_cost_sync_run(
     subscription_total_usd: float,
     subscription_currency: str,
 ) -> None:
-    currency = subscription_currency or "CAD"
-    if not subscription_currency and current_services:
-        currency = next(iter(current_services.values())).get("currency") or "CAD"
+    # Bug 3 fix: proper currency precedence.
+    # Prefer subscription_currency, then infer from services, then fall back to "USD".
+    # The old code set currency = subscription_currency or "CAD" unconditionally on
+    # the first line, then re-entered the if-block to overwrite it — but both paths
+    # also fell back to "CAD". Fixed to use "USD" as the ultimate default.
+    if subscription_currency:
+        currency = subscription_currency
+    elif current_services:
+        currency = next(iter(current_services.values())).get("currency") or "USD"
+    else:
+        currency = "USD"
     db.add(CostSyncRun(
         id=str(uuid.uuid4()),
         subscription_id=subscription_id,
