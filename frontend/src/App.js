@@ -25,18 +25,23 @@ import { LoadingState } from './components/QueryStates';
 import { PAGE_ICONS, iconForRoute } from './config/assetIcons';
 import { getPageTitle, APP_NAME } from './config/appRegistry';
 import { formatUserRole } from './utils/roleLabels';
+import './styles/features.css';
 
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const CostExplorer = lazy(() => import('./pages/CostExplorer'));
-const Recommendations = lazy(() => import('./pages/Recommendations'));
-const OptimizationHub = lazy(() => import('./pages/OptimizationHub'));
-const EngineConfig = lazy(() => import('./pages/EngineConfig'));
-const AdminOptimization = lazy(() => import('./pages/AdminOptimization'));
-const RunHistory = lazy(() => import('./pages/RunHistory'));
-const SettingsPage = lazy(() => import('./pages/Settings'));
-const ApiExplorer = lazy(() => import('./pages/ApiExplorer'));
-const K8sSnapshots = lazy(() => import('./pages/K8sSnapshots'));
-const Login = lazy(() => import('./pages/Login'));
+const Dashboard          = lazy(() => import('./pages/Dashboard'));
+const CostExplorer       = lazy(() => import('./pages/CostExplorer'));
+const CostForecast       = lazy(() => import('./pages/CostForecast'));
+const Recommendations    = lazy(() => import('./pages/Recommendations'));
+const OptimizationHub    = lazy(() => import('./pages/OptimizationHub'));
+const EngineConfig       = lazy(() => import('./pages/EngineConfig'));
+const AdminOptimization  = lazy(() => import('./pages/AdminOptimization'));
+const RunHistory         = lazy(() => import('./pages/RunHistory'));
+const SettingsPage       = lazy(() => import('./pages/Settings'));
+const ApiExplorer        = lazy(() => import('./pages/ApiExplorer'));
+const K8sSnapshots       = lazy(() => import('./pages/K8sSnapshots'));
+const Login              = lazy(() => import('./pages/Login'));
+const SavingsRealised    = lazy(() => import('./pages/SavingsRealised'));
+const DriftDetection     = lazy(() => import('./pages/DriftDetection'));
+const CrossSubscription  = lazy(() => import('./pages/CrossSubscription'));
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -160,6 +165,10 @@ function Shell() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/costs" element={<CostExplorer />} />
+                <Route path="/costs/forecast" element={<CostForecast />} />
+                <Route path="/savings-realised" element={<SavingsRealised />} />
+                <Route path="/drift" element={<DriftDetection />} />
+                <Route path="/cross-subscription" element={<CrossSubscription />} />
                 <Route path="/recommendations" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
                 <Route path="/optimization-hub" element={<OptimizationHub />} />
                 <Route path="/optimize/actions" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
