@@ -1,115 +1,75 @@
-"""Tag compliance reporting — surfaces resources missing required tags as findings.
+"""Tag Compliance — report which resources are missing required tags.
 
-Required tags are configured via the ``tag_compliance`` section of system settings
-or the environment variable TAG_REQUIRED_KEYS (comma-separated).
-
-Example finding output::
-
-    {
-        "rule_id": "tag_compliance",
-        "resource_id": "/subscriptions/.../resourceGroups/rg/providers/.../vm1",
-        "resource_name": "vm1",
-        "resource_type": "Microsoft.Compute/virtualMachines",
-        "severity": "medium",
-        "recommendation": "Add missing tags: owner, cost_center",
-        "missing_tags": ["owner", "cost_center"],
-        "estimated_savings_usd": None,
-    }
+Scans OptimizationFinding rows whose rule_id starts with 'TAG_' or whose
+evidence contains a 'missing_tags' key.  Also exposes a summary counter.
 """
 from __future__ import annotations
 
-import os
 from typing import Any
 
-import structlog
+from sqlalchemy.orm import Session
 
-log = structlog.get_logger(__name__)
+from app.models import OptimizationFinding
 
-DEFAULT_REQUIRED_TAGS = ["owner", "cost_center", "environment"]
-
-
-def _load_required_tags(db: Any | None = None) -> list[str]:
-    """Load required tag keys from DB settings or environment."""
-    if db is not None:
-        try:
-            from app.services.system_settings import get_effective_config
-            cfg = get_effective_config(db, "tag_compliance")
-            tags = cfg.get("required_tags") or []
-            if isinstance(tags, list) and tags:
-                return [t.strip() for t in tags if t.strip()]
-            if isinstance(tags, str):
-                return [t.strip() for t in tags.split(",") if t.strip()]
-        except Exception:
-            pass
-
-    env_val = os.getenv("TAG_REQUIRED_KEYS", "").strip()
-    if env_val:
-        return [t.strip() for t in env_val.split(",") if t.strip()]
-    return DEFAULT_REQUIRED_TAGS
+# Tags that are considered mandatory.  Override via DB settings in future.
+DEFAULT_REQUIRED_TAGS = ["environment", "owner", "cost-center", "project"]
 
 
-def check_resource_tag_compliance(
-    resource: dict[str, Any],
-    required_tags: list[str],
-) -> list[str]:
-    """Return list of missing required tag keys for a single resource."""
-    tags: dict[str, Any] = resource.get("tags") or {}
-    existing = {k.lower() for k in tags}
-    return [t for t in required_tags if t.lower() not in existing]
-
-
-def scan_resources_for_tag_compliance(
-    resources: list[dict[str, Any]],
-    *,
-    db: Any | None = None,
+def get_tag_compliance(
+    db: Session,
+    subscription_id: str | None = None,
     required_tags: list[str] | None = None,
-) -> list[dict[str, Any]]:
-    """Scan a list of ARM resources and return tag-compliance findings.
+) -> dict[str, Any]:
+    required = required_tags or DEFAULT_REQUIRED_TAGS
 
-    Args:
-        resources: List of ARM resource dicts (must have ``id``, ``name``, ``type``, ``tags``).
-        db: Optional DB session for loading required tags from settings.
-        required_tags: Override required tag list (skips DB/env lookup when provided).
-
-    Returns:
-        List of finding dicts — one per non-compliant resource.
-    """
-    tags = required_tags if required_tags is not None else _load_required_tags(db)
-    if not tags:
-        return []
-
-    findings: list[dict[str, Any]] = []
-    for resource in resources:
-        missing = check_resource_tag_compliance(resource, tags)
-        if not missing:
-            continue
-
-        rtype = resource.get("type") or ""
-        findings.append({
-            "rule_id": "tag_compliance",
-            "resource_id": resource.get("id") or "",
-            "resource_name": resource.get("name") or "",
-            "resource_type": rtype,
-            "severity": "medium",
-            "recommendation": f"Add missing tags: {', '.join(missing)}",
-            "detail": (
-                f"Resource '{resource.get('name')}' is missing "
-                f"{len(missing)} required tag(s): {', '.join(missing)}."
-            ),
-            "missing_tags": missing,
-            "required_tags": tags,
-            "estimated_savings_usd": None,
-            "evidence": {
-                "existing_tags": list((resource.get("tags") or {}).keys()),
-                "missing_tags": missing,
-                "required_tags": tags,
-            },
-        })
-
-    log.info(
-        "tag_compliance.scanned",
-        total_resources=len(resources),
-        non_compliant=len(findings),
-        required_tags=tags,
+    q = db.query(OptimizationFinding).filter(
+        OptimizationFinding.rule_id.like("TAG_%")
     )
-    return findings
+    if subscription_id:
+        q = q.filter(OptimizationFinding.subscription_id == subscription_id)
+
+    findings = q.order_by(OptimizationFinding.created_at.desc()).limit(500).all()
+
+    non_compliant: list[dict] = []
+    tag_miss_counts: dict[str, int] = {t: 0 for t in required}
+
+    for f in findings:
+        evidence = f.evidence or {}
+        missing = evidence.get("missing_tags") or []
+        # Fall back: if rule_id encodes a tag name, extract it.
+        if not missing and f.rule_id and "_" in f.rule_id:
+            tag_name = f.rule_id.split("_", 1)[1].lower().replace("_", "-")
+            missing = [tag_name]
+
+        for t in missing:
+            if t in tag_miss_counts:
+                tag_miss_counts[t] += 1
+
+        non_compliant.append(
+            {
+                "resource_id": f.resource_id,
+                "resource_name": f.resource_name,
+                "resource_type": f.resource_type,
+                "resource_group": f.resource_group,
+                "missing_tags": missing,
+                "status": f.status,
+                "severity": f.severity,
+            }
+        )
+
+    total_resources = db.query(OptimizationFinding.resource_id).distinct().count()
+    compliant_count = max(0, total_resources - len({r["resource_id"] for r in non_compliant}))
+
+    return {
+        "required_tags": required,
+        "summary": {
+            "total_resources": total_resources,
+            "non_compliant": len(non_compliant),
+            "compliant": compliant_count,
+            "compliance_pct": round(
+                100 * compliant_count / max(total_resources, 1), 1
+            ),
+        },
+        "tag_miss_counts": tag_miss_counts,
+        "resources": non_compliant,
+    }
