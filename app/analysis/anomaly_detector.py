@@ -8,6 +8,7 @@ Detects:
 """
 from __future__ import annotations
 
+import math
 import statistics
 from dataclasses import dataclass, field
 from typing import Any
@@ -65,9 +66,8 @@ def _iqr_outlier(values: list[float], target: float, multiplier: float = _IQR_MU
 
 
 def _severity(z: float | None, iqr: bool) -> str:
-    # When z is None we still honour the IQR flag as a low-severity signal.
     if z is None:
-        return "low"
+        return "low" if iqr else "low"
     abs_z = abs(z)
     if abs_z >= 4.0 or (abs_z >= 3.0 and iqr):
         return "critical"
@@ -201,20 +201,8 @@ def detect_utilization_anomalies(
     z = _zscore(history, latest)
     iqr = _iqr_outlier(history, latest)
 
-    # Fix: add explicit parentheses to clarify operator precedence
-    # Original: `if z is not None and abs(z) >= _ZSCORE_THRESHOLD or iqr`
-    # was equivalent to `if (z is not None and ...) or iqr`, which flags
-    # IQR-outliers unconditionally even when z is None — the intended guard
-    # is `(z is not None and abs(z) >= threshold) or iqr`.
-    if (z is not None and abs(z) >= _ZSCORE_THRESHOLD) or iqr:
+    if z is not None and abs(z) >= _ZSCORE_THRESHOLD or iqr:
         sev = _severity(z, iqr)
-        if z is not None:
-            desc = (
-                f"{metric_name} anomaly: {latest:.1f} vs {mean_h:.1f} avg "
-                f"(z={z:.2f})"
-            )
-        else:
-            desc = f"{metric_name} IQR outlier: {latest:.1f}"
         signals.append(AnomalySignal(
             resource_id=resource_id,
             metric=metric_name,
@@ -224,7 +212,10 @@ def detect_utilization_anomalies(
             anomaly_type="spike" if latest > mean_h else "drop",
             z_score=round(z, 3) if z is not None else None,
             iqr_outlier=iqr,
-            description=desc,
+            description=(
+                f"{metric_name} anomaly: {latest:.1f} vs {mean_h:.1f} avg "
+                f"(z={z:.2f})" if z is not None else f"{metric_name} IQR outlier: {latest:.1f}"
+            ),
             evidence={"mean": round(mean_h, 3), "stdev": round(stdev_h, 3), "samples": len(history)},
         ))
 

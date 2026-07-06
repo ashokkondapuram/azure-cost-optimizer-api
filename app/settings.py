@@ -1,70 +1,139 @@
-"""Central application settings loaded from environment variables."""
+"""Central application settings loaded from environment variables via Pydantic BaseSettings."""
 from __future__ import annotations
 
-import os
-from functools import lru_cache
+from typing import List
+
+try:
+    from pydantic_settings import BaseSettings
+    from pydantic import SecretStr, field_validator, model_validator
+except ImportError:  # pragma: no cover
+    raise RuntimeError(
+        "pydantic-settings is required. Install it with: pip install pydantic-settings"
+    )
 
 
-def _env_bool(name: str, default: bool = False) -> bool:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() in {'1', 'true', 'yes', 'on'}
+class FeatureFlags(BaseSettings):
+    """Per-environment feature toggles.  Set env-var FEATURE_<NAME>=false to disable."""
+    feature_ai_enrichment: bool = True
+    feature_cost_export: bool = True
+    feature_advisor_sync: bool = True
+    feature_anomaly_detection: bool = True
+    feature_tag_compliance: bool = True
+    feature_budget_alerts: bool = True
+    feature_webhook_notifications: bool = True
+
+    model_config = {"env_prefix": "", "case_sensitive": False}
 
 
-@lru_cache
-def get_settings():
-    class Settings:
-        app_env: str = os.getenv('APP_ENV', 'development').strip().lower()
-        log_level: str = os.getenv('LOG_LEVEL', 'INFO').strip().upper()
-        database_url: str = os.getenv('DATABASE_URL', 'sqlite:///./azurefinops.db')
-        cors_allowed_origins: list[str] = [
-            o.strip()
-            for o in os.getenv(
-                'CORS_ALLOWED_ORIGINS',
-                'http://127.0.0.1:3000,http://localhost:3000',
-            ).split(',')
-            if o.strip()
-        ]
-        request_timeout_seconds: int = int(os.getenv('REQUEST_TIMEOUT_SECONDS', '60'))
-        k8s_agent_token: str | None = os.getenv('K8S_AGENT_TOKEN') or None
-        require_k8s_token: bool = _env_bool('REQUIRE_K8S_AGENT_TOKEN', False)
-        auth_enabled: bool = _env_bool('AUTH_ENABLED', True)
-        jwt_secret: str = os.getenv('JWT_SECRET', '').strip()
-        admin_username: str = os.getenv('ADMIN_USERNAME', 'admin').strip().lower() or 'admin'
-        admin_password: str = os.getenv('ADMIN_PASSWORD', '').strip()
-        viewer_username: str = os.getenv('VIEWER_USERNAME', 'viewer').strip().lower() or 'viewer'
-        viewer_password: str = os.getenv('VIEWER_PASSWORD', '').strip()
+class Settings(BaseSettings):
+    # ── Core ──────────────────────────────────────────────────────────────────
+    app_env: str = "development"
+    log_level: str = "INFO"
+    database_url: str = "sqlite:///./azurefinops.db"
+    cors_allowed_origins: List[str] = ["http://127.0.0.1:3000", "http://localhost:3000"]
+    request_timeout_seconds: int = 60
 
-        @property
-        def is_production(self) -> bool:
-            return self.app_env in {'prod', 'production'}
+    # ── Auth ──────────────────────────────────────────────────────────────────
+    auth_enabled: bool = True
+    jwt_secret: SecretStr = SecretStr("")
+    admin_username: str = "admin"
+    admin_password: SecretStr = SecretStr("")
+    viewer_username: str = "viewer"
+    viewer_password: SecretStr = SecretStr("")
 
-        @property
-        def jwt_configured(self) -> bool:
-            return bool((os.getenv('JWT_SECRET') or self.jwt_secret or '').strip())
+    # ── Kubernetes agent ──────────────────────────────────────────────────────
+    k8s_agent_token: SecretStr | None = None
+    require_k8s_token: bool = False
 
-        def validate_startup(self) -> None:
-            if self.is_production and self.database_url.startswith('sqlite'):
-                raise RuntimeError('DATABASE_URL must point to PostgreSQL in production')
-            if self.is_production and not self.auth_enabled:
-                raise RuntimeError('AUTH_ENABLED must not be false in production')
-            if self.is_production and not self.jwt_configured:
-                raise RuntimeError(
-                    'JWT_SECRET is required in production (set it in App Service application settings)',
-                )
-            # K8s agent: require token in production unless explicitly disabled for dev-like prod.
-            if self.is_production and not self.k8s_agent_token:
-                raise RuntimeError(
-                    'K8S_AGENT_TOKEN is required in production for /k8s agent routes',
-                )
-            if self.is_production and not (self.admin_password or '').strip():
-                raise RuntimeError(
-                    'ADMIN_PASSWORD is required in production when bootstrapping the first admin user',
-                )
-            if self.require_k8s_token and not self.k8s_agent_token:
-                raise RuntimeError(
-                    'K8S_AGENT_TOKEN is required when REQUIRE_K8S_AGENT_TOKEN is enabled',
-                )
+    # ── Feature flags (nested) ────────────────────────────────────────────────
+    features: FeatureFlags = FeatureFlags()
 
-    return Settings()
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": False,
+        # Allows CORS_ALLOWED_ORIGINS="http://a.com,http://b.com" as comma-sep string
+        "env_nested_delimiter": "__",
+    }
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def _parse_cors(cls, v):
+        if isinstance(v, str):
+            return [o.strip() for o in v.split(",") if o.strip()]
+        return v
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _upper_log_level(cls, v):
+        return (v or "INFO").strip().upper()
+
+    @field_validator("app_env", mode="before")
+    @classmethod
+    def _lower_app_env(cls, v):
+        return (v or "development").strip().lower()
+
+    @field_validator("admin_username", "viewer_username", mode="before")
+    @classmethod
+    def _lower_username(cls, v):
+        return (v or "").strip().lower() or "admin"
+
+    @property
+    def is_production(self) -> bool:
+        return self.app_env in {"prod", "production"}
+
+    @property
+    def jwt_configured(self) -> bool:
+        return bool(self.jwt_secret.get_secret_value().strip())
+
+    def validate_startup(self) -> None:
+        if self.is_production and self.database_url.startswith("sqlite"):
+            raise RuntimeError("DATABASE_URL must point to PostgreSQL in production")
+        if self.is_production and not self.auth_enabled:
+            raise RuntimeError("AUTH_ENABLED must not be false in production")
+        if self.is_production and not self.jwt_configured:
+            raise RuntimeError(
+                "JWT_SECRET is required in production (set it in App Service application settings)"
+            )
+        if self.is_production and not (self.k8s_agent_token and self.k8s_agent_token.get_secret_value()):
+            raise RuntimeError(
+                "K8S_AGENT_TOKEN is required in production for /k8s agent routes"
+            )
+        if self.is_production and not self.admin_password.get_secret_value().strip():
+            raise RuntimeError(
+                "ADMIN_PASSWORD is required in production when bootstrapping the first admin user"
+            )
+        if self.require_k8s_token and not (
+            self.k8s_agent_token and self.k8s_agent_token.get_secret_value()
+        ):
+            raise RuntimeError(
+                "K8S_AGENT_TOKEN is required when REQUIRE_K8S_AGENT_TOKEN is enabled"
+            )
+
+
+# Module-level singleton — replaced by reset_settings() when hot-reload is needed.
+_settings_instance: Settings | None = None
+_settings_lock = __import__("threading").Lock()
+
+
+def get_settings() -> Settings:
+    """Return the cached Settings singleton, building it on first call."""
+    global _settings_instance
+    if _settings_instance is not None:
+        return _settings_instance
+    with _settings_lock:
+        if _settings_instance is None:
+            _settings_instance = Settings()
+    return _settings_instance
+
+
+def reset_settings() -> Settings:
+    """Discard the cached singleton and rebuild from the current environment.
+
+    Call this after writing new values to the database / environment so the
+    next call to get_settings() picks up the fresh config.
+    """
+    global _settings_instance
+    with _settings_lock:
+        _settings_instance = None
+    return get_settings()

@@ -1,9 +1,18 @@
-"""Orchestrate profiling, scoring, and persistence for the advanced engine."""
+"""Orchestrate profiling, scoring, and persistence for the advanced engine.
+
+Improvements over original:
+  - Maintenance-awareness: planned maintenance window presence suppresses
+    high-impact recommendations (avoids change-during-maintenance scenarios).
+  - Multi-subscription scoring via score_subscriptions_parallel().
+  - Maintenance risk dimension added to scorecard evidence.
+  - list_scoreboard gains maintenance_blocked_count in summary.
+"""
 from __future__ import annotations
 
 import json
 import uuid
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, datetime, timezone
 from typing import Any
 
@@ -81,13 +90,45 @@ def _index_findings(db: Session, sub: str) -> dict[str, list[OptimizationFinding
     return out
 
 
+def _load_maintenance_index(subscription_id: str, db) -> dict[str, dict[str, Any]]:
+    """Build a resource_id (normalised, lowercase) → maintenance info dict.
+
+    Only loads upcoming maintenance events to minimise ARM API calls.
+    Returns empty dict silently on any API error so scoring is never blocked.
+    """
+    try:
+        from app.azure_maintenance import AzureMaintenanceClient
+        mc = AzureMaintenanceClient(db=db)
+        events = mc.list_resource_health_events(subscription_id, filter_planned=True)
+        index: dict[str, dict[str, Any]] = {}
+        for e in events:
+            props = e.get("properties") or {}
+            ir = (props.get("impactedResource") or "").lower()
+            if ir:
+                index[ir] = {
+                    "title": props.get("title"),
+                    "impact_start": props.get("impactStartTime"),
+                    "impact_mitigation": props.get("impactMitigationTime"),
+                }
+        return index
+    except Exception as exc:
+        log.warning("advanced_scoring.maintenance_index_failed", error=str(exc))
+        return {}
+
+
 def score_subscription(
     db: Session,
     subscription_id: str,
     *,
     force_rescore: bool = False,
+    include_maintenance: bool = True,
 ) -> dict[str, Any]:
-    """Profile workloads, score resources, persist optimization_scoring rows."""
+    """Profile workloads, score resources, persist optimization_scoring rows.
+
+    When include_maintenance=True, resources inside an active planned
+    maintenance window have their recommendation_tier set to 'maintenance_hold'
+    and are skipped for further action until the window closes.
+    """
     sub = subscription_id.strip().lower()
     eval_date = today_iso()
 
@@ -104,7 +145,6 @@ def score_subscription(
         .all()
     )
     snapshots_by_id = {norm_arm_id(s.resource_id): s for s in snapshots}
-
     profiles = {
         norm_arm_id(p.resource_id): p
         for p in db.query(WorkloadProfile).filter(WorkloadProfile.subscription_id == sub).all()
@@ -112,14 +152,53 @@ def score_subscription(
     advisor_by_rid = _index_advisor(db, sub)
     findings_by_rid = _index_findings(db, sub)
 
+    # Load maintenance index once for the whole subscription
+    maintenance_index = _load_maintenance_index(subscription_id, db) if include_maintenance else {}
+
     created = 0
     updated = 0
     skipped = 0
+    maintenance_held = 0
     tier_counts: dict[str, int] = defaultdict(int)
 
     for snap in snapshots:
         rid = norm_arm_id(snap.resource_id)
         if not rid:
+            continue
+
+        # ── Maintenance hold check ──
+        maintenance_event = maintenance_index.get(rid.lower())
+        if maintenance_event:
+            # Resource is inside a planned maintenance window — hold scoring
+            tier_counts["maintenance_hold"] += 1
+            maintenance_held += 1
+            existing = (
+                db.query(OptimizationScoring)
+                .filter(
+                    OptimizationScoring.subscription_id == sub,
+                    OptimizationScoring.resource_id == rid,
+                    OptimizationScoring.evaluation_date == eval_date,
+                )
+                .first()
+            )
+            hold_payload = {
+                "recommendation_tier": "maintenance_hold",
+                "scoring_evidence_json": json.dumps({"maintenance_event": maintenance_event}),
+                "synced_at": utc_now(),
+                "resource_name": snap.resource_name,
+                "resource_type": snap.resource_type,
+            }
+            if existing:
+                for k, v in hold_payload.items():
+                    setattr(existing, k, v)
+            else:
+                db.add(OptimizationScoring(
+                    id=str(uuid.uuid4()),
+                    subscription_id=sub,
+                    resource_id=rid,
+                    evaluation_date=eval_date,
+                    **hold_payload,
+                ))
             continue
 
         advisor_rows = advisor_by_rid.get(rid, [])
@@ -236,13 +315,56 @@ def score_subscription(
             "created": created,
             "updated": updated,
             "skipped": skipped,
+            "maintenance_held": maintenance_held,
             "total": created + updated,
             "by_tier": dict(tier_counts),
         },
         "mode": "advisory",
+        "maintenance_aware": include_maintenance,
     }
     log.info("advanced_engine.score_done", subscription_id=sub, **result["scoring"])
     return result
+
+
+def score_subscriptions_parallel(
+    db: Session,
+    subscription_ids: list[str],
+    *,
+    force_rescore: bool = False,
+    include_maintenance: bool = True,
+    max_workers: int = 4,
+) -> list[dict[str, Any]]:
+    """Score multiple subscriptions in parallel.
+
+    Each subscription runs in its own thread with a dedicated DB session.
+    Results are returned in the same order as input.
+    """
+    from app.database import SessionLocal
+
+    def score_one(sub_id: str) -> dict[str, Any]:
+        session = SessionLocal()
+        try:
+            return score_subscription(
+                session,
+                sub_id,
+                force_rescore=force_rescore,
+                include_maintenance=include_maintenance,
+            )
+        except Exception as exc:
+            log.error("advanced_scoring.parallel_sub_failed", sub=sub_id, error=str(exc))
+            return {"status": "error", "subscription_id": sub_id, "error": str(exc)}
+        finally:
+            session.close()
+
+    results: dict[str, dict[str, Any]] = {}
+    workers = min(len(subscription_ids), max_workers)
+    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="score_sub") as pool:
+        future_to_sub = {pool.submit(score_one, sub): sub for sub in subscription_ids}
+        for future in as_completed(future_to_sub):
+            sub = future_to_sub[future]
+            results[sub] = future.result()
+
+    return [results[sub] for sub in subscription_ids]
 
 
 def serialize_scorecard(row: OptimizationScoring) -> dict[str, Any]:
@@ -283,16 +405,13 @@ def serialize_scorecard(row: OptimizationScoring) -> dict[str, Any]:
         "recommendation_tier": row.recommendation_tier,
         "primary_action": row.primary_action,
         "action_confidence": row.action_confidence,
+        "maintenance_hold": row.recommendation_tier == "maintenance_hold",
         "evidence": evidence,
         "synced_at": row.synced_at.isoformat() if row.synced_at else None,
     }
 
 
-def _resolve_evaluation_date(
-    db: Session,
-    subscription_id: str,
-    evaluation_date: str | None = None,
-) -> str:
+def _resolve_evaluation_date(db: Session, subscription_id: str, evaluation_date: str | None = None) -> str:
     sub = subscription_id.strip().lower()
     eval_date = evaluation_date or today_iso()
     has_rows = (
@@ -322,6 +441,7 @@ def list_scoreboard(
     resource_type: str | None = None,
     min_score: float | None = None,
     evaluation_date: str | None = None,
+    exclude_maintenance_hold: bool = False,
     limit: int = 100,
     offset: int = 0,
 ) -> dict[str, Any]:
@@ -338,6 +458,8 @@ def list_scoreboard(
         q = q.filter(OptimizationScoring.resource_type == resource_type)
     if min_score is not None:
         q = q.filter(OptimizationScoring.overall_recommendation_score >= min_score)
+    if exclude_maintenance_hold:
+        q = q.filter(OptimizationScoring.recommendation_tier != "maintenance_hold")
 
     total = q.count()
     rows = (
@@ -350,23 +472,15 @@ def list_scoreboard(
         .all()
     )
 
-    # Aggregate tier counts in a single GROUP BY query — avoids a full table scan
-    # on every paginated call.
-    tier_rows = (
-        db.query(
-            OptimizationScoring.recommendation_tier,
-            func.count(OptimizationScoring.id).label("cnt"),
-        )
-        .filter(
-            OptimizationScoring.subscription_id == sub,
-            OptimizationScoring.evaluation_date == eval_date,
-        )
-        .group_by(OptimizationScoring.recommendation_tier)
-        .all()
-    )
-    tier_summary: dict[str, int] = {
-        (t or "unknown"): cnt for t, cnt in tier_rows
-    }
+    all_rows = db.query(OptimizationScoring).filter(
+        OptimizationScoring.subscription_id == sub,
+        OptimizationScoring.evaluation_date == eval_date,
+    ).all()
+    tier_summary: dict[str, int] = defaultdict(int)
+    for row in all_rows:
+        tier_summary[row.recommendation_tier or "unknown"] += 1
+
+    maintenance_held_count = tier_summary.get("maintenance_hold", 0)
 
     return {
         "subscription_id": sub,
@@ -375,7 +489,8 @@ def list_scoreboard(
         "total": total,
         "offset": offset,
         "limit": limit,
-        "tier_summary": tier_summary,
+        "tier_summary": dict(tier_summary),
+        "maintenance_blocked_count": maintenance_held_count,
         "total_estimated_monthly_savings": round(
             sum(r.cost_savings_monthly or 0 for r in rows), 2,
         ),

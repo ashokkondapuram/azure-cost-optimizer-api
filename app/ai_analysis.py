@@ -1,9 +1,19 @@
-"""AI enrichment for optimization engine findings — combines rule engine output with Azure OpenAI."""
+"""AI enrichment for optimization engine findings — combines rule engine output with Azure OpenAI.
+
+Improvements over original:
+  - Parallel batch execution via ThreadPoolExecutor
+  - Exponential-backoff retry on transient failures (tenacity)
+  - Evidence-keyed response cache to avoid re-burning tokens on unchanged findings
+  - Severity-based model routing (critical → gpt-4o, others → gpt-4o-mini when configured)
+"""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
 import structlog
@@ -29,6 +39,42 @@ _EVIDENCE_SCALAR_KEYS = (
     "oldest_instance_time_created", "waste_score", "confidence_score",
 )
 
+# ---------------------------------------------------------------------------
+# In-process enrichment cache  (keyed on evidence hash, TTL = process lifetime)
+# ---------------------------------------------------------------------------
+_enrich_cache: dict[str, dict[str, Any]] = {}
+_enrich_cache_lock = threading.Lock()
+
+
+def _evidence_cache_key(finding: dict[str, Any]) -> str:
+    """Stable hash of rule_id + resource_id + evidence content — used to skip re-enrichment."""
+    parts = (
+        str(finding.get("rule_id") or ""),
+        str(finding.get("resource_id") or finding.get("resource_name") or ""),
+        json.dumps(finding.get("evidence") or {}, sort_keys=True, default=str),
+    )
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()
+
+
+def _cache_get(key: str) -> dict[str, Any] | None:
+    with _enrich_cache_lock:
+        return _enrich_cache.get(key)
+
+
+def _cache_set(key: str, value: dict[str, Any]) -> None:
+    with _enrich_cache_lock:
+        _enrich_cache[key] = value
+
+
+def clear_enrichment_cache() -> None:
+    """Purge the in-process enrichment cache (e.g. after a full re-sync)."""
+    with _enrich_cache_lock:
+        _enrich_cache.clear()
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 def _load_ai_config(db: Session | None) -> dict[str, Any] | None:
     if db is None:
@@ -51,8 +97,7 @@ def _select_findings(findings: list[dict[str, Any]], config: dict[str, Any]) -> 
         key=lambda item: float((item[1].get("estimated_savings_usd") or 0)),
         reverse=True,
     )
-    limit = config["ai_max_findings_per_run"]
-    return ranked[:limit]
+    return ranked[: config["ai_max_findings_per_run"]]
 
 
 def _parse_evidence_dict(finding: dict[str, Any]) -> dict[str, Any]:
@@ -123,10 +168,9 @@ def _compact_finding(local_index: int, finding: dict[str, Any]) -> dict[str, Any
         "severity": finding.get("severity"),
         "savings_usd": savings_usd,
     }
-    if evidence.get("determination"):
-        out["determination"] = evidence["determination"]
-    if evidence.get("summary"):
-        out["summary"] = evidence["summary"]
+    for k in ("determination", "summary"):
+        if evidence.get(k):
+            out[k] = evidence[k]
     if signals:
         out["signals"] = signals
     metric_lines = _compact_metric_lines(evidence)
@@ -150,16 +194,39 @@ def _max_tokens_for_batch(batch_len: int) -> int:
     return min(4000, max(600, 320 * batch_len + 120))
 
 
-def _call_ai_batch(
+def _severity_model_override(batch: list[tuple[int, dict[str, Any]]], cfg: dict[str, Any]) -> dict[str, Any]:
+    """Return a config copy with deployment overridden when ALL findings in a batch are critical.
+
+    Allows routing critical findings to a higher-capability deployment (e.g. gpt-4o)
+    while non-critical findings use a cost-efficient model (e.g. gpt-4o-mini).
+    """
+    critical_deployment = (cfg.get("openai_deployment_critical") or "").strip()
+    if not critical_deployment:
+        return cfg
+    all_critical = all(
+        str(finding.get("severity") or "").lower() == "critical"
+        for _, finding in batch
+    )
+    if all_critical:
+        return {**cfg, "openai_deployment": critical_deployment}
+    return cfg
+
+
+def _call_ai_batch_with_retry(
     cfg: dict[str, Any],
     batch: list[tuple[int, dict[str, Any]]],
     *,
     subscription_id: str | None = None,
     db: Session | None = None,
+    max_retries: int = 3,
 ) -> dict[int, dict[str, Any]] | None:
-    """Run one batched completion; returns global_index -> enrichment."""
+    """Run one batched completion with exponential backoff retry."""
+    import time as _time
+
     if not batch:
         return {}
+
+    effective_cfg = _severity_model_override(batch, cfg)
 
     index_map: dict[int, int] = {}
     payload_findings: list[dict[str, Any]] = []
@@ -171,35 +238,53 @@ def _call_ai_batch(
     if subscription_id:
         payload["subscription_id"] = subscription_id
 
-    content = chat_completion(
-        cfg,
-        [
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": "Recommendations for this batch:\n" + json.dumps(payload, separators=(",", ":"), default=str),
-            },
-        ],
-        max_tokens=_max_tokens_for_batch(len(batch)),
-        db=db,
-    )
-    if not content:
-        return None
+    messages = [
+        {"role": "system", "content": _SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": "Recommendations for this batch:\n"
+            + json.dumps(payload, separators=(",", ":"), default=str),
+        },
+    ]
 
-    parsed = _parse_json_response(content)
-    if not parsed:
-        return None
-
-    out: dict[int, dict[str, Any]] = {}
-    for row in parsed.get("enrichments") or []:
+    last_exc: Exception | None = None
+    for attempt in range(max_retries):
         try:
-            local_idx = int(row.get("index"))
-            global_idx = index_map.get(local_idx)
-        except (TypeError, ValueError):
-            continue
-        if global_idx is not None:
-            out[global_idx] = row
-    return out
+            content = chat_completion(
+                effective_cfg,
+                messages,
+                max_tokens=_max_tokens_for_batch(len(batch)),
+                db=db,
+            )
+            if content is None:
+                # Transient failure — retry
+                wait = 2 ** attempt
+                log.warning("ai.batch_retry", attempt=attempt + 1, wait_sec=wait)
+                _time.sleep(wait)
+                continue
+
+            parsed = _parse_json_response(content)
+            if not parsed:
+                return None
+
+            out: dict[int, dict[str, Any]] = {}
+            for row in parsed.get("enrichments") or []:
+                try:
+                    local_idx = int(row.get("index"))
+                    global_idx = index_map.get(local_idx)
+                except (TypeError, ValueError):
+                    continue
+                if global_idx is not None:
+                    out[global_idx] = row
+            return out
+        except Exception as exc:
+            last_exc = exc
+            wait = 2 ** attempt
+            log.warning("ai.batch_exception", attempt=attempt + 1, wait_sec=wait, error=str(exc))
+            _time.sleep(wait)
+
+    log.error("ai.batch_failed_all_retries", retries=max_retries, error=str(last_exc))
+    return None
 
 
 def _parse_json_response(content: str) -> dict[str, Any] | None:
@@ -275,7 +360,10 @@ def enrich_analysis_with_ai(
 ) -> dict[str, Any]:
     """
     Replace user-facing recommendation text with Azure OpenAI output grounded in rule evidence.
+
     Runs whenever AI is configured unless include_ai=False.
+    Batches execute in parallel via ThreadPoolExecutor.
+    Results are cached by evidence hash to avoid re-burning tokens on unchanged findings.
     """
     if include_ai is False:
         return result
@@ -293,18 +381,48 @@ def enrich_analysis_with_ai(
     if not selected:
         return result
 
+    # ── Check in-process enrichment cache for each selected finding ──
+    cache_keys = {global_idx: _evidence_cache_key(finding) for global_idx, finding in selected}
+    uncached = [(global_idx, finding) for global_idx, finding in selected if not _cache_get(cache_keys[global_idx])]
+    cached_count = len(selected) - len(uncached)
+
     batch_size = int(cfg.get("ai_batch_size") or 10)
-    batches = _chunked(selected, batch_size)
+    batches = _chunked(uncached, batch_size)
     subscription_id = result.get("subscription_id")
 
     by_index: dict[int, dict[str, Any]] = {}
     failed_batches = 0
-    for batch in batches:
-        batch_result = _call_ai_batch(cfg, batch, subscription_id=subscription_id, db=db)
-        if batch_result is None:
-            failed_batches += 1
-            continue
-        by_index.update(batch_result)
+
+    # ── Parallel batch execution ──
+    max_workers = min(len(batches), 4) if batches else 1
+    with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="ai_batch") as pool:
+        future_to_batch = {
+            pool.submit(
+                _call_ai_batch_with_retry,
+                cfg,
+                batch,
+                subscription_id=subscription_id,
+                db=db,
+            ): batch
+            for batch in batches
+        }
+        for future in as_completed(future_to_batch):
+            batch_result = future.result()
+            if batch_result is None:
+                failed_batches += 1
+            else:
+                by_index.update(batch_result)
+
+    # Store new results in cache
+    for global_idx, enrichment in by_index.items():
+        _cache_set(cache_keys[global_idx], enrichment)
+
+    # Merge cached hits
+    for global_idx, _ in selected:
+        if global_idx not in by_index:
+            cached = _cache_get(cache_keys[global_idx])
+            if cached:
+                by_index[global_idx] = cached
 
     if not by_index and failed_batches == len(batches):
         result["ai_context"] = {
@@ -332,6 +450,7 @@ def enrich_analysis_with_ai(
     result["ai_context"] = {
         "status": status,
         "enriched_count": enriched_count,
+        "cached_count": cached_count,
         "requested_count": len(selected),
         "batch_count": len(batches),
         "batch_size": batch_size,
@@ -341,6 +460,7 @@ def enrich_analysis_with_ai(
     log.info(
         "ai.enrichment_completed",
         enriched=enriched_count,
+        cached=cached_count,
         requested=len(selected),
         batches=len(batches),
         batch_size=batch_size,
