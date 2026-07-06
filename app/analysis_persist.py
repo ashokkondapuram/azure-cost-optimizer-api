@@ -160,8 +160,6 @@ def cleanup_duplicate_open_findings(
     commit: bool = True,
 ) -> int:
     """Resolve duplicate open rows in the database; return rows resolved."""
-    from app.models import OptimizationFinding
-
     sub = subscription_id.lower()
     open_rows = (
         db.query(OptimizationFinding)
@@ -426,15 +424,15 @@ def update_resource_analysis_summaries(
     )
     if scope_resource_types:
         q = q.filter(ResourceSnapshot.resource_type.in_(sorted(scope_resource_types)))
-    rows = q.all()
-    for row in rows:
-        row.analysis_findings_count = 0
-        row.analysis_savings_usd = 0.0
-        row.analysis_top_severity = None
-        row.analysis_updated_at = now
-        row.analysis_run_id = run_id
-        row.analysis_data_source = data_source
-        row.analysis_summary_json = "[]"
+    snapshot_rows = q.all()
+    for snapshot_row in snapshot_rows:
+        snapshot_row.analysis_findings_count = 0
+        snapshot_row.analysis_savings_usd = 0.0
+        snapshot_row.analysis_top_severity = None
+        snapshot_row.analysis_updated_at = now
+        snapshot_row.analysis_run_id = run_id
+        snapshot_row.analysis_data_source = data_source
+        snapshot_row.analysis_summary_json = "[]"
 
     by_resource: dict[str, list[dict]] = defaultdict(list)
     for finding in findings:
@@ -442,10 +440,10 @@ def update_resource_analysis_summaries(
         if rid:
             by_resource[rid].append(finding)
 
-    row_by_id = {(r.resource_id or "").lower(): r for r in rows}
+    row_by_id = {(r.resource_id or "").lower(): r for r in snapshot_rows}
     for rid, flist in by_resource.items():
-        row = row_by_id.get(rid)
-        if not row:
+        snapshot_row = row_by_id.get(rid)
+        if not snapshot_row:
             continue
         flist_sorted = sorted(
             flist,
@@ -466,12 +464,13 @@ def update_resource_analysis_summaries(
             }
             for f in flist_sorted[:5]
         ]
-        row.analysis_findings_count = len(flist)
-        row.analysis_savings_usd = round(
+        snapshot_row.analysis_findings_count = len(flist)
+        snapshot_row.analysis_savings_usd = round(
             sum(f.get("estimated_savings_usd") or 0 for f in flist), 2
         )
-        row.analysis_top_severity = top.get("severity")
-        row.analysis_summary_json = json.dumps(summary)
+        snapshot_row.analysis_top_severity = top.get("severity")
+        snapshot_row.analysis_summary_json = json.dumps(summary)
+        snapshot_row.analysis_updated_at = now
 
 
 def refresh_resource_analysis_summary(
@@ -486,7 +485,7 @@ def refresh_resource_analysis_summary(
     if not rid:
         return
 
-    row = (
+    snapshot_row = (
         db.query(ResourceSnapshot)
         .filter(
             ResourceSnapshot.subscription_id == sub,
@@ -495,22 +494,22 @@ def refresh_resource_analysis_summary(
         )
         .first()
     )
-    if not row:
+    if not snapshot_row:
         return
 
     norm_rid = normalize_arm_id(resource_id)
-    open_rows = dedupe_open_findings_for_display([
-        row
-        for row in _open_findings_query(db, sub).all()
-        if normalize_arm_id(row.resource_id or "") == norm_rid
+    open_findings = dedupe_open_findings_for_display([
+        f
+        for f in _open_findings_query(db, sub).all()
+        if normalize_arm_id(f.resource_id or "") == norm_rid
     ])
     now = datetime.now(timezone.utc)
-    if not open_rows:
-        row.analysis_findings_count = 0
-        row.analysis_savings_usd = 0.0
-        row.analysis_top_severity = None
-        row.analysis_summary_json = "[]"
-        row.analysis_updated_at = now
+    if not open_findings:
+        snapshot_row.analysis_findings_count = 0
+        snapshot_row.analysis_savings_usd = 0.0
+        snapshot_row.analysis_top_severity = None
+        snapshot_row.analysis_summary_json = "[]"
+        snapshot_row.analysis_updated_at = now
         db.commit()
         return
 
@@ -522,7 +521,7 @@ def refresh_resource_analysis_summary(
             "recommendation": f.recommendation,
             "estimated_savings_usd": f.estimated_savings_usd or 0,
         }
-        for f in open_rows
+        for f in open_findings
     ]
     flist_sorted = sorted(
         flist,
@@ -542,11 +541,11 @@ def refresh_resource_analysis_summary(
         }
         for f in flist_sorted[:5]
     ]
-    row.analysis_findings_count = len(flist_sorted)
-    row.analysis_savings_usd = round(
+    snapshot_row.analysis_findings_count = len(flist_sorted)
+    snapshot_row.analysis_savings_usd = round(
         sum(f.get("estimated_savings_usd") or 0 for f in flist_sorted), 2
     )
-    row.analysis_top_severity = top.get("severity")
-    row.analysis_summary_json = json.dumps(summary)
-    row.analysis_updated_at = now
+    snapshot_row.analysis_top_severity = top.get("severity")
+    snapshot_row.analysis_summary_json = json.dumps(summary)
+    snapshot_row.analysis_updated_at = now
     db.commit()
