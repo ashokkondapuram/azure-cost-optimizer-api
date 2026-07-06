@@ -499,6 +499,17 @@ export const ROUTE_ICON_KEYS = {
   '/analytics': 'databricks',
   '/backup': 'recoveryVault',
   '/search': 'cognitiveSearch',
+  // ── Advanced tools (Phase 1) ──────────────────────────────────────────────
+  '/waste-heatmap':    'costAnalysis',
+  '/tag-compliance':   'costBudgets',
+  '/auto-scheduler':   'history',
+  '/notifications':    'portal',
+  '/anomaly-detector': 'costManagement',
+  '/timeline':         'history',
+  // ── Advanced tools (Phase 2) ──────────────────────────────────────────────
+  '/budgets':          'costBudgets',
+  '/savings-planner':  'costAnalysis',
+  '/policy':           'costBudgets',
 };
 
 export const API_PATH_KEYS = {
