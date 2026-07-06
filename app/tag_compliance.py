@@ -1,17 +1,18 @@
 """Tag Compliance — audit how consistently Azure resources are tagged.
 
-Scans the synced ``resources`` table and checks each resource's ``tags``
-JSON column against a configurable list of required tag keys.  Returns
-per-resource-type coverage metrics plus a list of non-compliant resources.
+Scans the ``resource_snapshots`` table and checks each resource's
+``tags_json`` column against a configurable list of required tag keys.
+Returns per-resource-type coverage metrics plus a list of non-compliant
+resources.
 """
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-# Default required tag keys — override via the ``required_tags`` parameter.
 _DEFAULT_REQUIRED_TAGS = ["Environment", "Owner", "CostCenter"]
 
 
@@ -29,15 +30,15 @@ def get_tag_compliance(
     sql = text(
         f"""
         SELECT
-            arm_resource_id,
-            name,
+            resource_id,
+            resource_name,
             resource_type,
             resource_group,
-            tags
-        FROM resources
-        WHERE 1 = 1
+            tags_json
+        FROM resource_snapshots
+        WHERE is_active = 1
         {sub_clause}
-        ORDER BY resource_type, name
+        ORDER BY resource_type, resource_name
         """
     )
     params: dict[str, Any] = {}
@@ -54,8 +55,6 @@ def get_tag_compliance(
     non_compliant_rows: list[dict] = []
     type_stats: dict[str, dict] = {}
 
-    import json
-
     for row in rows:
         rid, name, rtype, rg, tags_raw = row[0], row[1], row[2], row[3], row[4]
         try:
@@ -70,7 +69,6 @@ def get_tag_compliance(
         if is_compliant:
             compliant += 1
 
-        # Per-type stats.
         rtype_key = rtype or "(unknown)"
         if rtype_key not in type_stats:
             type_stats[rtype_key] = {"total": 0, "compliant": 0}
@@ -90,11 +88,9 @@ def get_tag_compliance(
                 }
             )
 
-    # Pagination of non-compliant list.
     offset = (page - 1) * page_size
     page_items = non_compliant_rows[offset : offset + page_size]
 
-    # Build type summary.
     type_summary = [
         {
             "resource_type": t,

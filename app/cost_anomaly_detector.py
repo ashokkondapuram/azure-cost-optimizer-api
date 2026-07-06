@@ -1,12 +1,18 @@
 """Cost Anomaly Detector — identify spikes in daily cost data.
 
-Uses a simple z-score approach over the synced daily cost rows:
-if a day's spend deviates more than `threshold` standard deviations
+Uses a simple z-score approach over the synced ``cost_snapshots`` rows:
+if a day's spend deviates more than ``threshold`` standard deviations
 from the rolling mean it is flagged as an anomaly.
+
+Date arithmetic uses strftime/date() so the query is portable across
+SQLite (dev) and PostgreSQL (prod).  For Postgres the
+"YYYY-MM-DD" cast also works because cost_date is stored as a text
+column in ISO-8601 format.
 """
 from __future__ import annotations
 
 import statistics
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy import text
@@ -23,25 +29,27 @@ def detect_cost_anomalies(
     zscore_threshold: float = DEFAULT_ZSCORE_THRESHOLD,
 ) -> dict[str, Any]:
     """Return daily cost series and flagged anomalies."""
+    cutoff = (date.today() - timedelta(days=lookback_days)).isoformat()  # YYYY-MM-DD
     sub_clause = "AND subscription_id = :sub" if subscription_id else ""
+
     sql = text(
         f"""
-        SELECT date, SUM(cost) AS total_cost
-        FROM   cost_daily
-        WHERE  date >= CURRENT_DATE - INTERVAL '{lookback_days} days'
+        SELECT cost_date, SUM(cost_usd) AS total_cost
+        FROM   cost_snapshots
+        WHERE  cost_date >= :cutoff
+          AND  granularity = 'Daily'
         {sub_clause}
-        GROUP  BY date
-        ORDER  BY date
+        GROUP  BY cost_date
+        ORDER  BY cost_date
         """
     )
-    params: dict = {}
+    params: dict[str, Any] = {"cutoff": cutoff}
     if subscription_id:
         params["sub"] = subscription_id
 
     try:
         rows = db.execute(sql, params).fetchall()
     except Exception:
-        # Table may not exist yet (fresh install).
         rows = []
 
     series = [{"date": str(r[0]), "cost": float(r[1])} for r in rows]
