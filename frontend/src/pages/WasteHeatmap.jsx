@@ -18,18 +18,18 @@ const SEV_COLOR = {
 };
 
 /** Map finding component/category fields → heatmap category buckets */
-function bucketCategory(finding) {
+export function bucketCategory(finding) {
   const raw = (finding.component || finding.resource_type || finding.category || '').toLowerCase();
-  if (/vm|compute|virtual.machine|vmss/.test(raw))  return 'Compute';
-  if (/storage|disk|snapshot/.test(raw))            return 'Storage';
-  if (/network|ip|vnet|nic|lb|gateway|nsg/.test(raw)) return 'Network';
-  if (/aks|kubernetes|k8s|container/.test(raw))     return 'AKS';
-  if (/sql|postgres|cosmos|redis|database|db/.test(raw)) return 'Database';
-  if (/keyvault|identity|auth|security/.test(raw))  return 'Identity';
+  if (/vm|compute|virtual.machine|vmss/.test(raw))           return 'Compute';
+  if (/storage|disk|snapshot/.test(raw))                     return 'Storage';
+  if (/network|ip|vnet|nic|loadbal|gateway|nsg/.test(raw))   return 'Network';
+  if (/aks|kubernetes|k8s|container/.test(raw))              return 'AKS';
+  if (/sql|postgres|cosmos|redis|database|db/.test(raw))     return 'Database';
+  if (/keyvault|identity|auth|security/.test(raw))           return 'Identity';
   return null;
 }
 
-function bucketSeverity(finding) {
+export function bucketSeverity(finding) {
   const s = (finding.severity || '').toUpperCase();
   return SEVERITIES.includes(s) ? s : 'INFO';
 }

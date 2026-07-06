@@ -18,7 +18,7 @@ const TYPE_LABELS = {
   other:           'Event',
 };
 
-function typeIcon(type, outcome) {
+function typeIcon(type) {
   if (type === 'action_executed' || type === 'finding_resolved') return <CheckCircle2 size={14} className="text-success" />;
   if (type === 'action_rejected' || type === 'finding_ignored')  return <XCircle size={14} className="text-danger" />;
   if (type === 'finding_open')    return <AlertTriangle size={14} className="text-warning" />;
@@ -28,10 +28,10 @@ function typeIcon(type, outcome) {
 }
 
 /** Normalise an optimization action record → timeline event */
-function actionToEvent(a) {
+export function actionToEvent(a) {
   const status = (a.status || '').toLowerCase();
   let type = 'other';
-  if (status === 'executed' || status === 'completed')  type = 'action_executed';
+  if (status === 'executed' || status === 'completed')   type = 'action_executed';
   else if (status === 'rejected' || status === 'failed') type = 'action_rejected';
   else if (status === 'approved')                        type = 'action_approved';
   else if (status === 'pending')                         type = 'action_pending';
@@ -43,17 +43,17 @@ function actionToEvent(a) {
     resource: a.resource_name || a.resource_id || '—',
     detail:   a.title || a.description || a.action_type || '—',
     outcome:  status === 'executed' || status === 'completed' ? 'success'
-              : status === 'rejected' || status === 'failed'   ? 'warning'
+              : status === 'rejected' || status === 'failed'  ? 'warning'
               : 'info',
     savings:  Number(a.estimated_savings || 0) || null,
   };
 }
 
 /** Normalise a finding record → timeline event */
-function findingToEvent(f) {
+export function findingToEvent(f) {
   const status = (f.status || '').toLowerCase();
   let type = 'finding_open';
-  if (status === 'resolved')   type = 'finding_resolved';
+  if (status === 'resolved')                               type = 'finding_resolved';
   else if (status === 'ignored' || status === 'dismissed') type = 'finding_ignored';
   return {
     id:       `finding-${f.id || f.finding_id}`,
@@ -62,7 +62,9 @@ function findingToEvent(f) {
     type,
     resource: f.resource_name || f.resource_id || '—',
     detail:   f.title || f.description || '—',
-    outcome:  status === 'resolved' ? 'success' : status === 'ignored' ? 'warning' : 'info',
+    outcome:  status === 'resolved' ? 'success'
+              : (status === 'ignored' || status === 'dismissed') ? 'warning'
+              : 'info',
     savings:  Number(f.estimated_monthly_savings || f.savings || 0) || null,
   };
 }
@@ -94,16 +96,14 @@ export default function OptimizationTimeline() {
     ...actions .map(actionToEvent),
     ...findings.map(findingToEvent),
   ].sort((a, b) => {
-    // Sort descending by timestamp string (ISO dates sort lexicographically)
     if (a.ts < b.ts) return 1;
     if (a.ts > b.ts) return -1;
     return 0;
   }), [actions, findings]);
 
-  const types       = ['all', ...new Set(events.map(e => e.type))];
-  const filtered    = typeFilter === 'all' ? events : events.filter(e => e.type === typeFilter);
-
-  const refetch = () => { ra(); rf(); };
+  const types    = ['all', ...new Set(events.map(e => e.type))];
+  const filtered = typeFilter === 'all' ? events : events.filter(e => e.type === typeFilter);
+  const refetch  = () => { ra(); rf(); };
 
   return (
     <div className="page-shell opt-timeline-page">
@@ -138,7 +138,7 @@ export default function OptimizationTimeline() {
             <div className="timeline">
               {filtered.map((e, i) => (
                 <div key={e.id} className={`timeline-item timeline-item--${e.outcome}`}>
-                  <div className="timeline-item__dot">{typeIcon(e.type, e.outcome)}</div>
+                  <div className="timeline-item__dot">{typeIcon(e.type)}</div>
                   {i < filtered.length - 1 && <div className="timeline-item__line" />}
                   <div className="timeline-item__body">
                     <div className="timeline-item__head">
