@@ -1,1 +1,1 @@
-"""FastAPI APIRouter modules — one per domain."""
+"""Azure Cost Optimizer API routers package."""
