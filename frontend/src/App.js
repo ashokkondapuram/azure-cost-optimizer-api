@@ -44,13 +44,18 @@ const SavingsRealised    = lazy(() => import('./pages/SavingsRealised'));
 const DriftDetection     = lazy(() => import('./pages/DriftDetection'));
 const CrossSubscription  = lazy(() => import('./pages/CrossSubscription'));
 
-// ── Advanced pages (new) ────────────────────────────────────────────────────
+// ── Advanced pages (Phase 1) ─────────────────────────────────────────────────
 const WasteHeatmap         = lazy(() => import('./pages/WasteHeatmap'));
 const TagCompliancePage    = lazy(() => import('./pages/TagCompliancePage'));
 const AutoScheduler        = lazy(() => import('./pages/AutoScheduler'));
 const NotificationChannels = lazy(() => import('./pages/NotificationChannels'));
 const CostAnomalyDetector  = lazy(() => import('./pages/CostAnomalyDetector'));
 const OptimizationTimeline = lazy(() => import('./pages/OptimizationTimeline'));
+
+// ── Phase 2 pages ────────────────────────────────────────────────────────────
+const BudgetManager      = lazy(() => import('./pages/BudgetManager'));
+const SavingsPlanner     = lazy(() => import('./pages/SavingsPlanner'));
+const PolicyEnforcement  = lazy(() => import('./pages/PolicyEnforcement'));
 
 const qc = new QueryClient({
   defaultOptions: {
@@ -179,10 +184,12 @@ function Shell() {
                 <Route path="/drift" element={<DriftDetection />} />
                 <Route path="/cross-subscription" element={<CrossSubscription />} />
                 <Route path="/recommendations" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
+                <Route path="/findings" element={<Navigate to="/optimization-hub?tab=findings" replace />} />
+                <Route path="/rollout-monitor" element={<Navigate to="/optimization-hub?tab=rollout" replace />} />
                 <Route path="/optimization-hub" element={<OptimizationHub />} />
                 <Route path="/optimize/actions" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
                 <Route path="/optimize/scoreboard" element={<Navigate to="/optimization-hub?tab=scoreboard" replace />} />
-                <Route path="/optimize/rollout-monitor" element={<Navigate to="/optimization-hub" replace />} />
+                <Route path="/optimize/rollout-monitor" element={<Navigate to="/optimization-hub?tab=rollout" replace />} />
                 <Route path="/k8s" element={<K8sSnapshots />} />
                 <Route path="/engine" element={<ProtectedRoute adminOnly><EngineConfig /></ProtectedRoute>} />
                 <Route path="/admin/optimization" element={<ProtectedRoute adminOnly><AdminOptimization /></ProtectedRoute>} />
@@ -190,13 +197,18 @@ function Shell() {
                 <Route path="/settings" element={<ProtectedRoute adminOnly><SettingsPage /></ProtectedRoute>} />
                 <Route path="/admin/api-explorer" element={<ProtectedRoute adminOnly><ApiExplorer /></ProtectedRoute>} />
 
-                {/* ── Advanced pages ───────────────────────────────────── */}
-                <Route path="/waste-heatmap"  element={<WasteHeatmap />} />
-                <Route path="/tag-compliance" element={<TagCompliancePage />} />
-                <Route path="/auto-scheduler" element={<AutoScheduler />} />
-                <Route path="/notifications"  element={<NotificationChannels />} />
+                {/* ── Advanced pages (Phase 1) ─────────────────────── */}
+                <Route path="/waste-heatmap"    element={<WasteHeatmap />} />
+                <Route path="/tag-compliance"   element={<TagCompliancePage />} />
+                <Route path="/auto-scheduler"   element={<AutoScheduler />} />
+                <Route path="/notifications"    element={<NotificationChannels />} />
                 <Route path="/anomaly-detector" element={<CostAnomalyDetector />} />
-                <Route path="/timeline"       element={<OptimizationTimeline />} />
+                <Route path="/timeline"         element={<OptimizationTimeline />} />
+
+                {/* ── Phase 2 pages ────────────────────────────────── */}
+                <Route path="/budgets"          element={<BudgetManager />} />
+                <Route path="/savings-planner"  element={<SavingsPlanner />} />
+                <Route path="/policy"           element={<PolicyEnforcement />} />
 
                 {createResourceRoutes()}
                 <Route path="*" element={<Navigate to="/" replace />} />

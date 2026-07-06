@@ -394,12 +394,16 @@ export const OVERVIEW_NAV = [
  * Each item maps directly to a lazy-loaded route in App.js.
  */
 export const ADVANCED_TOOLS_NAV = [
-  { path: '/waste-heatmap',   title: 'Waste heatmap',       iconKey: 'history' },
-  { path: '/tag-compliance',  title: 'Tag compliance',      iconKey: 'settings' },
-  { path: '/auto-scheduler',  title: 'Auto scheduler',      iconKey: 'history' },
-  { path: '/notifications',   title: 'Notification channels', iconKey: 'settings' },
-  { path: '/anomaly-detector', title: 'Anomaly detector',   iconKey: 'costs' },
-  { path: '/timeline',        title: 'Optimization timeline', iconKey: 'history' },
+  { path: '/waste-heatmap',    title: 'Waste heatmap',          iconKey: 'history' },
+  { path: '/tag-compliance',   title: 'Tag compliance',         iconKey: 'settings' },
+  { path: '/auto-scheduler',   title: 'Auto scheduler',         iconKey: 'history' },
+  { path: '/notifications',    title: 'Notification channels',  iconKey: 'settings' },
+  { path: '/anomaly-detector', title: 'Anomaly detector',       iconKey: 'costs' },
+  { path: '/timeline',         title: 'Optimization timeline',  iconKey: 'history' },
+  // Phase 2
+  { path: '/budgets',          title: 'Budget manager',         iconKey: 'costs' },
+  { path: '/savings-planner',  title: 'Savings planner',        iconKey: 'costs' },
+  { path: '/policy',           title: 'Policy enforcement',     iconKey: 'settings' },
 ];
 
 /** Collapsible sidebar group for optimization tools and admin settings. */
@@ -654,15 +658,20 @@ export function getPageTitle(pathname) {
   const extra = {
     '/costs': 'Cost explorer',
     '/findings': 'Recommendations',
+    '/rollout-monitor': 'Rollout monitor',
     '/admin/api-explorer': 'API explorer',
     '/optimization-hub': 'Optimization hub',
-    // Advanced pages
+    // Phase 1 advanced
     '/waste-heatmap':    'Waste heatmap',
     '/tag-compliance':   'Tag compliance',
     '/auto-scheduler':   'Auto scheduler',
     '/notifications':    'Notification channels',
     '/anomaly-detector': 'Anomaly detector',
     '/timeline':         'Optimization timeline',
+    // Phase 2
+    '/budgets':         'Budget manager',
+    '/savings-planner': 'Savings planner',
+    '/policy':          'Policy enforcement',
   };
   if (extra[pathname]) return extra[pathname];
   const resource = Object.values(RESOURCE_PAGES).find((p) => p.path === pathname);

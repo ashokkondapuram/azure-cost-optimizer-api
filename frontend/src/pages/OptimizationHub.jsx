@@ -8,8 +8,10 @@ import {
 } from '../context/OptimizationHubContext';
 
 const OptimizationHubOverview = lazy(() => import('../components/optimization/OptimizationHubOverview'));
-const OptimizationActions = lazy(() => import('./OptimizationActions'));
-const OptimizationScoreboard = lazy(() => import('./OptimizationScoreboard'));
+const OptimizationActions     = lazy(() => import('./OptimizationActions'));
+const OptimizationScoreboard  = lazy(() => import('./OptimizationScoreboard'));
+const Findings                = lazy(() => import('./Findings'));
+const RolloutMonitor          = lazy(() => import('./RolloutMonitor'));
 
 function OptimizationHubSidebar() {
   const { tab, setTab } = useOptimizationHub();
@@ -50,9 +52,11 @@ function OptimizationHubPanel() {
 
   return (
     <Suspense fallback={<LoadingState message="Loading…" />}>
-      {tab === 'overview' && <OptimizationHubOverview />}
-      {tab === 'actions' && <OptimizationActions embedded />}
+      {tab === 'overview'   && <OptimizationHubOverview />}
+      {tab === 'actions'    && <OptimizationActions embedded />}
       {tab === 'scoreboard' && <OptimizationScoreboard embedded />}
+      {tab === 'findings'   && <Findings embedded />}
+      {tab === 'rollout'    && <RolloutMonitor embedded />}
     </Suspense>
   );
 }

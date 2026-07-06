@@ -5,6 +5,8 @@ const VALID_TABS = new Set([
   'overview',
   'actions',
   'scoreboard',
+  'findings',
+  'rollout',
 ]);
 
 /** Legacy deep links from separate Recommendations / Advisor tabs. */
@@ -75,7 +77,9 @@ export function useOptimizationHub() {
 }
 
 export const OPTIMIZATION_HUB_TABS = [
-  { id: 'overview', label: 'Overview', iconKey: 'dashboard', desc: 'Workflow and signals' },
-  { id: 'actions', label: 'Actions', iconKey: 'actions', desc: 'Review and approve' },
-  { id: 'scoreboard', label: 'Scoreboard', iconKey: 'scoreboard', desc: 'Resource scoring' },
+  { id: 'overview',   label: 'Overview',   iconKey: 'dashboard',   desc: 'Workflow and signals' },
+  { id: 'actions',    label: 'Actions',    iconKey: 'actions',     desc: 'Review and approve' },
+  { id: 'scoreboard', label: 'Scoreboard', iconKey: 'scoreboard',  desc: 'Resource scoring' },
+  { id: 'findings',   label: 'Findings',   iconKey: 'recommendations', desc: 'Advisor recommendations' },
+  { id: 'rollout',    label: 'Rollout',    iconKey: 'history',     desc: 'Monitor rollout progress' },
 ];
