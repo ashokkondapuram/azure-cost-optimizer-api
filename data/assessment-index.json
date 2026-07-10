@@ -1,0 +1,3409 @@
+{
+  "schemaVersion": "1.0.0",
+  "purpose": "Lookup table for DB-backed Azure optimization analyzer to map resourceType to individual assessment JSON file.",
+  "runtimeDataSource": "database_normalized_azure_resource_record",
+  "recommendationRuntimeAzureCallsAllowed": false,
+  "totalAssessmentFiles": 170,
+  "items": [
+    {
+      "resourceType": "Microsoft.ContainerService/managedClusters",
+      "assessmentFile": "aks-assessment.json",
+      "assessmentName": "Azure Kubernetes Service Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 191,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 101,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.AnalysisServices/servers",
+      "assessmentFile": "analysis-services-assessment.json",
+      "assessmentName": "Azure Analysis Services Optimization",
+      "serviceFamily": "analytics",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 11,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ApiCenter/services",
+      "assessmentFile": "api-center-assessment.json",
+      "assessmentName": "Azure API Center Optimization",
+      "serviceFamily": "app",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ApiManagement/service",
+      "assessmentFile": "api-management-assessment.json",
+      "assessmentName": "Azure API Management Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 190,
+      "metricRuleCount": 27,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 96,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.AppConfiguration/configurationStores",
+      "assessmentFile": "app-configuration-assessment.json",
+      "assessmentName": "Azure App Configuration Optimization",
+      "serviceFamily": "app",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Web/certificates",
+      "assessmentFile": "app-service-certificate-assessment.json",
+      "assessmentName": "Azure App Service Certificate Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Web/serverfarms",
+      "assessmentFile": "app-service-plan-assessment.json",
+      "assessmentName": "Azure App Service Plan Optimization",
+      "serviceFamily": "app",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 138,
+      "metricRuleCount": 13,
+      "propertyRuleCount": 13,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/applicationGateways",
+      "assessmentFile": "application-gateway-assessment.json",
+      "assessmentName": "Azure Application Gateway Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 200,
+      "metricRuleCount": 29,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 102,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Insights/components",
+      "assessmentFile": "application-insights-assessment.json",
+      "assessmentName": "Application Insights Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 187,
+      "metricRuleCount": 27,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 94,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/applicationSecurityGroups",
+      "assessmentFile": "application-security-group-assessment.json",
+      "assessmentName": "Azure Application Security Group Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Web/sites",
+      "assessmentFile": "appservice-assessment.json",
+      "assessmentName": "Azure App Service Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 315,
+      "metricRuleCount": 69,
+      "propertyRuleCount": 17,
+      "bestOptimizationRuleCount": 145,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Kubernetes/connectedClusters",
+      "assessmentFile": "arc-kubernetes-assessment.json",
+      "assessmentName": "Azure Arc-enabled Kubernetes Optimization",
+      "serviceFamily": "hybrid",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.HybridCompute/machines",
+      "assessmentFile": "arc-machine-assessment.json",
+      "assessmentName": "Azure Arc-enabled Server Optimization",
+      "serviceFamily": "hybrid",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Attestation/attestationProviders",
+      "assessmentFile": "attestation-provider-assessment.json",
+      "assessmentName": "Azure Attestation Provider Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Automation/automationAccounts",
+      "assessmentFile": "automation-account-assessment.json",
+      "assessmentName": "Azure Automation Account Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 160,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 14,
+      "bestOptimizationRuleCount": 86,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Automation/automationAccounts/runbooks",
+      "assessmentFile": "automation-runbook-assessment.json",
+      "assessmentName": "Azure Automation Runbook Optimization",
+      "serviceFamily": "operations",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Automation/automationAccounts/schedules",
+      "assessmentFile": "automation-schedule-assessment.json",
+      "assessmentName": "Azure Automation Schedule Optimization",
+      "serviceFamily": "operations",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/availabilitySets",
+      "assessmentFile": "availability-set-assessment.json",
+      "assessmentName": "Azure Availability Set Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/azureFirewalls",
+      "assessmentFile": "azure-firewall-assessment.json",
+      "assessmentName": "Azure Firewall Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 181,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 15,
+      "bestOptimizationRuleCount": 96,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.AzureStackHCI/clusters",
+      "assessmentFile": "azure-stack-hci-cluster-assessment.json",
+      "assessmentName": "Azure Stack HCI Cluster Optimization",
+      "serviceFamily": "hybrid",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DataProtection/backupVaults",
+      "assessmentFile": "backup-vault-assessment.json",
+      "assessmentName": "Azure Backup Vault Optimization",
+      "serviceFamily": "reliability",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/bastionHosts",
+      "assessmentFile": "bastion-assessment.json",
+      "assessmentName": "Azure Bastion Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 157,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 13,
+      "bestOptimizationRuleCount": 85,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Batch/batchAccounts",
+      "assessmentFile": "batch-account-assessment.json",
+      "assessmentName": "Azure Batch Account Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 181,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 13,
+      "bestOptimizationRuleCount": 97,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Blueprint/blueprints",
+      "assessmentFile": "blueprint-assessment.json",
+      "assessmentName": "Azure Blueprint Optimization",
+      "serviceFamily": "governance",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/capacityReservationGroups",
+      "assessmentFile": "capacity-reservation-group-assessment.json",
+      "assessmentName": "Azure Capacity Reservation Group Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Cdn/profiles/endpoints",
+      "assessmentFile": "cdn-endpoint-assessment.json",
+      "assessmentName": "Azure CDN Endpoint Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Chaos/experiments",
+      "assessmentFile": "chaos-studio-assessment.json",
+      "assessmentName": "Azure Chaos Studio Experiment Optimization",
+      "serviceFamily": "operations",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.CognitiveServices/accounts",
+      "assessmentFile": "cognitive-services-assessment.json",
+      "assessmentName": "Azure AI Services Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 180,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 94,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Communication/communicationServices",
+      "assessmentFile": "communication-service-assessment.json",
+      "assessmentName": "Azure Communication Services Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/galleries",
+      "assessmentFile": "compute-gallery-assessment.json",
+      "assessmentName": "Azure Compute Gallery Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/images",
+      "assessmentFile": "compute-image-assessment.json",
+      "assessmentName": "Azure Managed Image Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ConfidentialLedger/ledgers",
+      "assessmentFile": "confidential-ledger-assessment.json",
+      "assessmentName": "Azure Confidential Ledger Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.App/managedEnvironments",
+      "assessmentFile": "container-app-environment-assessment.json",
+      "assessmentName": "Azure Container Apps Managed Environment Optimization",
+      "serviceFamily": "containers",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.App/containerApps",
+      "assessmentFile": "container-apps-assessment.json",
+      "assessmentName": "Azure Container Apps Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 197,
+      "metricRuleCount": 27,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 100,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ContainerInstance/containerGroups",
+      "assessmentFile": "container-instance-assessment.json",
+      "assessmentName": "Azure Container Instance Optimization",
+      "serviceFamily": "containers",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 11,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ContainerRegistry/registries",
+      "assessmentFile": "container-registry-assessment.json",
+      "assessmentName": "Azure Container Registry Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 175,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 91,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DocumentDB/mongoClusters",
+      "assessmentFile": "cosmos-mongodb-vcore-assessment.json",
+      "assessmentName": "Azure Cosmos DB for MongoDB vCore Optimization",
+      "serviceFamily": "database",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 137,
+      "metricRuleCount": 13,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DocumentDB/databaseAccounts",
+      "assessmentFile": "cosmosdb-assessment.json",
+      "assessmentName": "Azure Cosmos DB Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 269,
+      "metricRuleCount": 43,
+      "propertyRuleCount": 18,
+      "bestOptimizationRuleCount": 120,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Portal/dashboards",
+      "assessmentFile": "dashboard-assessment.json",
+      "assessmentName": "Azure Portal Dashboard Optimization",
+      "serviceFamily": "governance",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Insights/dataCollectionRules",
+      "assessmentFile": "data-collection-rule-assessment.json",
+      "assessmentName": "Azure Monitor Data Collection Rule Optimization",
+      "serviceFamily": "monitoring",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Kusto/clusters",
+      "assessmentFile": "data-explorer-assessment.json",
+      "assessmentName": "Azure Data Explorer Cluster Optimization",
+      "serviceFamily": "analytics",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DataFactory/factories",
+      "assessmentFile": "data-factory-assessment.json",
+      "assessmentName": "Azure Data Factory Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 194,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 100,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DataLakeStore/accounts",
+      "assessmentFile": "data-lake-store-assessment.json",
+      "assessmentName": "Azure Data Lake Storage Gen1 Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DataShare/accounts",
+      "assessmentFile": "data-share-assessment.json",
+      "assessmentName": "Azure Data Share Optimization",
+      "serviceFamily": "data",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Databricks/workspaces",
+      "assessmentFile": "databricks-assessment.json",
+      "assessmentName": "Azure Databricks Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 188,
+      "metricRuleCount": 1,
+      "propertyRuleCount": 15,
+      "bestOptimizationRuleCount": 88,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/ddosProtectionPlans",
+      "assessmentFile": "ddos-protection-plan-assessment.json",
+      "assessmentName": "Azure DDoS Protection Plan Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/hostGroups",
+      "assessmentFile": "dedicated-host-assessment.json",
+      "assessmentName": "Azure Dedicated Host Group Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DesktopVirtualization/applicationGroups",
+      "assessmentFile": "desktopvirtualization-applicationgroup-assessment.json",
+      "assessmentName": "Azure Virtual Desktop Application Group Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DesktopVirtualization/hostPools",
+      "assessmentFile": "desktopvirtualization-hostpool-assessment.json",
+      "assessmentName": "Azure Virtual Desktop Host Pool Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 11,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DesktopVirtualization/workspaces",
+      "assessmentFile": "desktopvirtualization-workspace-assessment.json",
+      "assessmentName": "Azure Virtual Desktop Workspace Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DevCenter/devcenters",
+      "assessmentFile": "devcenter-assessment.json",
+      "assessmentName": "Azure Deployment Environments Dev Center Optimization",
+      "serviceFamily": "devtools",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DevCenter/projects",
+      "assessmentFile": "devcenter-project-assessment.json",
+      "assessmentName": "Azure Dev Center Project Optimization",
+      "serviceFamily": "devtools",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DeviceUpdate/accounts",
+      "assessmentFile": "device-update-assessment.json",
+      "assessmentName": "Azure Device Update Account Optimization",
+      "serviceFamily": "iot",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.HealthcareApis/workspaces/dicomservices",
+      "assessmentFile": "dicom-service-assessment.json",
+      "assessmentName": "Azure Health Data Services DICOM Service Optimization",
+      "serviceFamily": "healthcare",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DigitalTwins/digitalTwinsInstances",
+      "assessmentFile": "digital-twins-assessment.json",
+      "assessmentName": "Azure Digital Twins Instance Optimization",
+      "serviceFamily": "iot",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/diskAccesses",
+      "assessmentFile": "disk-access-assessment.json",
+      "assessmentName": "Azure Disk Access Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/disks",
+      "assessmentFile": "disk-assessment.json",
+      "assessmentName": "Azure Managed Disk Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 202,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 13,
+      "bestOptimizationRuleCount": 91,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/dnsForwardingRulesets",
+      "assessmentFile": "dns-forwarding-ruleset-assessment.json",
+      "assessmentName": "Azure DNS Forwarding Ruleset Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/dnsResolvers",
+      "assessmentFile": "dns-resolver-assessment.json",
+      "assessmentName": "Azure DNS Private Resolver Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/dnsZones",
+      "assessmentFile": "dns-zone-assessment.json",
+      "assessmentName": "Azure DNS Zone Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 7,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ElasticSan/elasticSans",
+      "assessmentFile": "elastic-san-assessment.json",
+      "assessmentName": "Azure Elastic SAN Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 11,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Communication/emailServices",
+      "assessmentFile": "email-communication-service-assessment.json",
+      "assessmentName": "Azure Email Communication Service Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.EventGrid/domains",
+      "assessmentFile": "event-grid-domain-assessment.json",
+      "assessmentName": "Azure Event Grid Domain Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.EventGrid/systemTopics",
+      "assessmentFile": "event-grid-system-topic-assessment.json",
+      "assessmentName": "Azure Event Grid System Topic Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.EventGrid/topics",
+      "assessmentFile": "event-grid-topic-assessment.json",
+      "assessmentName": "Azure Event Grid Topic Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 171,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 93,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.EventHub/namespaces",
+      "assessmentFile": "eventhub-assessment.json",
+      "assessmentName": "Azure Event Hubs Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 203,
+      "metricRuleCount": 33,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 101,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.EventHub/namespaces/eventhubs",
+      "assessmentFile": "eventhub-hub-assessment.json",
+      "assessmentName": "Azure Event Hub Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/expressRouteCircuits",
+      "assessmentFile": "expressroute-assessment.json",
+      "assessmentName": "Azure ExpressRoute Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 180,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 14,
+      "bestOptimizationRuleCount": 96,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.HealthcareApis/workspaces/fhirservices",
+      "assessmentFile": "fhir-service-assessment.json",
+      "assessmentName": "Azure Health Data Services FHIR Service Optimization",
+      "serviceFamily": "healthcare",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/firewallPolicies",
+      "assessmentFile": "firewall-policy-assessment.json",
+      "assessmentName": "Azure Firewall Policy Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Cdn/profiles",
+      "assessmentFile": "frontdoor-cdn-assessment.json",
+      "assessmentName": "Azure Front Door and CDN Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 200,
+      "metricRuleCount": 29,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 102,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/frontDoors",
+      "assessmentFile": "frontdoor-classic-assessment.json",
+      "assessmentName": "Azure Front Door Classic Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Web/sites",
+      "assessmentFile": "function-app-assessment.json",
+      "assessmentName": "Azure Function App Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 182,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 98,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.HDInsight/clusters",
+      "assessmentFile": "hdinsight-assessment.json",
+      "assessmentName": "Azure HDInsight Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 176,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 96,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.HealthcareApis/workspaces",
+      "assessmentFile": "healthcare-workspace-assessment.json",
+      "assessmentName": "Azure Health Data Services Workspace Optimization",
+      "serviceFamily": "healthcare",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.StorageCache/caches",
+      "assessmentFile": "hpc-cache-assessment.json",
+      "assessmentName": "Azure HPC Cache Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Logic/integrationAccounts",
+      "assessmentFile": "integration-account-assessment.json",
+      "assessmentName": "Azure Logic Apps Integration Account Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Devices/provisioningServices",
+      "assessmentFile": "iot-dps-assessment.json",
+      "assessmentName": "Azure IoT Device Provisioning Service Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 154,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Devices/IotHubs",
+      "assessmentFile": "iothub-assessment.json",
+      "assessmentName": "Azure IoT Hub Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 185,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 16,
+      "bestOptimizationRuleCount": 98,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/ipGroups",
+      "assessmentFile": "ip-group-assessment.json",
+      "assessmentName": "Azure IP Group Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.KeyVault/vaults",
+      "assessmentFile": "keyvault-assessment.json",
+      "assessmentName": "Azure Key Vault Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 165,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 86,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.KeyVault/vaults/certificates",
+      "assessmentFile": "keyvault-certificate-assessment.json",
+      "assessmentName": "Azure Key Vault Certificate Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.KeyVault/vaults/keys",
+      "assessmentFile": "keyvault-key-assessment.json",
+      "assessmentName": "Azure Key Vault Key Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.KeyVault/vaults/secrets",
+      "assessmentFile": "keyvault-secret-assessment.json",
+      "assessmentName": "Azure Key Vault Secret Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ContainerService/fleets",
+      "assessmentFile": "kubernetes-fleet-assessment.json",
+      "assessmentName": "Azure Kubernetes Fleet Manager Optimization",
+      "serviceFamily": "containers",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.LabServices/labPlans",
+      "assessmentFile": "lab-plan-assessment.json",
+      "assessmentName": "Azure Lab Services Lab Plan Optimization",
+      "serviceFamily": "devtest",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/loadBalancers",
+      "assessmentFile": "load-balancer-assessment.json",
+      "assessmentName": "Azure Load Balancer Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 175,
+      "metricRuleCount": 20,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 90,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.LoadTestService/loadTests",
+      "assessmentFile": "load-test-assessment.json",
+      "assessmentName": "Azure Load Testing Resource Optimization",
+      "serviceFamily": "devtools",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/localNetworkGateways",
+      "assessmentFile": "local-network-gateway-assessment.json",
+      "assessmentName": "Azure Local Network Gateway Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.OperationalInsights/workspaces",
+      "assessmentFile": "log-analytics-assessment.json",
+      "assessmentName": "Azure Log Analytics Workspace Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 173,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 91,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Web/serverfarms/workflows",
+      "assessmentFile": "logic-app-standard-plan-assessment.json",
+      "assessmentName": "Azure Logic App Standard Workflow Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Logic/workflows",
+      "assessmentFile": "logic-app-workflow-assessment.json",
+      "assessmentName": "Azure Logic Apps Workflow Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 186,
+      "metricRuleCount": 28,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 100,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.MachineLearningServices/workspaces",
+      "assessmentFile": "machine-learning-workspace-assessment.json",
+      "assessmentName": "Azure Machine Learning Workspace Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 189,
+      "metricRuleCount": 24,
+      "propertyRuleCount": 16,
+      "bestOptimizationRuleCount": 100,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Solutions/applications",
+      "assessmentFile": "managed-application-assessment.json",
+      "assessmentName": "Azure Managed Application Optimization",
+      "serviceFamily": "governance",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Solutions/applicationDefinitions",
+      "assessmentFile": "managed-application-definition-assessment.json",
+      "assessmentName": "Azure Managed Application Definition Optimization",
+      "serviceFamily": "governance",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DocumentDB/cassandraClusters",
+      "assessmentFile": "managed-cassandra-assessment.json",
+      "assessmentName": "Azure Managed Instance for Apache Cassandra Optimization",
+      "serviceFamily": "database",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 137,
+      "metricRuleCount": 14,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Dashboard/grafana",
+      "assessmentFile": "managed-grafana-assessment.json",
+      "assessmentName": "Azure Managed Grafana Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 159,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 15,
+      "bestOptimizationRuleCount": 85,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.KeyVault/managedHSMs",
+      "assessmentFile": "managed-hsm-assessment.json",
+      "assessmentName": "Azure Managed HSM Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 151,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 14,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "assessmentFile": "managed-identity-assessment.json",
+      "assessmentName": "Azure User Assigned Managed Identity Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 124,
+      "metricRuleCount": 4,
+      "propertyRuleCount": 8,
+      "bestOptimizationRuleCount": 72,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.StorageCache/amlFilesystems",
+      "assessmentFile": "managed-lustre-assessment.json",
+      "assessmentName": "Azure Managed Lustre File System Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Maps/accounts",
+      "assessmentFile": "map-account-assessment.json",
+      "assessmentName": "Azure Maps Account Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 157,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 9,
+      "bestOptimizationRuleCount": 87,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Maps/accounts/creators",
+      "assessmentFile": "maps-creator-assessment.json",
+      "assessmentName": "Azure Maps Creator Optimization",
+      "serviceFamily": "iot",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DBforMariaDB/servers",
+      "assessmentFile": "mariadb-assessment.json",
+      "assessmentName": "Azure Database for MariaDB Optimization",
+      "serviceFamily": "database",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Media/mediaservices",
+      "assessmentFile": "media-service-assessment.json",
+      "assessmentName": "Azure Media Services Optimization",
+      "serviceFamily": "media",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Insights/metricAlerts",
+      "assessmentFile": "metric-alert-assessment.json",
+      "assessmentName": "Azure Monitor Metric Alert Optimization",
+      "serviceFamily": "monitoring",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Insights/actionGroups",
+      "assessmentFile": "monitor-action-group-assessment.json",
+      "assessmentName": "Azure Monitor Action Group Optimization",
+      "serviceFamily": "monitoring",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DBforMySQL/flexibleServers",
+      "assessmentFile": "mysql-assessment.json",
+      "assessmentName": "Azure Database for MySQL Flexible Server Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 207,
+      "metricRuleCount": 29,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 106,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/natGateways",
+      "assessmentFile": "nat-gateway-assessment.json",
+      "assessmentName": "Azure NAT Gateway Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 172,
+      "metricRuleCount": 20,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 88,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.NetApp/netAppAccounts",
+      "assessmentFile": "netapp-account-assessment.json",
+      "assessmentName": "Azure NetApp Files Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 184,
+      "metricRuleCount": 28,
+      "propertyRuleCount": 9,
+      "bestOptimizationRuleCount": 100,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/connections",
+      "assessmentFile": "network-connection-assessment.json",
+      "assessmentName": "Azure Network Connection Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/networkManagers",
+      "assessmentFile": "network-manager-assessment.json",
+      "assessmentName": "Azure Virtual Network Manager Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/networkSecurityGroups",
+      "assessmentFile": "network-security-group-assessment.json",
+      "assessmentName": "Azure Network Security Group Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 155,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 85,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/networkWatchers",
+      "assessmentFile": "network-watcher-assessment.json",
+      "assessmentName": "Azure Network Watcher Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 150,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 86,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.NotificationHubs/namespaces",
+      "assessmentFile": "notification-hub-assessment.json",
+      "assessmentName": "Azure Notification Hubs Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 164,
+      "metricRuleCount": 20,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 90,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Oracle.Database/cloudVmClusters",
+      "assessmentFile": "oracle-cloud-vmcluster-assessment.json",
+      "assessmentName": "Oracle Database@Azure VM Cluster Optimization",
+      "serviceFamily": "database",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Authorization/policyAssignments",
+      "assessmentFile": "policy-assignment-assessment.json",
+      "assessmentName": "Azure Policy Assignment Optimization",
+      "serviceFamily": "governance",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Authorization/policySetDefinitions",
+      "assessmentFile": "policy-set-definition-assessment.json",
+      "assessmentName": "Azure Policy Initiative Optimization",
+      "serviceFamily": "governance",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "assessmentFile": "postgres-assessment.json",
+      "assessmentName": "Azure Database for PostgreSQL Flexible Server Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 282,
+      "metricRuleCount": 52,
+      "propertyRuleCount": 23,
+      "bestOptimizationRuleCount": 130,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.PowerBIDedicated/capacities",
+      "assessmentFile": "powerbi-dedicated-assessment.json",
+      "assessmentName": "Power BI Embedded Capacity Optimization",
+      "serviceFamily": "analytics",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 11,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/privateDnsZones",
+      "assessmentFile": "private-dns-zone-assessment.json",
+      "assessmentName": "Azure Private DNS Zone Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 9,
+      "bestOptimizationRuleCount": 77,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/privateEndpoints",
+      "assessmentFile": "private-endpoint-assessment.json",
+      "assessmentName": "Azure Private Endpoint Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 141,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/privateLinkServices",
+      "assessmentFile": "private-link-service-assessment.json",
+      "assessmentName": "Azure Private Link Service Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/proximityPlacementGroups",
+      "assessmentFile": "proximity-placement-group-assessment.json",
+      "assessmentName": "Azure Proximity Placement Group Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/publicIPAddresses",
+      "assessmentFile": "public-ip-assessment.json",
+      "assessmentName": "Azure Public IP Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 159,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Purview/accounts",
+      "assessmentFile": "purview-account-assessment.json",
+      "assessmentName": "Microsoft Purview Account Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 162,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 13,
+      "bestOptimizationRuleCount": 88,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.RecoveryServices/vaults",
+      "assessmentFile": "recovery-services-vault-assessment.json",
+      "assessmentName": "Azure Recovery Services Vault Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 163,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 86,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Cache/redis",
+      "assessmentFile": "redis-assessment.json",
+      "assessmentName": "Azure Cache for Redis Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 285,
+      "metricRuleCount": 52,
+      "propertyRuleCount": 18,
+      "bestOptimizationRuleCount": 132,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Relay/namespaces",
+      "assessmentFile": "relay-assessment.json",
+      "assessmentName": "Azure Relay Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ResourceGraph/queries",
+      "assessmentFile": "resource-graph-query-assessment.json",
+      "assessmentName": "Azure Resource Graph Shared Query Optimization",
+      "serviceFamily": "governance",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/routeFilters",
+      "assessmentFile": "route-filter-assessment.json",
+      "assessmentName": "Azure Route Filter Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/routeTables",
+      "assessmentFile": "route-table-assessment.json",
+      "assessmentName": "Azure Route Table Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 129,
+      "metricRuleCount": 4,
+      "propertyRuleCount": 8,
+      "bestOptimizationRuleCount": 75,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Insights/scheduledQueryRules",
+      "assessmentFile": "scheduled-query-rule-assessment.json",
+      "assessmentName": "Azure Monitor Scheduled Query Rule Optimization",
+      "serviceFamily": "monitoring",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Search/searchServices",
+      "assessmentFile": "search-service-assessment.json",
+      "assessmentName": "Azure AI Search Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 183,
+      "metricRuleCount": 21,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 94,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Security/automations",
+      "assessmentFile": "security-automation-assessment.json",
+      "assessmentName": "Microsoft Defender for Cloud Automation Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Security/securityConnectors",
+      "assessmentFile": "security-connector-assessment.json",
+      "assessmentName": "Microsoft Defender Security Connector Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ServiceFabric/clusters",
+      "assessmentFile": "service-fabric-cluster-assessment.json",
+      "assessmentName": "Azure Service Fabric Cluster Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 11,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ServiceBus/namespaces",
+      "assessmentFile": "servicebus-assessment.json",
+      "assessmentName": "Azure Service Bus Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 206,
+      "metricRuleCount": 37,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 102,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ServiceBus/namespaces/queues",
+      "assessmentFile": "servicebus-queue-assessment.json",
+      "assessmentName": "Azure Service Bus Queue Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.ServiceBus/namespaces/topics",
+      "assessmentFile": "servicebus-topic-assessment.json",
+      "assessmentName": "Azure Service Bus Topic Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.SignalRService/SignalR",
+      "assessmentFile": "signalr-assessment.json",
+      "assessmentName": "Azure SignalR Service Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 169,
+      "metricRuleCount": 20,
+      "propertyRuleCount": 15,
+      "bestOptimizationRuleCount": 90,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.RecoveryServices/vaults/replicationFabrics",
+      "assessmentFile": "site-recovery-vault-assessment.json",
+      "assessmentName": "Azure Site Recovery Fabric Optimization",
+      "serviceFamily": "reliability",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 130,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 78,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/snapshots",
+      "assessmentFile": "snapshot-assessment.json",
+      "assessmentName": "Azure Managed Disk Snapshot Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 157,
+      "metricRuleCount": 1,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 75,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.AppPlatform/Spring",
+      "assessmentFile": "spring-apps-assessment.json",
+      "assessmentName": "Azure Spring Apps Optimization",
+      "serviceFamily": "app",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Sql/servers/databases",
+      "assessmentFile": "sql-database-assessment.json",
+      "assessmentName": "Azure SQL Database Optimization",
+      "serviceFamily": "database",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 137,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 13,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Sql/servers/elasticPools",
+      "assessmentFile": "sql-elastic-pool-assessment.json",
+      "assessmentName": "Azure SQL Elastic Pool Optimization",
+      "serviceFamily": "database",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Sql/managedInstances",
+      "assessmentFile": "sql-managed-instance-assessment.json",
+      "assessmentName": "Azure SQL Managed Instance Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 188,
+      "metricRuleCount": 21,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 97,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Sql/servers",
+      "assessmentFile": "sqlserver-assessment.json",
+      "assessmentName": "Azure SQL Server and Azure SQL Database Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 281,
+      "metricRuleCount": 49,
+      "propertyRuleCount": 18,
+      "bestOptimizationRuleCount": 134,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/sshPublicKeys",
+      "assessmentFile": "ssh-public-key-assessment.json",
+      "assessmentName": "Azure SSH Public Key Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Web/staticSites",
+      "assessmentFile": "static-web-app-assessment.json",
+      "assessmentName": "Azure Static Web App Optimization",
+      "serviceFamily": "app",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Storage/storageAccounts",
+      "assessmentFile": "storage-account-assessment.json",
+      "assessmentName": "Azure Storage Account Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 230,
+      "metricRuleCount": 29,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 119,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "assessmentFile": "storage-container-assessment.json",
+      "assessmentName": "Azure Blob Container Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 133,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 81,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Storage/storageAccounts/fileServices/shares",
+      "assessmentFile": "storage-file-share-assessment.json",
+      "assessmentName": "Azure Files Share Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Storage/storageAccounts/queueServices/queues",
+      "assessmentFile": "storage-queue-assessment.json",
+      "assessmentName": "Azure Storage Queue Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Storage/storageAccounts/tableServices/tables",
+      "assessmentFile": "storage-table-assessment.json",
+      "assessmentName": "Azure Table Storage Table Optimization",
+      "serviceFamily": "storage",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 131,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.StreamAnalytics/streamingJobs",
+      "assessmentFile": "stream-analytics-assessment.json",
+      "assessmentName": "Azure Stream Analytics Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 178,
+      "metricRuleCount": 28,
+      "propertyRuleCount": 10,
+      "bestOptimizationRuleCount": 96,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Synapse/workspaces",
+      "assessmentFile": "synapse-assessment.json",
+      "assessmentName": "Azure Synapse Analytics Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 186,
+      "metricRuleCount": 22,
+      "propertyRuleCount": 6,
+      "bestOptimizationRuleCount": 95,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Synapse/workspaces/bigDataPools",
+      "assessmentFile": "synapse-spark-pool-assessment.json",
+      "assessmentName": "Azure Synapse Spark Pool Optimization",
+      "serviceFamily": "analytics",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 135,
+      "metricRuleCount": 11,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 83,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Synapse/workspaces/sqlPools",
+      "assessmentFile": "synapse-sql-pool-assessment.json",
+      "assessmentName": "Azure Synapse Dedicated SQL Pool Optimization",
+      "serviceFamily": "analytics",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.TimeSeriesInsights/environments",
+      "assessmentFile": "time-series-insights-assessment.json",
+      "assessmentName": "Azure Time Series Insights Environment Optimization",
+      "serviceFamily": "iot",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/trafficManagerProfiles",
+      "assessmentFile": "traffic-manager-assessment.json",
+      "assessmentName": "Azure Traffic Manager Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 141,
+      "metricRuleCount": 8,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 79,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/virtualHubs",
+      "assessmentFile": "virtual-hub-assessment.json",
+      "assessmentName": "Azure Virtual Hub Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/virtualNetworks",
+      "assessmentFile": "virtual-network-assessment.json",
+      "assessmentName": "Azure Virtual Network Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 158,
+      "metricRuleCount": 16,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 87,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/virtualWans",
+      "assessmentFile": "virtual-wan-assessment.json",
+      "assessmentName": "Azure Virtual WAN Optimization",
+      "serviceFamily": "network",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/virtualMachines",
+      "assessmentFile": "vm-assessment.json",
+      "assessmentName": "Azure Virtual Machine Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 393,
+      "metricRuleCount": 116,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 179,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Compute/virtualMachineScaleSets",
+      "assessmentFile": "vmss-assessment.json",
+      "assessmentName": "Azure Virtual Machine Scale Set Production Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 341,
+      "metricRuleCount": 78,
+      "propertyRuleCount": 20,
+      "bestOptimizationRuleCount": 153,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.AVS/privateClouds",
+      "assessmentFile": "vmware-private-cloud-assessment.json",
+      "assessmentName": "Azure VMware Solution Private Cloud Optimization",
+      "serviceFamily": "compute",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 136,
+      "metricRuleCount": 12,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 84,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/virtualNetworkGateways",
+      "assessmentFile": "vpn-gateway-assessment.json",
+      "assessmentName": "Azure VPN Gateway Optimization",
+      "serviceFamily": null,
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 185,
+      "metricRuleCount": 28,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 99,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies",
+      "assessmentFile": "waf-policy-assessment.json",
+      "assessmentName": "Azure WAF Policy Optimization",
+      "serviceFamily": "security",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.SignalRService/WebPubSub",
+      "assessmentFile": "web-pubsub-assessment.json",
+      "assessmentName": "Azure Web PubSub Optimization",
+      "serviceFamily": "integration",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 134,
+      "metricRuleCount": 10,
+      "propertyRuleCount": 12,
+      "bestOptimizationRuleCount": 82,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    {
+      "resourceType": "Microsoft.Insights/workbooks",
+      "assessmentFile": "workbook-assessment.json",
+      "assessmentName": "Azure Monitor Workbook Optimization",
+      "serviceFamily": "monitoring",
+      "runtimeMode": "db_backed_deterministic_rule_evaluation",
+      "azureApiCallsAllowedAtRecommendationRuntime": false,
+      "assessmentRuleCount": 132,
+      "metricRuleCount": 9,
+      "propertyRuleCount": 11,
+      "bestOptimizationRuleCount": 80,
+      "actionOutcomeRuleCount": 14,
+      "allowedRecommendationActions": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    }
+  ]
+}
