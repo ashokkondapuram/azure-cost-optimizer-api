@@ -12,6 +12,13 @@ from app.optimizer.scoring_weights import (
     clamp_score,
     load_weights,
 )
+from app.rule_behavior import (
+    SCORING_BUY_RESERVATION,
+    SCORING_DECOMMISSION,
+    SCORING_DOWNGRADE_DISK,
+    SCORING_RESIZE_DOWN,
+    scoring_action_for_rule_ids,
+)
 
 _EFFORT_BY_TYPE: dict[str, tuple[str, float, bool]] = {
     "compute/vm": ("simple", 70.0, True),
@@ -27,7 +34,13 @@ _RESIZE_RULES = frozenset({
 })
 _DISK_RULES = frozenset({"DISK_OVERSIZE_EXTENDED", "DISK_UNUSED_EXTENDED"})
 _COMMIT_RULES = frozenset({"VM_COMMITMENT_CANDIDATE"})
-_PERF_RULES = frozenset({"VM_DISK_BOTTLENECK", "VM_NETWORK_BOTTLENECK", "DISK_UNDERPROVISIONED"})
+_PERF_RULES = frozenset({
+    "VM_DISK_BOTTLENECK", "VM_NETWORK_BOTTLENECK", "VM_MEMORY_PRESSURE_EXTENDED",
+    "DISK_UNDERPROVISIONED", "DISK_QUEUE_DEPTH_EXTENDED", "AKS_NODE_MEMORY_PRESSURE_EXTENDED",
+    "LOAD_BALANCER_SNAT_PRESSURE", "NAT_GATEWAY_SNAT_EXHAUSTION",
+    "APP_GATEWAY_CU_SATURATION", "PRIVATE_LINK_NAT_PORT_PRESSURE",
+    "PRIVATE_ENDPOINT_FAILED_EXTENDED", "NSG_PERMISSIVE_EXTENDED",
+})
 
 
 @dataclass
@@ -47,8 +60,12 @@ def _savings_from_signals(
     monthly_cost: float,
     advisor_savings: float,
     finding_savings: float,
+    unified_monthly_savings: float | None = None,
 ) -> tuple[float, float]:
-    monthly = round(max(advisor_savings, finding_savings, 0.0), 2)
+    if unified_monthly_savings is not None:
+        monthly = round(max(unified_monthly_savings, 0.0), 2)
+    else:
+        monthly = round(max(advisor_savings, finding_savings, 0.0), 2)
     confidence = 50.0
     if advisor_savings > 0 and finding_savings > 0:
         confidence = 85.0
@@ -116,7 +133,7 @@ def _effort_dimension(resource_type: str, action_type: str) -> tuple[str, float,
     effort, score, automated = _EFFORT_BY_TYPE.get(resource_type, ("medium", 50.0, False))
     if action_type in {"investigate", "manual_review"}:
         return effort, clamp_score(score - 10), automated
-    if action_type in {"resize_down", "downgrade_disk"}:
+    if action_type in {"resize_down", "downgrade_disk", "decommission"}:
         return effort, clamp_score(score), automated
     if action_type == "buy_reservation":
         return "medium", 55.0, False
@@ -162,11 +179,17 @@ def _primary_action(
         return "manual_review", "Manual review"
     if perf_risk >= 50 or (has_cost_advisor and perf_risk >= 35):
         return "manual_review", "Manual review"
-    if rule_ids & _COMMIT_RULES:
+
+    scored_action = scoring_action_for_rule_ids(rule_ids)
+    if scored_action == SCORING_MANUAL_REVIEW:
+        return "manual_review", "Manual review"
+    if scored_action == SCORING_DECOMMISSION:
+        return "decommission", "High"
+    if scored_action == SCORING_BUY_RESERVATION or rule_ids & _COMMIT_RULES:
         return "buy_reservation", "High"
-    if rule_ids & _RESIZE_RULES:
+    if scored_action == SCORING_RESIZE_DOWN or rule_ids & _RESIZE_RULES:
         return "resize_down", "High" if perf_risk < 25 else "Medium"
-    if rule_ids & _DISK_RULES:
+    if scored_action == SCORING_DOWNGRADE_DISK or rule_ids & _DISK_RULES:
         return "downgrade_disk", "High" if perf_risk < 25 else "Medium"
     if has_cost_advisor or monthly_savings > 0:
         return "investigate", "Medium"
@@ -235,6 +258,7 @@ def score_resource(
     trends: dict[str, Any],
     advisor_savings: float = 0.0,
     finding_savings: float = 0.0,
+    unified_monthly_savings: float | None = None,
     rule_ids: set[str] | None = None,
     has_cost_advisor: bool = False,
     has_perf_advisor: bool = False,
@@ -247,6 +271,7 @@ def score_resource(
         monthly_cost=monthly_cost,
         advisor_savings=advisor_savings,
         finding_savings=finding_savings,
+        unified_monthly_savings=unified_monthly_savings,
     )
     trend_penalty = float(trends.get("confidence_penalty") or 0)
     savings_confidence = clamp_score(max(0, savings_confidence - trend_penalty))

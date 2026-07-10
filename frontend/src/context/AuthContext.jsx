@@ -15,6 +15,7 @@ import {
 } from '../api/auth';
 import { getStoredToken, getTokenExpiryMs } from '../api/tokenStorage';
 import { handleUnauthorized, setAuthBootstrapInProgress } from '../api/authSession';
+import { AUTH_TOKEN_REFRESHED_EVENT } from '../config/session';
 
 const TOKEN_KEY = 'finops_auth_token';
 const SESSION_CHECK_MS = 30_000;
@@ -24,6 +25,7 @@ const AuthCtx = createContext({
   loading: true,
   isAuthenticated: false,
   isAdmin: false,
+  isSuperuser: false,
   login: async () => {},
   logout: () => {},
   refreshUser: async () => {},
@@ -88,7 +90,9 @@ export function AuthProvider({ children }) {
     const onStorage = (event) => {
       if (event.key === TOKEN_KEY) bump();
     };
+    const onTokenRefreshed = () => bump();
     window.addEventListener('storage', onStorage);
+    window.addEventListener(AUTH_TOKEN_REFRESHED_EVENT, onTokenRefreshed);
 
     const token = getStoredToken();
     const expMs = token ? getTokenExpiryMs(token) : null;
@@ -101,6 +105,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       window.removeEventListener('storage', onStorage);
+      window.removeEventListener(AUTH_TOKEN_REFRESHED_EVENT, onTokenRefreshed);
       clearInterval(pollId);
       if (expiryTimer) clearTimeout(expiryTimer);
     };
@@ -127,7 +132,8 @@ export function AuthProvider({ children }) {
     user,
     loading,
     isAuthenticated: sessionActive && (!!user || !!userFromStoredToken()),
-    isAdmin: user?.role === 'admin',
+    isSuperuser: user?.role === 'superuser' || user?.is_superuser === true,
+    isAdmin: user?.role === 'admin' || user?.role === 'superuser' || user?.is_admin === true,
     login,
     logout,
     refreshUser: loadUser,

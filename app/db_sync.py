@@ -56,6 +56,8 @@ from app.vm_uptime import enrich_vmss_list_with_instance_uptime
 
 log = structlog.get_logger(__name__)
 
+_SYNC_BATCH_SIZE = 500
+
 
 def _now():
     return datetime.now(timezone.utc)
@@ -296,7 +298,7 @@ def _extract_rg(resource_id: str) -> Optional[str]:
         parts = resource_id.split("/")
         idx = [p.lower() for p in parts].index("resourcegroups")
         return parts[idx + 1]
-    except Exception:
+    except (ValueError, IndexError):
         return None
 
 
@@ -342,8 +344,10 @@ def _vm_power_state(vm: dict) -> str | None:
 
 def enrich_aks_arm_clusters(client: AzureResourcesClient, subscription_id: str, clusters: list) -> list:
     """Ensure live AKS list responses include node pools and stable resource IDs."""
-    enriched = []
-    for c in clusters or []:
+    if not clusters:
+        return []
+
+    def _enrich_one(c: dict) -> dict:
         rid = (c.get("id") or "").strip()
         rg = _extract_rg(rid)
         cname = c.get("name", "")
@@ -362,12 +366,19 @@ def enrich_aks_arm_clusters(client: AzureResourcesClient, subscription_id: str, 
                 )
             except Exception as pool_exc:
                 log.debug("live AKS pool fetch failed for %s: %s", cname, pool_exc)
-        c = {
+        return {
             **c,
             "properties": _aks_properties(c, pools),
         }
-        enriched.append(c)
-    return enriched
+
+    if len(clusters) == 1:
+        return [_enrich_one(clusters[0])]
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    workers = min(8, len(clusters))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(_enrich_one, clusters))
 
 
 def _collect_arm_ids(items: list) -> set[str]:
@@ -394,17 +405,25 @@ def _resolve_findings_for_missing_resources(
         return 0
     subscription_id = subscription_id.lower()
     normalized = {normalize_arm_id(rid) for rid in resource_ids if rid}
-    rows = (
+    if not normalized:
+        return 0
+    now = _now()
+    resolved = 0
+    base = (
         db.query(OptimizationFinding)
         .filter(
             OptimizationFinding.subscription_id == subscription_id,
             OptimizationFinding.status == "open",
         )
-        .all()
     )
-    now = _now()
-    resolved = 0
-    for row in rows:
+    if len(normalized) <= _SYNC_BATCH_SIZE:
+        for row in base.filter(OptimizationFinding.resource_id.in_(list(normalized))).all():
+            row.status = "resolved"
+            row.resolved_at = now
+            resolved += 1
+        return resolved
+
+    for row in base.yield_per(_SYNC_BATCH_SIZE):
         rid = normalize_arm_id(row.resource_id or "")
         if rid and rid in normalized:
             row.status = "resolved"
@@ -424,18 +443,18 @@ def _deactivate_missing_resources(
 
     subscription_id = subscription_id.lower()
     present = {normalize_arm_id(rid) for rid in present_ids if rid}
-    rows = (
+    removed_ids: set[str] = set()
+    deactivated = 0
+    query = (
         db.query(ResourceSnapshot)
         .filter(
             ResourceSnapshot.subscription_id == subscription_id,
             ResourceSnapshot.resource_type == resource_type,
             ResourceSnapshot.is_active.is_(True),
         )
-        .all()
+        .yield_per(_SYNC_BATCH_SIZE)
     )
-    removed_ids: set[str] = set()
-    deactivated = 0
-    for row in rows:
+    for row in query:
         rid = normalize_arm_id(row.resource_id or "")
         if not rid or rid in present:
             continue
@@ -471,15 +490,15 @@ def deactivate_inventory_resources_not_found(
 
     by_subscription: dict[str, set[str]] = {}
     deactivated = 0
-    rows = (
+    query = (
         db.query(ResourceSnapshot)
         .filter(
             ResourceSnapshot.is_active.is_(True),
             ResourceSnapshot.resource_id.in_(list(targets)),
         )
-        .all()
+        .yield_per(_SYNC_BATCH_SIZE)
     )
-    for row in rows:
+    for row in query:
         rid = normalize_arm_id(row.resource_id or "")
         row.is_active = False
         deactivated += 1
@@ -533,19 +552,19 @@ def _prune_stale_resources(
 def _dedupe_resource_snapshots(db: Session, subscription_id: str) -> int:
     """Deactivate duplicate active rows (same ARM ID or same type+name+RG)."""
     subscription_id = subscription_id.lower()
-    rows = (
+    seen_ids: set[str] = set()
+    seen_logical: set[str] = set()
+    deactivated = 0
+    query = (
         db.query(ResourceSnapshot)
         .filter(
             ResourceSnapshot.subscription_id == subscription_id,
             ResourceSnapshot.is_active.is_(True),
         )
         .order_by(ResourceSnapshot.synced_at.desc())
-        .all()
+        .yield_per(_SYNC_BATCH_SIZE)
     )
-    seen_ids: set[str] = set()
-    seen_logical: set[str] = set()
-    deactivated = 0
-    for row in rows:
+    for row in query:
         rid = (row.resource_id or "").strip().lower()
         # Bug 4 fix: normalize the logical key *before* set operations so that
         # trailing-pipe variants (e.g. "compute/vm||" vs "compute/vm||") are
@@ -576,19 +595,19 @@ def _deactivate_scale_set_vm_rows(db: Session, subscription_id: str) -> int:
     """Hide VMSS instance VMs that were previously stored as compute/vm."""
     subscription_id = subscription_id.lower()
     deactivated = 0
-    rows = (
+    query = (
         db.query(ResourceSnapshot)
         .filter(
             ResourceSnapshot.subscription_id == subscription_id,
             ResourceSnapshot.resource_type == "compute/vm",
             ResourceSnapshot.is_active.is_(True),
         )
-        .all()
+        .yield_per(_SYNC_BATCH_SIZE)
     )
-    for row in rows:
+    for row in query:
         try:
             props = json.loads(row.properties_json or "{}")
-        except Exception:
+        except json.JSONDecodeError:
             props = {}
         pseudo = {"id": row.resource_id, "properties": props}
         if is_scale_set_instance(pseudo):
@@ -611,19 +630,43 @@ def _sync_generic_arm_resources(
     successful_types: set[str] | None = None,
 ) -> None:
     """Sync extended resource types via the generic ARM resources list API."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    work: list[tuple[str, str]] = []
     for arm_type, canonical in generic_arm_sync_types():
         if canonical in _DEDICATED_TYPED_SYNC_CANONICALS:
             continue
         if types_set is not None and canonical not in types_set:
             continue
-        spec = get_technical_fetch_spec(canonical)
+        if get_technical_fetch_spec(canonical) is None:
+            continue
+        work.append((arm_type, canonical))
+
+    def _fetch(arm_type: str, canonical: str) -> tuple[str, list]:
+        items = client.list_resources(subscription_id, arm_type)
+        items = enrich_arm_resources_for_type(client, subscription_id, items, canonical)
+        for item in items:
+            spec = get_technical_fetch_spec(canonical)
+            props = item.get("properties") or {}
+            item["_sync_props"] = pick_sync_properties(item, spec)
+            item["_sync_state"] = props.get("provisioningState") or props.get("state")
+        return canonical, items
+
+    workers = min(6, max(1, len(work)))
+    if workers <= 1:
+        fetched = [_fetch(arm, can) for arm, can in work]
+    else:
+        fetched = []
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_fetch, arm, can): can for arm, can in work}
+            for fut in as_completed(futures):
+                try:
+                    fetched.append(fut.result())
+                except Exception as exc:
+                    log.warning("sync generic ARM type %s failed: %s", futures[fut], exc)
+
+    for canonical, items in fetched:
         try:
-            items = client.list_resources(subscription_id, arm_type)
-            items = enrich_arm_resources_for_type(client, subscription_id, items, canonical)
-            for item in items:
-                props = item.get("properties") or {}
-                item["_sync_props"] = pick_sync_properties(item, spec)
-                item["_sync_state"] = props.get("provisioningState") or props.get("state")
             _bulk_upsert_arm_list(
                 db,
                 subscription_id,
@@ -637,7 +680,7 @@ def _sync_generic_arm_resources(
             if synced_ids is not None and successful_types is not None:
                 _record_type_sync(synced_ids, successful_types, canonical, items)
         except Exception as exc:
-            log.warning("sync generic ARM type %s failed: %s", arm_type, exc)
+            log.warning("sync generic ARM upsert %s failed: %s", canonical, exc)
 
 
 def sync_resources(
@@ -746,6 +789,8 @@ def _sync_resources_inner(
                 scale_sets = enrich_vmss_list_with_instance_uptime(
                     client, subscription_id, scale_sets,
                 )
+                from app.vm_utils import vmss_operational_state
+
                 vmss_spec = get_technical_fetch_spec("compute/vmss")
                 for item in scale_sets:
                     props = item.get("properties") or {}
@@ -758,7 +803,12 @@ def _sync_resources_inner(
                     ):
                         if props.get(key) is not None:
                             vmss_props[key] = props[key]
-                    item["_sync_state"] = props.get("provisioningState")
+                    sku_capacity = (item.get("sku") or {}).get("capacity")
+                    if sku_capacity is not None:
+                        vmss_props["instance_count"] = sku_capacity
+                    operational = vmss_operational_state(item)
+                    vmss_props["powerState"] = operational
+                    item["_sync_state"] = operational
                     item["_sync_props"] = vmss_props
                 _bulk_upsert_arm_list(
                     db,
@@ -776,6 +826,8 @@ def _sync_resources_inner(
 
         if want("compute/disk"):
             try:
+                from app.disk_staleness import disk_sync_state
+
                 disks = compute_fetched.get("compute/disk", [])
                 for d in disks:
                     disk_spec = get_technical_fetch_spec("compute/disk")
@@ -785,13 +837,14 @@ def _sync_resources_inner(
                         d,
                         pick_sync_properties(d, disk_spec),
                     )
+                    d["_sync_state"] = disk_sync_state(d, d.get("_sync_props"))
                 _bulk_upsert_arm_list(
                     db,
                     subscription_id,
                     disks,
                     "compute/disk",
                     catalog_cache=catalog_cache,
-                    state_fn=lambda d: d.get("properties", {}).get("diskState"),
+                    state_fn=lambda d: d.get("_sync_state"),
                     properties_fn=lambda d: d.get("_sync_props") or {},
                 )
                 counts["compute/disk"] = len(disks)
@@ -801,15 +854,24 @@ def _sync_resources_inner(
 
         if want("compute/snapshot"):
             try:
+                from app.disk_staleness import disk_sync_state
+
                 snapshots = compute_fetched.get("compute/snapshot", [])
+                for snap in snapshots:
+                    snap_spec = get_technical_fetch_spec("compute/snapshot")
+                    snap["_sync_props"] = pick_sync_properties(snap, snap_spec)
+                    snap["_sync_state"] = (
+                        disk_sync_state(snap, snap.get("_sync_props"))
+                        or (snap.get("properties") or {}).get("provisioningState")
+                    )
                 _bulk_upsert_arm_list(
                     db,
                     subscription_id,
                     snapshots,
                     "compute/snapshot",
                     catalog_cache=catalog_cache,
-                    state_fn=lambda snap: (snap.get("properties") or {}).get("diskState")
-                    or (snap.get("properties") or {}).get("provisioningState"),
+                    state_fn=lambda snap: snap.get("_sync_state"),
+                    properties_fn=lambda snap: snap.get("_sync_props") or {},
                 )
                 counts["compute/snapshot"] = len(snapshots)
                 _record_type_sync(synced_ids, successful_types, "compute/snapshot", snapshots)
@@ -1403,7 +1465,7 @@ def deactivate_cost_export_only_snapshots(subscription_id: str, db: Session) -> 
     for row in rows:
         try:
             props = json.loads(row.properties_json or "{}")
-        except Exception:
+        except json.JSONDecodeError:
             props = {}
         if props.get("source") != "cost_export":
             continue
@@ -1524,21 +1586,32 @@ def _persist_mtd_by_service_agg(
     by_service: dict[str, dict],
 ) -> int:
     written = 0
+    service_names = list(by_service.keys())
+
+    if not service_names:
+        return 0
+
+    # Batch query all services
+    existing_rows = (
+        db.query(CostByServiceSnapshot)
+        .filter(
+            CostByServiceSnapshot.subscription_id == subscription_id,
+            CostByServiceSnapshot.service_name.in_(service_names),
+            CostByServiceSnapshot.month == month,
+        )
+        .all()
+    )
+
+    # Build dict for O(1) lookup
+    existing_dict: dict[str, CostByServiceSnapshot] = {row.service_name: row for row in existing_rows}
+
     for svc, amounts in by_service.items():
         pretax = float(amounts.get("pretax") or 0.0)
         usd = float(amounts.get("usd") or 0.0)
         # Bug 1 fix: default currency should be "USD", not "CAD".
         # "CAD" is tenant-specific and must never be a global fallback.
         currency = str(amounts.get("currency") or "USD")
-        existing = (
-            db.query(CostByServiceSnapshot)
-            .filter(
-                CostByServiceSnapshot.subscription_id == subscription_id,
-                CostByServiceSnapshot.service_name == svc,
-                CostByServiceSnapshot.month == month,
-            )
-            .first()
-        )
+        existing = existing_dict.get(svc)
         if existing:
             existing.cost_usd = usd
             existing.cost_billing = pretax
@@ -1595,10 +1668,31 @@ def _persist_mtd_by_resource_agg(
     from app.focus_mapping import normalize_arm_id
 
     written = 0
+    # First pass: normalize resource IDs
+    normalized_resources: dict[str, tuple[str, dict]] = {}
     for rid, amounts in by_resource.items():
         resource_id = normalize_arm_id(rid)
-        if not resource_id:
-            continue
+        if resource_id:
+            normalized_resources[resource_id] = (rid, amounts)
+
+    if not normalized_resources:
+        return 0
+
+    # Batch query all resources
+    existing_rows = (
+        db.query(CostByResourceSnapshot)
+        .filter(
+            CostByResourceSnapshot.subscription_id == subscription_id,
+            CostByResourceSnapshot.resource_id.in_(list(normalized_resources.keys())),
+            CostByResourceSnapshot.month == month,
+        )
+        .all()
+    )
+
+    # Build dict for O(1) lookup
+    existing_dict: dict[str, CostByResourceSnapshot] = {row.resource_id: row for row in existing_rows}
+
+    for resource_id, (rid, amounts) in normalized_resources.items():
         pretax = float(amounts.get("pretax") or 0.0)
         usd = float(amounts.get("usd") or 0.0)
         # Bug 1 fix (resource agg): same CAD → USD correction.
@@ -1606,15 +1700,7 @@ def _persist_mtd_by_resource_agg(
         service_name = amounts.get("service_name") or "Other"
         resource_group = amounts.get("resource_group") or ""
         resource_type = amounts.get("resource_type") or ""
-        existing = (
-            db.query(CostByResourceSnapshot)
-            .filter(
-                CostByResourceSnapshot.subscription_id == subscription_id,
-                CostByResourceSnapshot.resource_id == resource_id,
-                CostByResourceSnapshot.month == month,
-            )
-            .first()
-        )
+        existing = existing_dict.get(resource_id)
         if existing:
             existing.service_name = service_name
             existing.resource_group = resource_group or None
@@ -1675,6 +1761,31 @@ def _persist_mtd_by_service(
         log.warning("cost_sync.service_columns_missing", subscription_id=subscription_id)
         return 0
 
+    # Extract all service names from table rows
+    service_names = set()
+    for row in table_rows:
+        svc = service_name_from_cost_row(
+            row, idx, names=[c.get("name") if isinstance(c, dict) else c for c in cols],
+        )
+        service_names.add(svc)
+
+    if not service_names:
+        return 0
+
+    # Batch query all services
+    existing_rows = (
+        db.query(CostByServiceSnapshot)
+        .filter(
+            CostByServiceSnapshot.subscription_id == subscription_id,
+            CostByServiceSnapshot.service_name.in_(list(service_names)),
+            CostByServiceSnapshot.month == month,
+        )
+        .all()
+    )
+
+    # Build dict for O(1) lookup
+    existing_dict: dict[str, CostByServiceSnapshot] = {row.service_name: row for row in existing_rows}
+
     written = 0
     for row in table_rows:
         svc = service_name_from_cost_row(
@@ -1683,15 +1794,7 @@ def _persist_mtd_by_service(
         pretax = float(row[pretax_idx])
         usd = float(row[usd_idx]) if usd_idx is not None else 0.0
         currency = str(row[currency_idx]) if currency_idx is not None and row[currency_idx] else "USD"
-        existing = (
-            db.query(CostByServiceSnapshot)
-            .filter(
-                CostByServiceSnapshot.subscription_id == subscription_id,
-                CostByServiceSnapshot.service_name == svc,
-                CostByServiceSnapshot.month == month,
-            )
-            .first()
-        )
+        existing = existing_dict.get(svc)
         if existing:
             existing.cost_usd = usd
             existing.cost_billing = pretax
@@ -1763,6 +1866,31 @@ def _persist_mtd_by_service_response(
         log.warning("cost_sync.service_columns_missing", subscription_id=subscription_id)
         return 0
 
+    # Extract all service names from table rows
+    service_names = set()
+    for row in table_rows:
+        svc = service_name_from_cost_row(
+            row, idx, names=[c.get("name") if isinstance(c, dict) else c for c in cols],
+        )
+        service_names.add(svc)
+
+    if not service_names:
+        return 0
+
+    # Batch query all services
+    existing_rows = (
+        db.query(CostByServiceSnapshot)
+        .filter(
+            CostByServiceSnapshot.subscription_id == subscription_id,
+            CostByServiceSnapshot.service_name.in_(list(service_names)),
+            CostByServiceSnapshot.month == month,
+        )
+        .all()
+    )
+
+    # Build dict for O(1) lookup
+    existing_dict: dict[str, CostByServiceSnapshot] = {row.service_name: row for row in existing_rows}
+
     written = 0
     # Bug 1 fix (service response): CAD → USD as the safe global default.
     default_currency = svc_raw.get("billing_currency") or "USD"
@@ -1775,15 +1903,7 @@ def _persist_mtd_by_service_response(
         currency = (
             str(row[currency_idx]) if currency_idx is not None and row[currency_idx] else default_currency
         )
-        existing = (
-            db.query(CostByServiceSnapshot)
-            .filter(
-                CostByServiceSnapshot.subscription_id == subscription_id,
-                CostByServiceSnapshot.service_name == svc,
-                CostByServiceSnapshot.month == month,
-            )
-            .first()
-        )
+        existing = existing_dict.get(svc)
         if existing:
             existing.cost_usd = usd
             existing.cost_billing = pretax

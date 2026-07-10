@@ -1,17 +1,9 @@
-"""Load Balancers optimization sub-engine."""
-from __future__ import annotations
+"""Compatibility shim — implementation: it_services.network_loadbalancer.engine.sub_engine"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.resource_engines.runtime.base import ResourceSubEngine
-from app.optimizer.resource_engines.network.loadbalancer.analysis import analyze_load_balancers
+_impl = import_module("it_services.network_loadbalancer.engine.sub_engine")
 
 
-class LoadBalancerSubEngine(ResourceSubEngine):
-    component = "Load Balancers"
-    bucket_keys = ('load_balancers',)
-
-    def analyze(self, buckets: dict[str, list]) -> list[Any]:
-        lbs = self.prepare_resources(buckets.get("load_balancers") or [])
-        findings = analyze_load_balancers(self.engine, self.ctx.subscription_id, lbs, self.ctx.cost_by_resource)
-        return self.enhance_findings(findings, lbs)
+def __getattr__(name: str):
+    return getattr(_impl, name)

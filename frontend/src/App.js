@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { LogOut } from 'lucide-react';
+import { LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { fetchSubscriptions, fetchCostSummary } from './api/azure';
 import { hasActiveSession } from './api/tokenStorage';
@@ -13,6 +13,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
 import AuthSessionSync from './components/AuthSessionSync';
 import SidebarNav from './components/navigation/SidebarNav';
+import SidebarRailTooltip from './components/navigation/SidebarRailTooltip';
 import { createResourceRoutes } from './components/routing/ResourceRoutes';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -28,7 +29,6 @@ import { formatUserRole } from './utils/roleLabels';
 
 const Dashboard          = lazy(() => import('./pages/Dashboard'));
 const CostExplorer       = lazy(() => import('./pages/CostExplorer'));
-const Recommendations    = lazy(() => import('./pages/Recommendations'));
 const OptimizationHub    = lazy(() => import('./pages/OptimizationHub'));
 const EngineConfig       = lazy(() => import('./pages/EngineConfig'));
 const AdminOptimization  = lazy(() => import('./pages/AdminOptimization'));
@@ -45,7 +45,8 @@ const AutoScheduler        = lazy(() => import('./pages/AutoScheduler'));
 const NotificationChannels = lazy(() => import('./pages/NotificationChannels'));
 const CostAnomalyDetector  = lazy(() => import('./pages/CostAnomalyDetector'));
 const OptimizationTimeline = lazy(() => import('./pages/OptimizationTimeline'));
-const AIAnalysis           = lazy(() => import('./pages/AIAnalysis'));
+const PlannedMaintenance   = lazy(() => import('./pages/PlannedMaintenance'));
+const QuotaUsage           = lazy(() => import('./pages/QuotaUsage'));
 // Advanced tools — Phase 2
 const BudgetManager        = lazy(() => import('./pages/BudgetManager'));
 const SavingsPlanner       = lazy(() => import('./pages/SavingsPlanner'));
@@ -80,10 +81,12 @@ function Shell() {
   const { user, logout, isAdmin } = useAuth();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = usePersistedState('finops-sidebar-collapsed', false);
   const subName = subscriptionOptions.find((s) => s.subscriptionId === subscription)?.displayName;
   const pageTitle = getPageTitle(location.pathname);
 
   const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const expandSidebar = useCallback(() => setSidebarCollapsed(false), [setSidebarCollapsed]);
 
   useEffect(() => {
     document.title = pageTitle === APP_NAME ? APP_NAME : `${pageTitle} · ${APP_NAME}`;
@@ -99,38 +102,66 @@ function Shell() {
   return (
     <ToastProvider>
     <OperationProgressProvider subscription={subscription}>
-    <div className={`app-shell${mobileOpen ? ' app-shell--nav-open' : ''}`}>
+    <div className={`app-shell${mobileOpen ? ' app-shell--nav-open' : ''}${sidebarCollapsed ? ' app-shell--sidebar-collapsed' : ''}`}>
       <GlobalProgressBar />
       <CommandPalette subscription={subscription} />
       <div className="sidebar-backdrop" onClick={closeMobile} aria-hidden={!mobileOpen} />
 
-      <aside className="sidebar" aria-label="Main navigation">
+      <aside className={`sidebar${sidebarCollapsed ? ' sidebar--collapsed' : ''}`} aria-label="Main navigation" aria-expanded={!sidebarCollapsed}>
         <div className="sidebar-logo">
           <div className="sidebar-logo__icon sidebar-logo__icon--brand">
             <InfinityOpsLogo size={32} />
           </div>
-          <InfinityOpsWordmark />
+          {!sidebarCollapsed && <InfinityOpsWordmark />}
         </div>
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          onClick={() => setSidebarCollapsed((c) => !c)}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+        </button>
 
         <div className="sidebar-sub-picker">
-          <div className="topbar-label icon-inline">
-            <AssetIcon iconKey={PAGE_ICONS.subscription} size={12} />
-            Subscription
-          </div>
+          {!sidebarCollapsed && (
+            <div className="topbar-label icon-inline">
+              <AssetIcon iconKey={PAGE_ICONS.subscription} size={12} />
+              Subscription
+            </div>
+          )}
           {loading ? (
             <div className="sidebar-loading">
               <div className="spin" style={{ width: 14, height: 14, borderWidth: 2 }} />
-              Loading…
+              {!sidebarCollapsed && 'Loading…'}
             </div>
           ) : subscriptionError ? (
             <div className="sidebar-error" role="alert">{subscriptionError}</div>
           ) : subscriptionOptions.length === 0 ? (
             <div className="sidebar-empty-sub" role="status">
-              No subscriptions in the database yet.
-              {isAdmin && (
-                <span> Set a default subscription in Settings, or run Sync from Azure.</span>
+              {sidebarCollapsed ? '—' : (
+                <>
+                  No subscriptions in the database yet.
+                  {isAdmin && (
+                    <span> Set a default subscription in Settings, or run Sync from Azure.</span>
+                  )}
+                </>
               )}
             </div>
+          ) : sidebarCollapsed ? (
+            <SidebarRailTooltip label="Subscription">
+              <button
+                type="button"
+                className="sidebar-rail-btn sidebar-sub-picker__icon-btn"
+                aria-label="Select subscription"
+                onClick={expandSidebar}
+              >
+                <span className="sidebar-rail-btn__icon">
+                  <AssetIcon iconKey={PAGE_ICONS.subscription} size={18} />
+                </span>
+              </button>
+            </SidebarRailTooltip>
           ) : (
             <select
               className="select-field"
@@ -147,24 +178,40 @@ function Shell() {
           )}
         </div>
 
-        <SidebarNav onNavClick={closeMobile} />
+        <SidebarNav
+          onNavClick={closeMobile}
+          collapsed={sidebarCollapsed}
+          onExpandSidebar={expandSidebar}
+        />
 
         <div className="sidebar-footer">
-          <div className="sidebar-theme">
-            <div className="topbar-label">Appearance</div>
-            <ThemeToggle />
-          </div>
-          <div className="sidebar-footer__user">
-            <span className="sidebar-footer__name" title={user?.username}>
-              {user?.display_name || user?.username}
-            </span>
-            {user?.role && <span className="sidebar-footer__role">{formatUserRole(user.role)}</span>}
-          </div>
-          <button type="button" className="sidebar-footer__logout" onClick={logout} title="Sign out">
+          {!sidebarCollapsed && (
+            <div className="sidebar-theme">
+              <div className="topbar-label">Appearance</div>
+              <ThemeToggle />
+            </div>
+          )}
+          {!sidebarCollapsed && (
+            <div className="sidebar-footer__user">
+              <span className="sidebar-footer__name" title={user?.username}>
+                {user?.display_name || user?.username}
+              </span>
+              {user?.role && <span className="sidebar-footer__role">{formatUserRole(user.role)}</span>}
+            </div>
+          )}
+          <button
+            type="button"
+            className={`sidebar-footer__logout${sidebarCollapsed ? ' sidebar-footer__logout--icon' : ''}`}
+            onClick={logout}
+            title="Sign out"
+            aria-label="Sign out"
+          >
             <LogOut size={14} />
-            Sign out
+            {!sidebarCollapsed && 'Sign out'}
           </button>
-          {subName && <span className="sidebar-footer__sub" title={subName}>{subName}</span>}
+          {!sidebarCollapsed && subName && (
+            <span className="sidebar-footer__sub" title={subName}>{subName}</span>
+          )}
         </div>
       </aside>
 
@@ -185,7 +232,8 @@ function Shell() {
                 <Route path="/optimization-hub" element={<OptimizationHub />} />
                 <Route path="/optimize/actions" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
                 <Route path="/optimize/scoreboard" element={<Navigate to="/optimization-hub?tab=scoreboard" replace />} />
-                <Route path="/optimize/rollout-monitor" element={<Navigate to="/optimization-hub" replace />} />
+                <Route path="/optimize/rollout-monitor" element={<Navigate to="/optimization-hub?tab=overview" replace />} />
+                <Route path="/findings" element={<Navigate to="/optimization-hub?tab=actions" replace />} />
                 <Route path="/k8s" element={<K8sSnapshots />} />
                 <Route path="/engine" element={<ProtectedRoute adminOnly><EngineConfig /></ProtectedRoute>} />
                 <Route path="/admin/optimization" element={<ProtectedRoute adminOnly><AdminOptimization /></ProtectedRoute>} />
@@ -195,11 +243,12 @@ function Shell() {
                 {/* Advanced tools — Phase 1 */}
                 <Route path="/waste-heatmap"    element={<WasteHeatmap />} />
                 <Route path="/tag-compliance"   element={<TagCompliancePage />} />
+                <Route path="/planned-maintenance" element={<PlannedMaintenance />} />
+                <Route path="/quota-usage" element={<QuotaUsage />} />
                 <Route path="/auto-scheduler"   element={<AutoScheduler />} />
                 <Route path="/notifications"    element={<NotificationChannels />} />
                 <Route path="/anomaly-detector" element={<CostAnomalyDetector />} />
                 <Route path="/timeline"         element={<OptimizationTimeline />} />
-                <Route path="/ai-analysis"      element={<AIAnalysis />} />
                 {/* Advanced tools — Phase 2 */}
                 <Route path="/budgets"          element={<BudgetManager />} />
                 <Route path="/savings-planner"  element={<SavingsPlanner />} />

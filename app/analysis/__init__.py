@@ -21,12 +21,18 @@ idle_pattern_detector Temporal and structural idle detection: zombie VMs, DB con
                       empty AKS node pools.
 """
 from app.analysis.orchestrator import (
+    BUCKET_TO_TYPES,
+    empty_buckets,
+    load_buckets_for_keys,
     load_inventory_from_db,
     run_db_analysis,
     run_engine_on_buckets,
 )
 
 __all__ = [
+    "BUCKET_TO_TYPES",
+    "empty_buckets",
+    "load_buckets_for_keys",
     "load_inventory_from_db",
     "run_db_analysis",
     "run_engine_on_buckets",

@@ -39,23 +39,30 @@ export default function FilterBar({
           <span className="filter-bar__divider" aria-hidden />
         )}
 
-        {selects.map((sel) => (
-          <label key={sel.id} className="filter-bar__field">
-            <span className="filter-bar__label">
-              <Filter size={12} aria-hidden />
-              {sel.label}
-            </span>
-            <select
-              value={sel.value}
-              onChange={(e) => sel.onChange(e.target.value)}
-              aria-label={sel.label}
-            >
-              {sel.options.map((opt) => (
-                <option key={opt.value || '__all__'} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </label>
-        ))}
+        {selects.map((sel) => {
+          const hasAllOption = sel.options.some((opt) => opt.value === '');
+          const options = hasAllOption
+            ? sel.options
+            : [{ value: '', label: sel.allLabel || `All ${sel.label.toLowerCase()}` }, ...sel.options];
+
+          return (
+            <label key={sel.id} className="filter-bar__field">
+              <span className="filter-bar__label">
+                <Filter size={12} aria-hidden />
+                {sel.label}
+              </span>
+              <select
+                value={sel.value}
+                onChange={(e) => sel.onChange(e.target.value)}
+                aria-label={sel.label}
+              >
+                {options.map((opt) => (
+                  <option key={opt.value || '__all__'} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+          );
+        })}
 
         {toggles.map((tog) => (
           <label key={tog.id} className="filter-bar__toggle checkbox-label">

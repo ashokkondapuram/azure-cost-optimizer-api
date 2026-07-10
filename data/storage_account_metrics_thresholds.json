@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "service": "Azure Storage Accounts",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-storage-storageaccounts-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/"
+  },
+  "access_tiers": {
+    "Hot": { "per_gb_month_usd": 0.024 },
+    "Cool": { "per_gb_month_usd": 0.012 },
+    "Archive": { "per_gb_month_usd": 0.004 }
+  },
+  "replication": {
+    "LRS": { "multiplier": 1.0 },
+    "GRS": { "multiplier": 2.0 },
+    "GZRS": { "multiplier": 2.0 },
+    "RAGRS": { "multiplier": 2.0 }
+  },
+  "optimization_thresholds": {
+    "cool_tier_days_since_access": 30,
+    "archive_tier_days_since_access": 90,
+    "lifecycle_cool_after_days": 30,
+    "lifecycle_archive_after_days": 90,
+    "egress_bytes_monthly": 107374182400,
+    "capacity_review_gb": 1024,
+    "transaction_low_count": 5000.0,
+    "availability_min_pct": 99.5,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5.0
+  }
+}

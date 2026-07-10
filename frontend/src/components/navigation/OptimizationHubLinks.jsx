@@ -21,7 +21,7 @@ export default function OptimizationHubLinks({ className = '', showSections = fa
           `optimization-hub__link${isActive ? ' optimization-hub__link--active' : ''}`
         }
       >
-        <AssetIcon iconKey={PAGE_ICON_KEYS.actions} size={15} alt="" />
+        <AssetIcon iconKey="optimizationHub" size={15} alt="" />
         <span>Optimization hub</span>
       </NavLink>
       {items.map((item) => {

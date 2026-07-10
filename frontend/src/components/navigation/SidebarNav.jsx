@@ -5,9 +5,7 @@ import {
   LayoutDashboard, HardDrive, Database, Shield, DollarSign, Search,
   ChevronRight, Server, Container, KeyRound, AppWindow, Layers,
   GitBranch, CloudCog, Settings, Boxes, Globe, Network,
-  ChevronsDownUp, ChevronsUpDown, Flame, Tag, CalendarClock,
-  Bell, TrendingUp, GitCommitHorizontal, Wallet, PiggyBank, ShieldCheck,
-  BookMarked, ShieldCheck as GovernanceIcon, Layers as AllocationIcon, Download, BarChart2, Zap,
+  ChevronsDownUp, ChevronsUpDown, Sparkles,
 } from 'lucide-react';
 import AssetIcon from '../AssetIcon';
 import usePersistedState from '../../hooks/usePersistedState';
@@ -16,13 +14,16 @@ import { AppCtx } from '../../App';
 import { fetchResourceCounts } from '../../api/azure';
 import {
   OVERVIEW_NAV,
-  ADVANCED_TOOLS_NAV,
-  ADVANCED_NAV_GROUP,
+  ADVANCED_NAV_GROUPS,
+  ADVANCED_SECTION_ID,
+  advancedNavGroupOpen,
+  advancedNavSectionOpen,
   NAV_GROUP_EXTRA_LINKS,
   SYSTEM_NAV_GROUP,
   systemNavGroupOpen,
   systemNavItems,
   isSystemNavVisible,
+  isAdvancedPath,
   NAV_RESOURCE_GROUPS,
   RESOURCE_PAGES,
   DEFAULT_NAV_OPEN,
@@ -34,6 +35,8 @@ import {
   categoryResourceCount,
 } from '../../config/appRegistry';
 import CategorySyncButton from './CategorySyncButton';
+import SidebarRailTooltip from './SidebarRailTooltip';
+import { useNavAccess } from '../../hooks/useNavAccess';
 
 const FALLBACK_ICONS = {
   dashboard: LayoutDashboard,
@@ -78,37 +81,42 @@ const FALLBACK_ICONS = {
   keyvaults: KeyRound,
 };
 
-// Icons specifically for advanced tool nav items
-const ADVANCED_ITEM_ICONS = {
-  '/waste-heatmap':       Flame,
-  '/tag-compliance':      Tag,
-  '/auto-scheduler':      CalendarClock,
-  '/notifications':       Bell,
-  '/anomaly-detector':    TrendingUp,
-  '/timeline':            GitCommitHorizontal,
-  '/ai-analysis':         Zap,
-  // Phase 2
-  '/budgets':             Wallet,
-  '/savings-planner':     PiggyBank,
-  '/policy':              ShieldCheck,
-  // Week 4
-  '/reservation-advisor': BookMarked,
-  '/governance':          GovernanceIcon,
-  // Week 5
-  '/cost-allocation':     AllocationIcon,
-  '/export-center':       Download,
-  // Ongoing
-  '/demand-forecaster':   BarChart2,
-};
-
 function NavIcon({ iconKey, size = 14 }) {
   const Fallback = FALLBACK_ICONS[iconKey] || Boxes;
   return <AssetIcon iconKey={PAGE_ICON_KEYS[iconKey]} size={size} fallback={<Fallback size={size} />} />;
 }
 
+function SidebarRailDivider() {
+  return <div className="sidebar-rail-divider" aria-hidden />;
+}
+
 function NavGroup({
   id, label, iconKey, color, open, onToggle, badge, headerAction, children,
+  collapsed = false, onExpandSidebar,
 }) {
+  const handleCollapsedClick = () => {
+    onExpandSidebar?.();
+    if (!open) onToggle();
+  };
+
+  if (collapsed) {
+    return (
+      <SidebarRailTooltip label={label}>
+        <button
+          type="button"
+          className={`sidebar-rail-btn nav-item--collapsed-group${open ? ' nav-item--collapsed-group-open' : ''}`}
+          aria-label={label}
+          aria-expanded={open}
+          onClick={handleCollapsedClick}
+        >
+          <span className="sidebar-rail-btn__icon" style={{ color }}>
+            <AssetIcon iconKey={NAV_GROUP_KEYS[iconKey]} size={18} />
+          </span>
+        </button>
+      </SidebarRailTooltip>
+    );
+  }
+
   return (
     <div className={`nav-group${open ? ' nav-group--open' : ''}`}>
       <div className="nav-group__header">
@@ -149,11 +157,37 @@ function NavGroup({
   );
 }
 
-export default function SidebarNav({ onNavClick }) {
+export default function SidebarNav({ onNavClick, collapsed = false, onExpandSidebar }) {
   const location = useLocation();
   const { subscription } = React.useContext(AppCtx);
   const { isAdmin } = useAuth();
+  const { canView } = useNavAccess();
   const [groups, setGroups] = usePersistedState('finops-nav-groups', DEFAULT_NAV_OPEN);
+
+  const overviewNav = useMemo(
+    () => (canView('section:overview')
+      ? OVERVIEW_NAV.filter((item) => canView(item.path))
+      : []),
+    [canView],
+  );
+  const advancedNavGroups = useMemo(
+    () => (canView('section:advanced')
+      ? ADVANCED_NAV_GROUPS
+        .filter((group) => canView(`section:advanced:${group.id}`))
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => canView(item.path)),
+        }))
+        .filter((group) => group.items.length > 0)
+      : []),
+    [canView],
+  );
+  const systemNav = useMemo(
+    () => (canView('section:system')
+      ? systemNavItems(isAdmin).filter((item) => canView(item.path))
+      : []),
+    [isAdmin, canView],
+  );
 
   const { data: counts = {}, isLoading: countsLoading } = useQuery({
     queryKey: ['resource-counts', subscription],
@@ -168,17 +202,43 @@ export default function SidebarNav({ onNavClick }) {
   );
 
   const showResourceNav = Boolean(subscription);
+  const advancedSectionOpen = advancedNavSectionOpen(groups);
 
   useEffect(() => {
     const activeGroup = groupForPath(location.pathname);
+    const updates = {};
     if (activeGroup && !groups[activeGroup]) {
-      setGroups((prev) => ({ ...prev, [activeGroup]: true }));
+      updates[activeGroup] = true;
+    }
+    if (isAdvancedPath(location.pathname) && !advancedNavSectionOpen(groups)) {
+      updates[ADVANCED_SECTION_ID] = true;
+    }
+    if (Object.keys(updates).length) {
+      setGroups((prev) => ({ ...prev, ...updates }));
     }
   }, [location.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleGroup = useCallback((id) => {
     setGroups((prev) => ({ ...prev, [id]: !prev[id] }));
   }, [setGroups]);
+
+  const allAdvancedOpen = advancedNavGroups.length > 0
+    && advancedNavGroups.every((g) => advancedNavGroupOpen(groups, g.id));
+  const toggleAllAdvanced = () => {
+    const next = !allAdvancedOpen;
+    setGroups((prev) => {
+      const updated = { ...prev };
+      advancedNavGroups.forEach((g) => { updated[g.id] = next; });
+      return updated;
+    });
+  };
+
+  const toggleAdvancedSection = () => {
+    setGroups((prev) => ({
+      ...prev,
+      [ADVANCED_SECTION_ID]: !advancedNavSectionOpen(prev),
+    }));
+  };
 
   const allResourceOpen = showResourceNav
     && NAV_RESOURCE_GROUPS.every((g) => groups[g.id]);
@@ -191,62 +251,166 @@ export default function SidebarNav({ onNavClick }) {
     });
   };
 
-  const navLink = (path, label, iconKey, { end = false, sub = false, Icon = null } = {}) => (
-    <NavLink
-      key={path}
-      to={path}
-      end={end}
-      className={({ isActive }) => `nav-item${sub ? ' nav-sub' : ''}${isActive ? ' active' : ''}`}
-      onClick={onNavClick}
-    >
-      {Icon ? <Icon size={sub ? 14 : 16} /> : <NavIcon iconKey={iconKey} size={sub ? 14 : 16} />}
-      {label}
-    </NavLink>
-  );
+  const navLink = (path, label, iconKey, { end = false, sub = false } = {}) => {
+    if (collapsed && sub) return null;
+    const link = (
+      <NavLink
+        key={path}
+        to={path}
+        end={end}
+        className={({ isActive }) => [
+          collapsed ? 'sidebar-rail-btn' : 'nav-item',
+          sub && !collapsed ? 'nav-sub' : '',
+          isActive ? 'active' : '',
+        ].filter(Boolean).join(' ')}
+        onClick={onNavClick}
+        aria-label={collapsed ? label : undefined}
+      >
+        <span className={collapsed ? 'sidebar-rail-btn__icon' : undefined}>
+          <NavIcon iconKey={iconKey} size={sub && !collapsed ? 14 : 18} />
+        </span>
+        {!collapsed && <span className="nav-item__label">{label}</span>}
+      </NavLink>
+    );
+    if (!collapsed) return link;
+    return (
+      <SidebarRailTooltip key={path} label={label}>
+        {link}
+      </SidebarRailTooltip>
+    );
+  };
 
   return (
-    <div className="sidebar-nav">
-      <div className="sidebar-section">Overview</div>
-      {OVERVIEW_NAV.map((item) => navLink(item.path, item.title, item.iconKey, { end: item.end }))}
+    <div className={`sidebar-nav${collapsed ? ' sidebar-nav--collapsed' : ''}`}>
+      {!collapsed && overviewNav.length > 0 && <div className="sidebar-section">Overview</div>}
+      {overviewNav.map((item) => navLink(item.path, item.title, item.iconKey, { end: item.end }))}
 
-      {/* ── Advanced tools collapsible group ───────────────────────── */}
-      <NavGroup
-        id={ADVANCED_NAV_GROUP.id}
-        label={ADVANCED_NAV_GROUP.label}
-        iconKey={ADVANCED_NAV_GROUP.iconKey}
-        color={ADVANCED_NAV_GROUP.color}
-        open={!!groups[ADVANCED_NAV_GROUP.id]}
-        onToggle={() => toggleGroup(ADVANCED_NAV_GROUP.id)}
-      >
-        {ADVANCED_TOOLS_NAV.map((item) =>
-          navLink(item.path, item.title, item.iconKey, {
-            sub: true,
-            Icon: ADVANCED_ITEM_ICONS[item.path] || null,
-          }),
-        )}
-      </NavGroup>
+      {collapsed && (advancedNavGroups.length > 0 || showResourceNav) && <SidebarRailDivider />}
 
-      <div className="sidebar-section sidebar-section--row">
-        <span>Resources</span>
-        {showResourceNav && (
+      {/* ── Advanced tool groups ─────────────────────────────────── */}
+      {advancedNavGroups.length > 0 && (
+        <>
+          {collapsed ? (
+            <SidebarRailTooltip label="Advanced tools">
+              <button
+                type="button"
+                className={`sidebar-rail-btn sidebar-rail-btn--section${advancedSectionOpen ? ' active' : ''}`}
+                aria-label="Advanced tools"
+                aria-expanded={advancedSectionOpen}
+                onClick={() => {
+                  onExpandSidebar?.();
+                  setGroups((prev) => ({ ...prev, [ADVANCED_SECTION_ID]: true }));
+                }}
+              >
+                <span className="sidebar-rail-btn__icon">
+                  <Sparkles size={18} />
+                </span>
+              </button>
+            </SidebarRailTooltip>
+          ) : (
+            <div className="sidebar-section sidebar-section--row">
+              <button
+                type="button"
+                className="sidebar-section__label-btn"
+                onClick={toggleAdvancedSection}
+                aria-expanded={advancedSectionOpen}
+                aria-controls="sidebar-advanced-groups"
+              >
+                <span className={`sidebar-section__chevron${advancedSectionOpen ? ' sidebar-section__chevron--open' : ''}`}>
+                  <ChevronRight size={13} />
+                </span>
+                Advanced
+              </button>
+              {advancedSectionOpen && (
+                <button
+                  type="button"
+                  className="sidebar-section__toggle"
+                  onClick={toggleAllAdvanced}
+                  title={allAdvancedOpen ? 'Collapse all advanced groups' : 'Expand all advanced groups'}
+                  aria-label={allAdvancedOpen ? 'Collapse all advanced groups' : 'Expand all advanced groups'}
+                >
+                  {allAdvancedOpen ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
+                </button>
+              )}
+            </div>
+          )}
+          {(collapsed || advancedSectionOpen) && (
+            <div id="sidebar-advanced-groups" className={`sidebar-advanced-groups${collapsed ? ' sidebar-advanced-groups--rail' : ''}`}>
+              {advancedNavGroups.map((group) => (
+                <NavGroup
+                  key={group.id}
+                  id={group.id}
+                  label={group.label}
+                  iconKey={group.iconKey}
+                  color={group.color}
+                  open={advancedNavGroupOpen(groups, group.id)}
+                  collapsed={collapsed}
+                  onExpandSidebar={onExpandSidebar}
+                  onToggle={() => {
+                    setGroups((prev) => ({
+                      ...prev,
+                      [group.id]: !advancedNavGroupOpen(prev, group.id),
+                    }));
+                  }}
+                >
+                  {group.items.map((item) =>
+                    navLink(item.path, item.title, item.iconKey, { sub: true })
+                  )}
+                </NavGroup>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {!collapsed && canView('section:resources') && (
+        <div className="sidebar-section sidebar-section--row">
+          <span>Resources</span>
+          {showResourceNav && (
+            <button
+              type="button"
+              className="sidebar-section__toggle"
+              onClick={toggleAllResources}
+              title={allResourceOpen ? 'Collapse all' : 'Expand all'}
+              aria-label={allResourceOpen ? 'Collapse all resource categories' : 'Expand all resource categories'}
+            >
+              {allResourceOpen ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
+            </button>
+          )}
+        </div>
+      )}
+
+      {collapsed && showResourceNav && canView('section:resources') && navResourceGroups.length === 0 && (
+        <SidebarRailDivider />
+      )}
+
+      {collapsed && showResourceNav && canView('section:resources') && navResourceGroups.length === 0 && (
+        <SidebarRailTooltip label="Resources">
           <button
             type="button"
-            className="sidebar-section__toggle"
-            onClick={toggleAllResources}
-            title={allResourceOpen ? 'Collapse all' : 'Expand all'}
-            aria-label={allResourceOpen ? 'Collapse all resource categories' : 'Expand all resource categories'}
+            className="sidebar-rail-btn sidebar-rail-btn--section"
+            aria-label="Resources"
+            onClick={onExpandSidebar}
           >
-            {allResourceOpen ? <ChevronsDownUp size={13} /> : <ChevronsUpDown size={13} />}
+            <span className="sidebar-rail-btn__icon">
+              <Layers size={18} />
+            </span>
           </button>
-        )}
-      </div>
+        </SidebarRailTooltip>
+      )}
 
-      {!showResourceNav && (
+      {!showResourceNav && !collapsed && (
         <p className="sidebar-nav__hint">Select a subscription to browse resources.</p>
       )}
 
-      {showResourceNav && navResourceGroups.map((group) => {
-        const visibleIds = group.resourceIds;
+      {showResourceNav && canView('section:resources') && navResourceGroups.length > 0 && collapsed && (
+        <SidebarRailDivider />
+      )}
+
+      {showResourceNav && canView('section:resources') && navResourceGroups.map((group) => {
+        if (!canView(`section:resources:${group.id}`)) return null;
+        const visibleIds = group.resourceIds.filter((id) => canView(RESOURCE_PAGES[id]?.path));
+        if (!visibleIds.length) return null;
         const categorySyncTypes = syncTypesForResourceIds(visibleIds);
         const fullGroup = NAV_RESOURCE_GROUPS.find((g) => g.id === group.id);
         const badge = categoryResourceCount(fullGroup, counts, {
@@ -262,8 +426,10 @@ export default function SidebarNav({ onNavClick }) {
             color={group.color}
             badge={countsLoading ? 0 : badge}
             open={!!groups[group.id]}
+            collapsed={collapsed}
+            onExpandSidebar={onExpandSidebar}
             onToggle={() => toggleGroup(group.id)}
-            headerAction={isAdmin && !countsLoading && badge === 0 ? (
+            headerAction={!collapsed && isAdmin && !countsLoading && badge === 0 ? (
               <CategorySyncButton
                 label={group.label}
                 syncTypes={categorySyncTypes}
@@ -292,13 +458,17 @@ export default function SidebarNav({ onNavClick }) {
         );
       })}
 
-      {isSystemNavVisible(isAdmin) && (
+      {systemNav.length > 0 && collapsed && <SidebarRailDivider />}
+
+      {systemNav.length > 0 && (
         <NavGroup
           id={SYSTEM_NAV_GROUP.id}
           label={SYSTEM_NAV_GROUP.label}
           iconKey={SYSTEM_NAV_GROUP.iconKey}
           color={SYSTEM_NAV_GROUP.color}
           open={systemNavGroupOpen(groups)}
+          collapsed={collapsed}
+          onExpandSidebar={onExpandSidebar}
           onToggle={() => {
             setGroups((prev) => ({
               ...prev,
@@ -308,10 +478,9 @@ export default function SidebarNav({ onNavClick }) {
         >
           {(() => {
             let lastSection = null;
-            const entries = systemNavItems(isAdmin);
-            return entries.flatMap((item) => {
+            return systemNav.flatMap((item) => {
               const nodes = [];
-              if (item.section && item.section !== lastSection) {
+              if (!collapsed && item.section && item.section !== lastSection) {
                 lastSection = item.section;
                 nodes.push(
                   <p key={`section-${item.section}`} className="nav-group__section-label">

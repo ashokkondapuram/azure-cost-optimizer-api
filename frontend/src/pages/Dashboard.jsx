@@ -1,5 +1,5 @@
 import React from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { AppCtx } from '../App';
 import { fetchDashboardOverview } from '../api/azure';
 import PageHeader from '../components/PageHeader';
@@ -18,7 +18,7 @@ import {
 
 export default function Dashboard() {
   const { subscription, billingCurrency, subscriptionOptions } = React.useContext(AppCtx);
-  const [costPeriod, onCostPeriodChange] = useDashboardCostPeriod();
+  const [costPeriod, onCostPeriodChange, costPeriodOptions] = useDashboardCostPeriod();
   const {
     isExpanded,
     toggleSection,
@@ -39,15 +39,15 @@ export default function Dashboard() {
       timeframe: costPeriod,
     }),
     enabled: !!subscription,
-    staleTime: 60_000,
-    placeholderData: keepPreviousData,
+    staleTime: 120_000,
+    gcTime: 300_000,
   });
 
   const showInitialSkeleton = isLoading && !overview;
 
   const currency = billingCurrency || overview?.cost?.summary?.billing_currency || 'CAD';
   const subLabel = subscriptionOptions.find((s) => s.subscriptionId === subscription)?.displayName;
-  const periodLabel = dashboardCostPeriodLabel(costPeriod);
+  const periodLabel = dashboardCostPeriodLabel(costPeriod, costPeriodOptions);
 
   return (
     <div className="page-shell dashboard-page">
@@ -57,7 +57,11 @@ export default function Dashboard() {
       >
         {subscription && (
           <div className="dashboard-toolbar">
-            <DashboardPeriodFilter value={costPeriod} onChange={onCostPeriodChange} />
+            <DashboardPeriodFilter
+              value={costPeriod}
+              onChange={onCostPeriodChange}
+              options={costPeriodOptions}
+            />
             <div className="dashboard-section-controls">
               <button type="button" className="btn btn-secondary btn-sm" onClick={expandAll}>
                 Expand all
@@ -95,6 +99,7 @@ export default function Dashboard() {
             currency={currency}
             isLoading={showInitialSkeleton}
             costPeriodLabel={periodLabel}
+            costPeriod={costPeriod}
           />
 
           <DashboardOptimizationTrends />

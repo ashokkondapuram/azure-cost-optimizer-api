@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "service": "Azure Cosmos DB",
+  "documentation": {
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/cosmos-db/autoscale-provisioned/",
+    "optimize_costs": "https://learn.microsoft.com/en-us/azure/cosmos-db/optimize-costs",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-documentdb-databaseaccounts-metrics"
+  },
+  "pricing_models": {
+    "provisioned_manual": {
+      "description": "Fixed RU/s billed hourly",
+      "min_ru_per_second": 400,
+      "billing": "hourly_per_ru"
+    },
+    "provisioned_autoscale": {
+      "description": "Autoscale between 10% and 100% of max RU/s",
+      "markup_vs_manual": 1.5,
+      "min_max_ru_per_second": 1000,
+      "billing": "hourly_per_max_ru"
+    },
+    "serverless": {
+      "description": "Pay per million RUs consumed",
+      "ru_price_per_million_usd": 0.25,
+      "billing": "consumption"
+    },
+    "free_tier": {
+      "description": "1,000 RU/s and 25 GB per subscription",
+      "included_ru_per_second": 1000,
+      "included_storage_gb": 25,
+      "burst_ru_per_second": 4000,
+      "burst_duration_seconds": 30
+    }
+  },
+  "api_types": {
+    "Sql": {
+      "arm_kinds": ["GlobalDocumentDB"],
+      "ru_cost_multiplier": 1.0,
+      "notes": "Baseline SQL (Core) API"
+    },
+    "MongoDB": {
+      "arm_kinds": ["MongoDB"],
+      "capabilities": ["EnableMongo"],
+      "ru_cost_multiplier": 1.15,
+      "notes": "Typically 10-20% higher RU cost vs SQL for equivalent operations"
+    },
+    "Cassandra": {
+      "arm_kinds": ["Parse"],
+      "capabilities": ["EnableCassandra"],
+      "ru_cost_multiplier": 1.1,
+      "notes": "Cassandra API RU characteristics vary by operation"
+    },
+    "Gremlin": {
+      "capabilities": ["EnableGremlin"],
+      "ru_cost_multiplier": 1.1,
+      "notes": "Graph workloads often need higher RU per traversal"
+    },
+    "Table": {
+      "capabilities": ["EnableTable"],
+      "ru_cost_multiplier": 1.05,
+      "notes": "Table API for key-value patterns"
+    }
+  },
+  "regional_multipliers": {
+    "baseline": 1.0,
+    "examples": {
+      "eastus": 1.0,
+      "westus2": 1.0,
+      "centralus": 1.0,
+      "australiaeast": 1.5,
+      "francesouth": 1.625,
+      "southindia": 1.0375
+    }
+  },
+  "consistency_levels": {
+    "Strong": {"ru_multiplier": 2.0},
+    "BoundedStaleness": {"ru_multiplier": 1.5},
+    "Session": {"ru_multiplier": 1.0},
+    "ConsistentPrefix": {"ru_multiplier": 1.0},
+    "Eventual": {"ru_multiplier": 1.0}
+  },
+  "reserved_capacity": {
+    "one_year_discount_pct_min": 20,
+    "one_year_discount_pct_max": 38,
+    "three_year_discount_pct_min": 27,
+    "three_year_discount_pct_max": 63.3,
+    "min_stable_months": 1
+  },
+  "optimization_thresholds": {
+    "ru_low_pct": 20,
+    "ru_high_pct": 80,
+    "ru_throttle_pct": 95,
+    "serverless_ru_threshold_7d": 50000,
+    "index_to_data_ratio": 1.5,
+    "large_item_bytes": 2097152,
+    "hot_partition_skew_ratio": 2.5,
+    "replication_lag_ms": 100,
+    "min_downgrade_savings_pct": 30
+  }
+}

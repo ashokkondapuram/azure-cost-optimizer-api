@@ -7,7 +7,7 @@ aggregates, and per-resource (ResourceId) MTD costs for the billed-resources lis
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import structlog
 from sqlalchemy.orm import Session
@@ -114,12 +114,13 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
     """
     Pull Azure Cost Management data for Dashboard, Cost explorer, and billed resources.
 
-    5 API calls per subscription:
-      1. subscription MTD total (dedicated summary query - not batched)
+    5 API calls per subscription (+ all catalog period totals):
+      1. subscription MTD total (also stored as MonthToDate period total)
       2. MTD by ServiceName (by-service chart)
       3. MTD by ResourceType (resource-type chart)
       4. daily trend
       5. MTD per ResourceId (billed resource list)
+      6+. every cost explorer preset except Custom (stored for dashboard / cost APIs)
     """
     from app.auth import arm_auth_context
     from app.azure_cost import (
@@ -137,6 +138,12 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
         sync_resource_costs_from_cost_table,
     )
     from app.billed_resources import reconcile_billed_azure_status
+    from app.cost_period_totals import upsert_period_total
+    from app.cost_timeframes import (
+        SYNCED_PERIOD_TIMEFRAMES,
+        azure_timeframe_payload,
+        period_for_timeframe,
+    )
     from app.cost_utils import parse_cost_by_resource_details
 
     subscription_id = subscription_id.lower()
@@ -144,6 +151,7 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
     month = today.strftime("%Y-%m")
     mtd_start = today.replace(day=1).isoformat()
     mtd_end = today.isoformat()
+    daily_history_start = (today - timedelta(days=89)).isoformat()
 
     counts = {
         "cost_by_service": 0,
@@ -154,7 +162,7 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
         "mtd_rows": 0,
         "subscription_total_billing": 0.0,
         "breakdown_rows": 0,
-        "api_calls": 5,
+        "api_calls": 4 + len(SYNCED_PERIOD_TIMEFRAMES),
         "mtd_month": month,
         "mtd_start": mtd_start,
         "mtd_end": mtd_end,
@@ -171,13 +179,36 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
 
     with arm_auth_context(db=db, token=token):
         client = AzureCostClient(db=db, token=token)
+        period_responses: dict[str, dict] = {}
         try:
             with arm_patient_sync():
                 subscription_totals_resp = client.query_subscription_totals(subscription_id)
                 by_service_resp = client.query_cost_by_service(subscription_id)
                 by_type_resp = client.query_cost_mtd_by_resource_type(subscription_id)
-                daily_resp = client.query_cost_daily_subscription(subscription_id)
+                daily_resp = client.query_cost_daily_subscription(
+                    subscription_id,
+                    timeframe="Custom",
+                    from_date=daily_history_start,
+                    to_date=mtd_end,
+                )
                 by_resource_resp = client.query_cost_by_resource(subscription_id)
+                for period_tf in SYNCED_PERIOD_TIMEFRAMES:
+                    if period_tf == "MonthToDate":
+                        period_responses[period_tf] = subscription_totals_resp
+                        continue
+                    tf_payload = azure_timeframe_payload(period_tf)
+                    period_responses[period_tf] = client.query_subscription_totals(
+                        subscription_id,
+                        timeframe=tf_payload.get("timeframe", "MonthToDate"),
+                        **(
+                            {
+                                "from_date": tf_payload["timePeriod"]["from"],
+                                "to_date": tf_payload["timePeriod"]["to"],
+                            }
+                            if tf_payload.get("timePeriod")
+                            else {}
+                        ),
+                    )
         except CostExportReadError:
             raise
         except Exception as exc:
@@ -187,6 +218,34 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
     subscription_usd = float(subscription_totals_resp.get("cost_usd_total") or 0.0)
     subscription_currency = subscription_totals_resp.get("billing_currency") or "CAD"
     counts["subscription_total_billing"] = round(subscription_pretax, 2)
+
+    period_totals_written = 0
+    for period_tf, period_resp in period_responses.items():
+        try:
+            period_meta = period_for_timeframe(period_tf)
+            upsert_period_total(
+                db,
+                subscription_id,
+                period_tf,
+                period_start=period_meta["period_start"],
+                period_end=period_meta["period_end"],
+                pretax_total=float(period_resp.get("pretax_total") or 0.0),
+                cost_usd_total=float(period_resp.get("cost_usd_total") or 0.0),
+                billing_currency=period_resp.get("billing_currency") or subscription_currency,
+            )
+            period_totals_written += 1
+            if period_tf == "ThisYear":
+                counts["ytd_total_billing"] = round(float(period_resp.get("pretax_total") or 0.0), 2)
+                counts["ytd_period_start"] = period_meta["period_start"]
+                counts["ytd_period_end"] = period_meta["period_end"]
+        except Exception as exc:
+            log.warning(
+                "cost_explorer_sync.period_total_failed",
+                subscription_id=subscription_id,
+                timeframe=period_tf,
+                error=str(exc)[:200],
+            )
+    counts["period_totals"] = period_totals_written
 
     export_rows = daily_subscription_rows_from_response(daily_resp)
     counts["api_rows"] = len(export_rows)
@@ -268,7 +327,7 @@ def sync_cost_explorer(subscription_id: str, db: Session, token: str) -> dict:
             db,
             subscription_id,
             export_rows,
-            mtd_start=mtd_start,
+            mtd_start=daily_history_start,
             mtd_end=mtd_end,
         )
     except Exception as exc:

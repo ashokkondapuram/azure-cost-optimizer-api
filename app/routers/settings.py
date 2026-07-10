@@ -20,7 +20,7 @@ from app.services.system_settings import (
     test_database_connection,
 )
 from app.ai_client import verify_ai_connection
-from app.user_auth import require_admin_user
+from app.user_auth import require_admin_user, require_superuser
 import app.auth as azure_auth
 import structlog
 
@@ -71,6 +71,43 @@ class AiSettingsIn(BaseModel):
     ai_batch_size: Optional[int] = Field(None, ge=1, le=25)
 
 
+class NavAccessPolicyIn(BaseModel):
+    roles: dict[str, dict[str, bool]] = Field(
+        ...,
+        description="Panel visibility per role (admin, viewer). Keys are sidebar panel ids.",
+    )
+
+
+@router.get("/nav-access/me", summary="Sidebar panels visible to the signed-in user")
+def nav_access_me(request: Request, db: Session = Depends(get_db)):
+    from app.user_auth import require_authenticated_user
+    from app.nav_access import nav_access_payload_for_user
+
+    user = require_authenticated_user(request)
+    return nav_access_payload_for_user(user.get("role"), db)
+
+
+@router.get("/nav-access/policy", summary="Sidebar access policy (superuser only)")
+def nav_access_policy_get(request: Request, db: Session = Depends(get_db)):
+    from app.nav_access import nav_access_policy_payload
+
+    require_superuser(request)
+    return nav_access_policy_payload(db)
+
+
+@router.put("/nav-access/policy", summary="Update sidebar access policy (superuser only)")
+def nav_access_policy_put(
+    request: Request,
+    body: NavAccessPolicyIn,
+    db: Session = Depends(get_db),
+):
+    from app.nav_access import save_nav_access_policy, nav_access_policy_payload
+
+    require_superuser(request)
+    save_nav_access_policy(db, body.roles)
+    return nav_access_policy_payload(db)
+
+
 @router.get("/status", summary="Runtime status for database, CORS, and encryption")
 def settings_status(request: Request):
     require_admin_user(request)
@@ -116,8 +153,8 @@ def put_settings_category(
 def save_azure_settings(request: Request, body: AzureSettingsIn, db: Session = Depends(get_db)):
     require_admin_user(request)
     payload = body.model_dump(exclude_none=True)
-    if "client_secret" in payload and payload["client_secret"] == "":
-        payload.pop("client_secret")
+    if payload.get("client_secret") == "":
+        payload.pop("client_secret", None)
     saved = save_category_settings(db, "azure", payload)
     azure_auth.reload_credential(db)
     return {"category": "azure", "settings": saved, "message": "Azure settings saved."}
@@ -127,8 +164,8 @@ def save_azure_settings(request: Request, body: AzureSettingsIn, db: Session = D
 def save_database_settings(request: Request, body: DatabaseSettingsIn, db: Session = Depends(get_db)):
     require_admin_user(request)
     payload = body.model_dump(exclude_none=True)
-    if "password" in payload and payload["password"] == "":
-        payload.pop("password")
+    if payload.get("password") == "":
+        payload.pop("password", None)
     saved = save_category_settings(db, "database", payload)
     return {
         "category": "database",
@@ -154,8 +191,8 @@ def save_application_settings(request: Request, body: ApplicationSettingsIn, db:
 def save_kubernetes_settings(request: Request, body: KubernetesSettingsIn, db: Session = Depends(get_db)):
     require_admin_user(request)
     payload = body.model_dump(exclude_none=True)
-    if "agent_token" in payload and payload["agent_token"] == "":
-        payload.pop("agent_token")
+    if payload.get("agent_token") == "":
+        payload.pop("agent_token", None)
     saved = save_category_settings(db, "kubernetes", payload)
     invalidate_runtime_config()
     return {"category": "kubernetes", "settings": saved, "message": "Kubernetes settings saved."}
@@ -165,8 +202,8 @@ def save_kubernetes_settings(request: Request, body: KubernetesSettingsIn, db: S
 def save_ai_settings(request: Request, body: AiSettingsIn, db: Session = Depends(get_db)):
     require_admin_user(request)
     payload = body.model_dump(exclude_none=True)
-    if "openai_key" in payload and payload["openai_key"] == "":
-        payload.pop("openai_key")
+    if payload.get("openai_key") == "":
+        payload.pop("openai_key", None)
     saved = save_category_settings(db, "ai", payload)
     invalidate_runtime_config()
     return {"category": "ai", "settings": saved, "message": "AI settings saved."}

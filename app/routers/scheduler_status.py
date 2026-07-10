@@ -9,7 +9,7 @@ from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import CostSyncRun, DbSyncRun
+from app.models import CostSyncRun, ComponentSyncState
 
 router = APIRouter(prefix="/scheduler", tags=["Scheduler Status"])
 
@@ -93,9 +93,8 @@ def db_sync_history(
     sub = (subscription_id or "").strip().lower()
     try:
         runs = (
-            db.query(DbSyncRun)
-            .filter(DbSyncRun.subscription_id == sub)
-            .order_by(desc(DbSyncRun.synced_at))
+            db.query(ComponentSyncState)
+            .order_by(desc(ComponentSyncState.synced_at))
             .limit(limit)
             .all()
         )
@@ -113,9 +112,9 @@ def db_sync_history(
     latest = runs[0]
     history = [
         {
-            "run_id": r.id,
+            "component": r.component,
             "synced_at": r.synced_at.isoformat() if r.synced_at else None,
-            "resource_count": getattr(r, "resource_count", None),
+            "last_status": r.last_status,
             "age_hours": _age_hours(r.synced_at),
         }
         for r in runs

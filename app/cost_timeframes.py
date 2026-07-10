@@ -14,9 +14,36 @@ AZURE_NATIVE_TIMEFRAMES: frozenset[str] = frozenset({
     "WeekToDate",
 })
 
+# Rolling windows resolved to exact day ranges; prefer live Azure Cost Management queries.
+ROLLING_DAILY_TIMEFRAMES: frozenset[str] = frozenset({
+    "Last7Days",
+    "Last14Days",
+    "Last30Days",
+    "Last60Days",
+    "Last90Days",
+    "WeekToDate",
+})
+
+# Multi-month calendar presets stored from hourly Cost Management sync (see cost_period_totals).
+CALENDAR_RANGE_TIMEFRAMES: frozenset[str] = frozenset({
+    "ThisYear",
+    "ThisQuarter",
+    "LastQuarter",
+    "Last3Months",
+    "Last6Months",
+    "Last12Months",
+})
+
+# Custom ranges are queried live; all catalog presets use hourly DB snapshots.
+LIVE_FIRST_TIMEFRAMES: frozenset[str] = frozenset({"Custom"})
+
 TIMEFRAME_CATALOG: list[dict[str, Any]] = [
     {"id": "Last7Days", "label": "Last 7 days", "group": "rolling"},
+    {"id": "Last14Days", "label": "Last 14 days", "group": "rolling"},
     {"id": "Last30Days", "label": "Last 30 days", "group": "rolling"},
+    {"id": "Last60Days", "label": "Last 60 days", "group": "rolling"},
+    {"id": "Last90Days", "label": "Last 90 days", "group": "rolling"},
+    {"id": "WeekToDate", "label": "Week to date", "group": "rolling"},
     {"id": "MonthToDate", "label": "This month", "group": "calendar"},
     {"id": "BillingMonthToDate", "label": "Billing month to date", "group": "calendar"},
     {"id": "TheLastMonth", "label": "Last month", "group": "calendar"},
@@ -30,6 +57,11 @@ TIMEFRAME_CATALOG: list[dict[str, Any]] = [
 ]
 
 TIMEFRAME_LABELS: dict[str, str] = {item["id"]: item["label"] for item in TIMEFRAME_CATALOG}
+
+# All catalog presets except Custom — refreshed from Cost Management on each hourly cost sync.
+SYNCED_PERIOD_TIMEFRAMES: tuple[str, ...] = tuple(
+    item["id"] for item in TIMEFRAME_CATALOG if item["id"] != "Custom"
+)
 
 
 def _parse_iso_date(value: str | None) -> date | None:
@@ -65,6 +97,31 @@ def _shift_months(d: date, months: int) -> date:
     return date(year, month, day)
 
 
+def _rolling_days_range(timeframe: str, today: date) -> tuple[date, date] | None:
+    """Map LastNDays / WeekToDate presets to inclusive [start, end]."""
+    tf = (timeframe or "").strip()
+    if tf == "WeekToDate":
+        return today - timedelta(days=today.weekday()), today
+    if tf.startswith("Last") and tf.endswith("Days"):
+        days_text = tf[4:-4]
+        if days_text.isdigit():
+            days = int(days_text)
+            if days >= 1:
+                return today - timedelta(days=days - 1), today
+    return None
+
+
+def prefers_live_cost_query(
+    timeframe: str,
+    *,
+    has_resource_type_filter: bool = False,
+) -> bool:
+    """True when live Azure Cost Management should be queried before synced DB rows."""
+    if has_resource_type_filter:
+        return False
+    return (timeframe or "").strip() in LIVE_FIRST_TIMEFRAMES
+
+
 def resolve_date_range(
     timeframe: str,
     *,
@@ -92,18 +149,15 @@ def resolve_date_range(
             start, end = end, start
         return start, end
 
-    if tf == "Last7Days":
-        return today - timedelta(days=6), today
-    if tf == "Last30Days":
-        return today - timedelta(days=29), today
+    rolling = _rolling_days_range(tf, today)
+    if rolling is not None:
+        return rolling
     if tf in {"MonthToDate", "BillingMonthToDate"}:
         return today.replace(day=1), today
     if tf == "TheLastMonth":
         first_this = today.replace(day=1)
         end = first_this - timedelta(days=1)
         return end.replace(day=1), end
-    if tf == "WeekToDate":
-        return today - timedelta(days=today.weekday()), today
     if tf == "ThisQuarter":
         return _quarter_start(today), today
     if tf == "LastQuarter":

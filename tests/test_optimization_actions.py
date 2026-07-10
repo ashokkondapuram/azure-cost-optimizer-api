@@ -24,6 +24,7 @@ from app.optimization_actions import (
     list_optimization_actions,
     serialize_action,
     update_optimization_action,
+    _distinct_action_savings,
 )
 from app.optimizer.decision_engine import generate_optimization_actions
 
@@ -219,6 +220,53 @@ def test_combined_evidence_and_evidence_summary(db_session):
 
     listed = list_optimization_actions(db_session, "sub-1")
     assert listed["items"][0]["evidence_summary"]["has_advisor"] is True
+
+
+def test_list_actions_uses_distinct_savings_per_resource(db_session):
+    rid = "/subscriptions/sub-1/resourcegroups/prod-rg/providers/microsoft.compute/virtualmachines/vm1"
+    db_session.add(OptimizationAction(
+        id="act-dup-1",
+        resource_id=rid,
+        subscription_id="sub-1",
+        resource_type="compute/vm",
+        resource_name="vm1",
+        action_type="resize_down",
+        confidence="High",
+        performance_risk="Low",
+        estimated_monthly_savings=100.0,
+        workflow_status="proposed",
+    ))
+    db_session.add(OptimizationAction(
+        id="act-dup-2",
+        resource_id=rid.upper(),
+        subscription_id="sub-1",
+        resource_type="compute/vm",
+        resource_name="vm1",
+        action_type="investigate",
+        confidence="Medium",
+        performance_risk="Low",
+        estimated_monthly_savings=40.0,
+        workflow_status="proposed",
+    ))
+    db_session.add(OptimizationAction(
+        id="act-other",
+        resource_id="/subscriptions/sub-1/resourcegroups/prod-rg/providers/microsoft.compute/virtualmachines/vm2",
+        subscription_id="sub-1",
+        resource_type="compute/vm",
+        resource_name="vm2",
+        action_type="investigate",
+        confidence="Medium",
+        performance_risk="Low",
+        estimated_monthly_savings=50.0,
+        workflow_status="proposed",
+    ))
+    db_session.commit()
+
+    assert _distinct_action_savings(db_session.query(OptimizationAction).all()) == 150.0
+
+    listed = list_optimization_actions(db_session, "sub-1")
+    assert listed["total_estimated_monthly_savings"] == 150.0
+    assert listed["distinct_estimated_monthly_savings"] == 150.0
 
 
 def test_workflow_update_and_bulk(db_session):

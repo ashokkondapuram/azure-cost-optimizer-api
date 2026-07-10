@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "resource_count": 38,
+  "resources": [
+    {
+      "canonical_type": "analytics/adx",
+      "monitor_arm_type": "microsoft.kusto/clusters",
+      "display_name": "Azure Data Explorer",
+      "doc_ref": "microsoft-kusto-clusters-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-kusto-clusters-metrics",
+      "reference_file": "data/azure_monitor_reference/analytics-adx.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "appservice/plan",
+      "monitor_arm_type": "microsoft.web/serverfarms",
+      "display_name": "App Service plan",
+      "doc_ref": "microsoft-web-serverfarms-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-web-serverfarms-metrics",
+      "reference_file": "data/azure_monitor_reference/appservice-plan.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "appservice/webapp",
+      "monitor_arm_type": "microsoft.web/sites",
+      "display_name": "App Service web app",
+      "doc_ref": "microsoft-web-sites-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-web-sites-metrics",
+      "reference_file": "data/azure_monitor_reference/appservice-webapp.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "backup/recoveryvault",
+      "monitor_arm_type": "microsoft.recoveryservices/vaults",
+      "display_name": "Recovery Services vault",
+      "doc_ref": "microsoft-recoveryservices-vaults-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-recoveryservices-vaults-metrics",
+      "reference_file": "data/azure_monitor_reference/backup-recoveryvault.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "compute/disk",
+      "monitor_arm_type": "microsoft.compute/disks",
+      "display_name": "Managed disk",
+      "doc_ref": "microsoft-compute-disks-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-compute-disks-metrics",
+      "reference_file": "data/azure_monitor_reference/compute-disk.json",
+      "drawer_ui": true,
+      "audit_status": "complete"
+    },
+    {
+      "canonical_type": "compute/vm",
+      "monitor_arm_type": "microsoft.compute/virtualmachines",
+      "display_name": "Virtual machine",
+      "doc_ref": "microsoft-compute-virtualmachines-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-compute-virtualmachines-metrics",
+      "reference_file": "data/azure_monitor_reference/compute-vm.json",
+      "drawer_ui": false,
+      "audit_status": "reference_only"
+    },
+    {
+      "canonical_type": "compute/vmss",
+      "monitor_arm_type": "microsoft.compute/virtualmachinescalesets",
+      "display_name": "Virtual machine scale set",
+      "doc_ref": "microsoft-compute-virtualmachinescalesets-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-compute-virtualmachinescalesets-metrics",
+      "reference_file": "data/azure_monitor_reference/compute-vmss.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "containers/acr",
+      "monitor_arm_type": "microsoft.containerregistry/registries",
+      "display_name": "Container registry",
+      "doc_ref": "microsoft-containerregistry-registries-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-containerregistry-registries-metrics",
+      "reference_file": "data/azure_monitor_reference/containers-acr.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "containers/aks",
+      "monitor_arm_type": "microsoft.containerservice/managedclusters",
+      "display_name": "AKS cluster",
+      "doc_ref": "microsoft-containerservice-managedclusters-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-containerservice-managedclusters-metrics",
+      "reference_file": "data/azure_monitor_reference/containers-aks.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "database/cosmosdb",
+      "monitor_arm_type": "microsoft.documentdb/databaseaccounts",
+      "display_name": "Cosmos DB account",
+      "doc_ref": "microsoft-documentdb-databaseaccounts-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-documentdb-databaseaccounts-metrics",
+      "reference_file": "data/azure_monitor_reference/database-cosmosdb.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "database/postgresql",
+      "monitor_arm_type": "microsoft.dbforpostgresql/flexibleservers",
+      "display_name": "PostgreSQL flexible server",
+      "doc_ref": "microsoft-dbforpostgresql-flexibleservers-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-dbforpostgresql-flexibleservers-metrics",
+      "reference_file": "data/azure_monitor_reference/database-postgresql.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "database/redis",
+      "monitor_arm_type": "microsoft.cache/redis",
+      "display_name": "Azure Cache for Redis",
+      "doc_ref": "microsoft-cache-redis-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-cache-redis-metrics",
+      "reference_file": "data/azure_monitor_reference/database-redis.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "database/sql",
+      "monitor_arm_type": "microsoft.sql/servers/databases",
+      "display_name": "SQL database",
+      "doc_ref": "microsoft-sql-servers-databases-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-sql-servers-databases-metrics",
+      "reference_file": "data/azure_monitor_reference/database-sql.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "integration/apim",
+      "monitor_arm_type": "microsoft.apimanagement/service",
+      "display_name": "API Management",
+      "doc_ref": "microsoft-apimanagement-service-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-apimanagement-service-metrics",
+      "reference_file": "data/azure_monitor_reference/integration-apim.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "integration/datafactory",
+      "monitor_arm_type": "microsoft.datafactory/factories",
+      "display_name": "Data Factory",
+      "doc_ref": "microsoft-datafactory-factories-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-datafactory-factories-metrics",
+      "reference_file": "data/azure_monitor_reference/integration-datafactory.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "integration/logicapp",
+      "monitor_arm_type": "microsoft.logic/workflows",
+      "display_name": "Logic App",
+      "doc_ref": "microsoft-logic-workflows-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-logic-workflows-metrics",
+      "reference_file": "data/azure_monitor_reference/integration-logicapp.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "messaging/eventhub",
+      "monitor_arm_type": "microsoft.eventhub/namespaces",
+      "display_name": "Event Hubs namespace",
+      "doc_ref": "microsoft-eventhub-namespaces-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-eventhub-namespaces-metrics",
+      "reference_file": "data/azure_monitor_reference/messaging-eventhub.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "messaging/servicebus",
+      "monitor_arm_type": "microsoft.servicebus/namespaces",
+      "display_name": "Service Bus namespace",
+      "doc_ref": "microsoft-servicebus-namespaces-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-servicebus-namespaces-metrics",
+      "reference_file": "data/azure_monitor_reference/messaging-servicebus.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "monitoring/appinsights",
+      "monitor_arm_type": "microsoft.insights/components",
+      "display_name": "Application Insights",
+      "doc_ref": "microsoft-insights-components-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-insights-components-metrics",
+      "reference_file": "data/azure_monitor_reference/monitoring-appinsights.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "monitoring/loganalytics",
+      "monitor_arm_type": "microsoft.operationalinsights/workspaces",
+      "display_name": "Log Analytics workspace",
+      "doc_ref": "microsoft-operationalinsights-workspaces-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-operationalinsights-workspaces-metrics",
+      "reference_file": "data/azure_monitor_reference/monitoring-loganalytics.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/appgateway",
+      "monitor_arm_type": "microsoft.network/applicationgateways",
+      "display_name": "Application gateway",
+      "doc_ref": "microsoft-network-applicationgateways-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-applicationgateways-metrics",
+      "reference_file": "data/azure_monitor_reference/network-appgateway.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/cdn",
+      "monitor_arm_type": "microsoft.cdn/profiles",
+      "display_name": "CDN profile",
+      "doc_ref": "microsoft-cdn-profiles-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-cdn-profiles-metrics",
+      "reference_file": "data/azure_monitor_reference/network-cdn.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/expressroute",
+      "monitor_arm_type": "microsoft.network/expressroutecircuits",
+      "display_name": "ExpressRoute circuit",
+      "doc_ref": "microsoft-network-expressroutecircuits-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-expressroutecircuits-metrics",
+      "reference_file": "data/azure_monitor_reference/network-expressroute.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/firewall",
+      "monitor_arm_type": "microsoft.network/azurefirewalls",
+      "display_name": "Azure Firewall",
+      "doc_ref": "microsoft-network-azurefirewalls-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-azurefirewalls-metrics",
+      "reference_file": "data/azure_monitor_reference/network-firewall.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/frontdoor",
+      "monitor_arm_type": "microsoft.network/frontdoors",
+      "display_name": "Azure Front Door",
+      "doc_ref": "microsoft-network-frontdoors-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-frontdoors-metrics",
+      "reference_file": "data/azure_monitor_reference/network-frontdoor.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/loadbalancer",
+      "monitor_arm_type": "microsoft.network/loadbalancers",
+      "display_name": "Load balancer",
+      "doc_ref": "microsoft-network-loadbalancers-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-loadbalancers-metrics",
+      "reference_file": "data/azure_monitor_reference/network-loadbalancer.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/nat",
+      "monitor_arm_type": "microsoft.network/natgateways",
+      "display_name": "NAT gateway",
+      "doc_ref": "microsoft-network-natgateways-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-natgateways-metrics",
+      "reference_file": "data/azure_monitor_reference/network-nat.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/nic",
+      "monitor_arm_type": "microsoft.network/networkinterfaces",
+      "display_name": "Network interface",
+      "doc_ref": "microsoft-network-networkinterfaces-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-networkinterfaces-metrics",
+      "reference_file": "data/azure_monitor_reference/network-nic.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/nsg",
+      "monitor_arm_type": "microsoft.network/networksecuritygroups",
+      "display_name": "Network security group",
+      "doc_ref": "microsoft-network-networksecuritygroups-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-networksecuritygroups-metrics",
+      "reference_file": "data/azure_monitor_reference/network-nsg.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/privatedns",
+      "monitor_arm_type": "microsoft.network/privatednszones",
+      "display_name": "Private DNS zone",
+      "doc_ref": "microsoft-network-privatednszones-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-privatednszones-metrics",
+      "reference_file": "data/azure_monitor_reference/network-privatedns.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/privateendpoint",
+      "monitor_arm_type": "microsoft.network/privateendpoints",
+      "display_name": "Private endpoint",
+      "doc_ref": "microsoft-network-privateendpoints-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-privateendpoints-metrics",
+      "reference_file": "data/azure_monitor_reference/network-privateendpoint.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/privatelinkservice",
+      "monitor_arm_type": "microsoft.network/privatelinkservices",
+      "display_name": "Private link service",
+      "doc_ref": "microsoft-network-privatelinkservices-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-privatelinkservices-metrics",
+      "reference_file": "data/azure_monitor_reference/network-privatelinkservice.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/publicip",
+      "monitor_arm_type": "microsoft.network/publicipaddresses",
+      "display_name": "Public IP address",
+      "doc_ref": "microsoft-network-publicipaddresses-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-publicipaddresses-metrics",
+      "reference_file": "data/azure_monitor_reference/network-publicip.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/trafficmanager",
+      "monitor_arm_type": "microsoft.network/trafficmanagerprofiles",
+      "display_name": "Traffic Manager profile",
+      "doc_ref": "microsoft-network-trafficmanagerprofiles-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-trafficmanagerprofiles-metrics",
+      "reference_file": "data/azure_monitor_reference/network-trafficmanager.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "network/vnet",
+      "monitor_arm_type": "microsoft.network/virtualnetworks",
+      "display_name": "Virtual network",
+      "doc_ref": "microsoft-network-virtualnetworks-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-virtualnetworks-metrics",
+      "reference_file": "data/azure_monitor_reference/network-vnet.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "search/cognitivesearch",
+      "monitor_arm_type": "microsoft.search/searchservices",
+      "display_name": "Cognitive Search",
+      "doc_ref": "microsoft-search-searchservices-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-search-searchservices-metrics",
+      "reference_file": "data/azure_monitor_reference/search-cognitivesearch.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "security/keyvault",
+      "monitor_arm_type": "microsoft.keyvault/vaults",
+      "display_name": "Key vault",
+      "doc_ref": "microsoft-keyvault-vaults-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-keyvault-vaults-metrics",
+      "reference_file": "data/azure_monitor_reference/security-keyvault.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    },
+    {
+      "canonical_type": "storage/account",
+      "monitor_arm_type": "microsoft.storage/storageaccounts",
+      "display_name": "Storage account",
+      "doc_ref": "microsoft-storage-storageaccounts-metrics",
+      "doc_url": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-storage-storageaccounts-metrics",
+      "reference_file": "data/azure_monitor_reference/storage-account.json",
+      "drawer_ui": false,
+      "audit_status": "pending"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Wallet, Plus, Trash2, AlertTriangle, CheckCircle, Edit2 } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 /**
  * Budget Manager — Phase 2
@@ -75,15 +76,16 @@ export default function BudgetManager() {
 
   return (
     <div className="page-shell">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title icon-inline"><Wallet size={20} /> Budget manager</h1>
-          <p className="page-subtitle">Track and enforce Azure cost budgets by subscription, resource group, or tag.</p>
-        </div>
+      <PageHeader
+        title="Budget manager"
+        subtitle="Track and enforce Azure cost budgets by subscription, resource group, or tag."
+        iconKey="budgetsNav"
+        iconRoute="/budgets"
+      >
         <button type="button" className="btn btn-primary" onClick={() => { setForm(EMPTY_FORM); setEditId(null); setShowForm(true); }}>
           <Plus size={14} /> New budget
         </button>
-      </div>
+      </PageHeader>
 
       {/* Summary KPIs */}
       <div className="grid-4" style={{ marginBottom: '1.25rem' }}>

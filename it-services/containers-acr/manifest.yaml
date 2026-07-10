@@ -1,0 +1,22 @@
+service_id: containers-acr
+canonical_type: containers/acr
+display_name: Container registry
+api_path: /resources/acr
+arm_type: Microsoft.ContainerRegistry/registries
+component: Container Registry
+drawer_ui: false
+
+backend:
+  package: it_services/containers_acr
+  modules:
+    - it_services/containers_acr/resource_profile.py
+  related_app_modules:
+    - app/resources/containers/acr.py
+    - app/optimizer/resource_engines/containers/acr/
+
+frontend:
+  root: frontend/src/it-services/containers-acr
+  entry: frontend/src/it-services/containers-acr/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

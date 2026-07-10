@@ -11,32 +11,30 @@ import { SeverityIcon } from '../FinOpsIcons';
 import { formatCurrency } from '../../utils/format';
 import { tierLabel, tierTone, formatScore } from '../../utils/scoreboardUtils';
 
-function WorkloadSummary({ profile }) {
-  if (!profile) return <p className="text-muted text-sm">No workload profile yet. Run advanced scoring.</p>;
+function InsightCard({ item }) {
+  if (!item) return null;
   return (
-    <dl className="advanced-analysis-dl">
-      <div><dt>Type</dt><dd>{profile.workload_type || '—'}</dd></div>
-      <div><dt>Burstiness</dt><dd>{formatScore(profile.burstiness_score)}</dd></div>
-      <div><dt>Peak factor</dt><dd>{profile.peak_hour_factor ?? '—'}</dd></div>
-      <div><dt>Trend</dt><dd>{profile.utilization_trend || '—'}</dd></div>
-      {profile.detected_seasonality && (
-        <div><dt>Seasonality</dt><dd>Detected</dd></div>
-      )}
-    </dl>
+    <article className={`advanced-insight advanced-insight--${item.tone || 'neutral'}`}>
+      <div className="advanced-insight__top">
+        <span className="advanced-insight__label">{item.label}</span>
+        <strong className="advanced-insight__value">{item.value}</strong>
+      </div>
+      {item.detail && <p className="advanced-insight__detail">{item.detail}</p>}
+    </article>
   );
 }
 
-function DependencySummary({ dependencies }) {
-  if (!dependencies) return null;
+function InsightGroup({ title, items }) {
+  if (!items?.length) return null;
   return (
-    <dl className="advanced-analysis-dl">
-      <div><dt>Blast radius</dt><dd>{dependencies.blast_radius ?? 0}</dd></div>
-      <div><dt>Max criticality</dt><dd>{dependencies.max_criticality || '—'}</dd></div>
-      <div><dt>SLA tier</dt><dd>{dependencies.sla_tier || '—'}</dd></div>
-      {dependencies.compliance_locked && (
-        <div><dt>Compliance</dt><dd>Locked</dd></div>
-      )}
-    </dl>
+    <section className="advanced-insight-group">
+      <h4 className="advanced-resource-section__subtitle">{title}</h4>
+      <div className="advanced-insight-grid">
+        {items.map((item) => (
+          <InsightCard key={`${title}-${item.label}`} item={item} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -84,6 +82,7 @@ export default function AdvancedResourceSection({
   prefetchedData = undefined,
   prefetchedLoading = false,
   prefetchedError = null,
+  forceOpen = false,
 }) {
   const usePrefetch = prefetchedData !== undefined || prefetchedLoading;
   const { data: queryData, isLoading: queryLoading, isError: queryError } = useQuery({
@@ -102,17 +101,14 @@ export default function AdvancedResourceSection({
 
   const scorecard = data?.scorecard;
   const actionableFindings = data?.actionable_findings || [];
-  const hasWorkload = Boolean(data?.workload_profile?.workload_type);
-  const hasDependencies = Boolean(
-    data?.dependencies && (
-      data.dependencies.blast_radius
-      || data.dependencies.max_criticality
-      || data.dependencies.sla_tier
-    ),
+  const insights = data?.insights;
+  const hasInsights = Boolean(
+    insights?.workload?.length
+    || insights?.dependencies?.length
+    || insights?.cost?.length,
   );
-  const hasTrends = Boolean(data?.trends?.cost_trajectory);
   const hasContent = Boolean(
-    scorecard || hasWorkload || hasDependencies || hasTrends || actionableFindings.length,
+    scorecard || hasInsights || actionableFindings.length,
   );
 
   return (
@@ -120,7 +116,7 @@ export default function AdvancedResourceSection({
       title="Advanced analysis"
       icon={<Gauge size={13} />}
       variant="info"
-      defaultOpen={Boolean(scorecard || hasWorkload)}
+      defaultOpen={forceOpen || Boolean(scorecard || hasInsights)}
       compact
       badge={scorecard ? formatScore(scorecard.overall_recommendation_score) : null}
       hint="Evidence-backed optimization signals from workload, cost, and monitor data."
@@ -164,26 +160,20 @@ export default function AdvancedResourceSection({
               Run advanced scoring to generate a multi-facet optimization scorecard.
             </p>
           )}
+
+          {insights?.headline && (
+            <p className="advanced-insight-headline">{insights.headline}</p>
+          )}
+
+          <InsightGroup title="Workload" items={insights?.workload} />
+          <InsightGroup title="Dependencies" items={insights?.dependencies} />
+          <InsightGroup title="Cost" items={insights?.cost} />
+
           <div className="advanced-resource-section__findings">
             <h4 className="advanced-resource-section__subtitle">Actionable findings</h4>
             <ActionableFindings findings={actionableFindings} currency={currency} />
           </div>
-          <div className="advanced-resource-section__grid">
-            <div>
-              <h4 className="advanced-resource-section__subtitle">Workload</h4>
-              <WorkloadSummary profile={data.workload_profile} />
-            </div>
-            <div>
-              <h4 className="advanced-resource-section__subtitle">Dependencies</h4>
-              <DependencySummary dependencies={data.dependencies} />
-            </div>
-          </div>
-          {data.trends?.cost_trajectory && (
-            <p className="text-muted text-sm">
-              Cost trend: {data.trends.cost_trajectory}
-              {data.trends.cost_vs_prev_month_pct != null && ` (${data.trends.cost_vs_prev_month_pct}%)`}
-            </p>
-          )}
+
           <Link to="/optimization-hub?tab=scoreboard" className="btn btn--ghost btn--sm">
             View scoreboard
           </Link>

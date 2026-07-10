@@ -1,15 +1,9 @@
-from app.resources.types import TechnicalFetchSpec, field
+"""Compatibility shim — implementation: it_services.network_nsg.resource_profile"""
 
-CANONICAL_TYPE = "network/nsg"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Network/networkSecurityGroups",
-    display_name="Network security group",
-    sync_property_paths=("securityRules", "subnets", "networkInterfaces", "provisioningState"),
-    fields=(
-        field("rule_count", "computed:rule_count", "Security rule count", "configuration"),
-    ),
-)
+_impl = import_module("it_services.network_nsg.resource_profile")
 
-MONITOR_PROFILE = None
+
+def __getattr__(name: str):
+    return getattr(_impl, name)

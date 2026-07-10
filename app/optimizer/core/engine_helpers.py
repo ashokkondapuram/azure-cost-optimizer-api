@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.finding_evidence import enrich_evidence
+from app.optimizer.engine_filters import effective_severity
 from app.optimizer.advanced_rules import AdvancedRule
 from app.optimizer.core.finding import ExtendedFinding
 from app.optimizer.resource_engines.compute.vm.helpers import (
@@ -59,7 +60,7 @@ class EngineAnalysisHelpers:
             rule_id=rule.id,
             rule_name=rule.name,
             category=rule.category.value,
-            severity=rule.severity.value,
+            severity=effective_severity(rule.severity.value, resource, getattr(self, "global_config", None)),
             resource_id=rid,
             resource_name=resource.get("name") or "",
             resource_type=resource.get("type") or "",

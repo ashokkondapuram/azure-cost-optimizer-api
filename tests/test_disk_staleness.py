@@ -10,6 +10,7 @@ from app.models import Base, ResourceSnapshot
 from app.disk_staleness import (
     augment_disk_evidence,
     disk_lineage_from_facts,
+    disk_sync_state,
     enrich_disk_sync_properties,
     evaluate_unattached_disk,
     owner_display_name,
@@ -170,6 +171,25 @@ def test_enrich_disk_sync_properties_reads_pascal_case_last_ownership(db_session
     assert props["timeCreated"] == "2026-04-20T04:41:35.079872+00:00"
 
 
+def test_enrich_disk_sync_properties_resolves_tier_provisioned_limits(db_session):
+    props = enrich_disk_sync_properties(
+        db_session,
+        "sub-id",
+        {
+            "id": "/subscriptions/sub-id/resourceGroups/rg/providers/Microsoft.Compute/disks/data1",
+            "sku": {"name": "Premium_LRS"},
+            "properties": {
+                "diskState": "Attached",
+                "diskSizeGB": 512,
+            },
+        },
+        {},
+    )
+    assert props["diskIOPSReadWrite"] == 3500
+    assert props["diskMBpsReadWrite"] == 170
+    assert props["provisionedPerformanceSource"] == "tier_spec"
+
+
 def test_disk_lineage_from_facts_handles_pascal_case_properties():
     lineage = disk_lineage_from_facts({
         "properties": {
@@ -229,3 +249,23 @@ def test_enrich_finding_for_api_hydrates_disk_ownership_from_inventory():
     perf = {m["id"]: m for m in metrics["performance"]}
     assert perf["last_owner"]["formatted"] == "old-vm"
     assert perf["last_ownership_update"]["formatted"] != "Not available"
+
+
+def test_disk_sync_state_reads_pascal_case_disk_state():
+    arm_disk = {
+        "properties": {"DiskState": "Unattached"},
+    }
+    assert disk_sync_state(arm_disk) == "Unattached"
+
+
+def test_disk_sync_state_prefers_synced_props():
+    arm_disk = {"properties": {}}
+    assert disk_sync_state(arm_disk, {"diskState": "Attached"}) == "Attached"
+
+
+def test_disk_sync_state_infers_attached_from_managed_by():
+    arm_disk = {
+        "managedBy": "/subscriptions/s/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/vm1",
+        "properties": {},
+    }
+    assert disk_sync_state(arm_disk) == "Attached"

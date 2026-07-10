@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 from app.runtime_config import get_cors_origins
 
@@ -27,6 +27,11 @@ class DynamicCORSMiddleware(BaseHTTPMiddleware):
             return Response(status_code=204, headers=_cors_headers(origin))
 
         response = await call_next(request)
+        if response is None:
+            return JSONResponse(
+                status_code=500,
+                content={"error": {"code": "internal_error", "message": "No response produced."}},
+            )
 
         if origin and origin in allowed:
             for key, value in _cors_headers(origin).items():

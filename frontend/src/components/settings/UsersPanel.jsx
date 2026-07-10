@@ -4,6 +4,7 @@ import { KeyRound, UserPlus, RefreshCw } from 'lucide-react';
 import { createUser, fetchUsers, resetUserPassword } from '../../api/auth';
 import { getErrorMessage } from '../../api/errors';
 import { formatUserRole } from '../../utils/roleLabels';
+import { useAuth } from '../../context/AuthContext';
 import { LoadingState, QueryErrorState } from '../QueryStates';
 
 function StatusBanner({ type, message }) {
@@ -32,6 +33,7 @@ function formatLastLogin(iso) {
 
 export default function UsersPanel() {
   const qc = useQueryClient();
+  const { isSuperuser } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
   const [resetUser, setResetUser] = useState(null);
   const [form, setForm] = useState({
@@ -81,7 +83,7 @@ export default function UsersPanel() {
     <div className="settings-form-stack">
       <p className="setting-field__hint" style={{ marginTop: 0 }}>
         Manage sign-in accounts for this application. Viewers can browse synced data and recommendations.
-        Admins can sync from Azure, change engine rules, and manage settings.
+        Admins can sync from Azure, change engine rules, and manage settings. Superusers can also control sidebar access.
       </p>
 
       <StatusBanner type={banner.type} message={banner.text} />
@@ -118,7 +120,7 @@ export default function UsersPanel() {
                     <td style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{u.username}</td>
                     <td>{u.display_name}</td>
                     <td>
-                      <span className={`badge ${u.role === 'admin' ? 'badge-info' : ''}`}>
+                      <span className={`badge ${u.role === 'admin' || u.role === 'superuser' ? 'badge-info' : ''}`}>
                         {formatUserRole(u.role)}
                       </span>
                     </td>
@@ -186,6 +188,7 @@ export default function UsersPanel() {
                 <select value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))}>
                   <option value="viewer">Viewer</option>
                   <option value="admin">Admin</option>
+                  {isSuperuser && <option value="superuser">Superuser</option>}
                 </select>
               </div>
             </div>

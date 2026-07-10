@@ -19,15 +19,82 @@ from app.models import (
 )
 from app.focus_mapping import normalize_arm_id
 from app.cost_timeframes import (
-    is_calendar_month_range,
+    ROLLING_DAILY_TIMEFRAMES as _ROLLING_DAILY_TIMEFRAMES,
     month_for_timeframe as _month_for_timeframe,
     period_for_timeframe,
     resolve_date_range,
 )
 
+# Timeframes where substituting a different calendar month would misstate spend.
+_PERIOD_SCOPED_TIMEFRAMES = frozenset({
+    "MonthToDate",
+    "BillingMonthToDate",
+    "TheLastMonth",
+    "ThisQuarter",
+    "LastQuarter",
+    "Last3Months",
+    "Last6Months",
+    "Last12Months",
+    "ThisYear",
+    "Custom",
+}) | _ROLLING_DAILY_TIMEFRAMES
+_CALENDAR_MTD_TIMEFRAMES = frozenset({"MonthToDate", "BillingMonthToDate"})
+_MONTH_BUCKET_TIMEFRAMES = frozenset({"MonthToDate", "BillingMonthToDate", "TheLastMonth"})
+_ROLLING_DAILY_TIMEFRAMES = _ROLLING_DAILY_TIMEFRAMES
+_MULTI_MONTH_TIMEFRAMES = frozenset({
+    "ThisYear",
+    "Last12Months",
+    "Last6Months",
+    "Last3Months",
+    "ThisQuarter",
+    "LastQuarter",
+})
+
 
 def _normalize_sub(subscription_id: str) -> str:
     return (subscription_id or "").strip().lower()
+
+
+def _billing_currency_from_rows(rows, *, attr: str = "billing_currency", fallback: str = "CAD") -> str:
+    for row in rows or []:
+        val = getattr(row, attr, None)
+        if not val and hasattr(row, "currency"):
+            val = row.currency
+        if val:
+            return str(val)
+    return fallback
+
+
+def _subscription_billing_currency_uncached(
+    db: Session,
+    subscription_id: str,
+    *,
+    model=CostDailyByServiceSnapshot,
+) -> str:
+    sub = _normalize_sub(subscription_id)
+    row = (
+        db.query(model.billing_currency)
+        .filter(model.subscription_id == sub, model.billing_currency.isnot(None))
+        .first()
+    )
+    return (row[0] if row else None) or "CAD"
+
+
+def subscription_billing_currency(
+    db: Session,
+    subscription_id: str,
+    *,
+    model=CostDailyByServiceSnapshot,
+) -> str:
+    """Cached default billing currency for a subscription."""
+    from app.perf_cache import cached_cost_map
+
+    sub = _normalize_sub(subscription_id)
+    key = f"billing_currency:{sub}:{model.__tablename__}"
+    return cached_cost_map(
+        key,
+        lambda: _subscription_billing_currency_uncached(db, sub, model=model),
+    )
 
 
 def month_for_timeframe(
@@ -235,6 +302,26 @@ def daily_cost_response_from_db(
         daily_query = daily_query.filter(
             CostDailyByServiceSnapshot.service_name.in_(list(service_names)),
         )
+    else:
+        has_rollup = (
+            db.query(CostDailyByServiceSnapshot.id)
+            .filter(
+                CostDailyByServiceSnapshot.subscription_id == sub,
+                CostDailyByServiceSnapshot.cost_date >= start.isoformat(),
+                CostDailyByServiceSnapshot.cost_date <= end.isoformat(),
+                CostDailyByServiceSnapshot.service_name == "__subscription__",
+            )
+            .limit(1)
+            .first()
+        )
+        if has_rollup:
+            daily_query = daily_query.filter(
+                CostDailyByServiceSnapshot.service_name == "__subscription__",
+            )
+        else:
+            daily_query = daily_query.filter(
+                CostDailyByServiceSnapshot.service_name != "__subscription__",
+            )
     rows = daily_query.group_by(CostDailyByServiceSnapshot.cost_date).order_by(
         CostDailyByServiceSnapshot.cost_date,
     ).all()
@@ -275,12 +362,7 @@ def daily_cost_response_from_db(
             **period_for_timeframe(timeframe, from_date=from_date, to_date=to_date),
         }
 
-    currency_row = (
-        db.query(CostDailyByServiceSnapshot.billing_currency)
-        .filter(CostDailyByServiceSnapshot.subscription_id == sub)
-        .first()
-    )
-    currency = (currency_row[0] if currency_row else None) or "CAD"
+    currency = subscription_billing_currency(db, sub)
     columns = [
         {"name": "PreTaxCost"}, {"name": "CostUSD"},
         {"name": "ResourceGroup"}, {"name": "UsageDate"}, {"name": "Currency"},
@@ -326,12 +408,10 @@ def _service_breakdown_from_daily(
     ).all()
     if not rows:
         return None
-    currency_row = (
-        db.query(CostDailyByServiceSnapshot.billing_currency)
-        .filter(CostDailyByServiceSnapshot.subscription_id == sub)
-        .first()
+    currency = _billing_currency_from_rows(
+        rows,
+        fallback=subscription_billing_currency(db, sub),
     )
-    currency = (currency_row[0] if currency_row else None) or "CAD"
     return {
         "properties": {
             "columns": [
@@ -423,12 +503,7 @@ def _summary_from_daily(
     row = query.first()
     if not row or (not row.pretax and not row.usd):
         return None
-    currency_row = (
-        db.query(CostDailyByServiceSnapshot.billing_currency)
-        .filter(CostDailyByServiceSnapshot.subscription_id == sub)
-        .first()
-    )
-    currency = (currency_row[0] if currency_row else None) or "CAD"
+    currency = subscription_billing_currency(db, sub)
     service_count = (
         db.query(func.count(func.distinct(CostDailyByServiceSnapshot.service_name)))
         .filter(
@@ -450,10 +525,8 @@ def _summary_from_daily(
 
 
 def _uses_monthly_service_snapshot(timeframe: str, start: date, end: date) -> bool:
-    tf = (timeframe or "").strip()
-    if tf in {"MonthToDate", "BillingMonthToDate", "TheLastMonth"}:
-        return is_calendar_month_range(start, end) or tf in {"MonthToDate", "BillingMonthToDate"}
-    return False
+    """Only the prior full calendar month is served from month-keyed service snapshots."""
+    return (timeframe or "").strip() == "TheLastMonth"
 
 
 def get_latest_cost_changes(
@@ -591,6 +664,8 @@ def _resolve_cost_month(
         return m
     if month is not None:
         return None
+    if (timeframe or "").strip() in _PERIOD_SCOPED_TIMEFRAMES:
+        return None
     return (
         _latest_cost_by_resource_month(db, subscription_id)
         or _latest_synced_month(db, subscription_id)
@@ -618,6 +693,8 @@ def _resolve_resource_cost_month(
         .first()
     ):
         return m
+    if (timeframe or "").strip() in _PERIOD_SCOPED_TIMEFRAMES:
+        return None
     latest = _latest_cost_by_resource_month(db, subscription_id)
     if latest:
         return latest
@@ -706,22 +783,52 @@ def resource_cost_mom_delta_map_from_db(db: Session, subscription_id: str) -> di
     prior = _prior_month(month) if month else None
     if not month or not prior:
         return {}
-    current = resource_cost_map_from_db(db, sub, month=month)
-    previous = resource_cost_map_from_db(db, sub, month=prior)
+    rows = (
+        db.query(
+            CostByResourceSnapshot.resource_id,
+            CostByResourceSnapshot.month,
+            func.coalesce(func.sum(CostByResourceSnapshot.cost_billing), 0.0).label("billing"),
+            func.max(CostByResourceSnapshot.billing_currency).label("currency"),
+        )
+        .filter(
+            CostByResourceSnapshot.subscription_id == sub,
+            CostByResourceSnapshot.month.in_([month, prior]),
+        )
+        .group_by(CostByResourceSnapshot.resource_id, CostByResourceSnapshot.month)
+        .all()
+    )
+    current: dict[str, tuple[float, str | None]] = {}
+    previous: dict[str, float] = {}
+    for rid, row_month, billing, currency in rows:
+        norm = normalize_arm_id(rid)
+        if not norm:
+            continue
+        if row_month == month:
+            current[norm] = (float(billing or 0.0), currency)
+        elif row_month == prior:
+            previous[norm] = float(billing or 0.0)
     out: dict[str, dict] = {}
     for rid in set(current) | set(previous):
-        cur = float((current.get(rid) or {}).get("pretax") or 0.0)
-        prev = float((previous.get(rid) or {}).get("pretax") or 0.0)
+        cur, currency = current.get(rid, (0.0, None))
+        prev = previous.get(rid, 0.0)
         delta = round(cur - prev, 2)
         if cur == 0 and prev == 0:
             continue
-        currency = (
-            (current.get(rid) or {}).get("currency")
-            or (previous.get(rid) or {}).get("currency")
-            or "CAD"
-        )
-        out[rid] = {"billing_delta": delta, "currency": currency}
+        out[rid] = {
+            "billing_delta": delta,
+            "currency": currency or "CAD",
+        }
     return out
+
+
+def resource_cost_overlays_from_db(db: Session, subscription_id: str) -> dict[str, dict]:
+    """MTD, lifetime, and MoM cost overlays loaded together for list endpoints."""
+    sub = _normalize_sub(subscription_id)
+    return {
+        "mtd": resource_cost_map_from_db(db, sub),
+        "lifetime": resource_lifetime_cost_map_from_db(db, sub),
+        "mom": resource_cost_mom_delta_map_from_db(db, sub),
+    }
 
 
 def empty_daily_cost_response(billing_currency: str = "CAD") -> dict:
@@ -850,7 +957,7 @@ def _summary_from_service_month(
     *,
     service_names: set[str] | None = None,
 ) -> dict | None:
-    """Sum synced service rows for one calendar month."""
+    """Sum synced per-service rows for one calendar month (last-resort fallback)."""
     sub = _normalize_sub(subscription_id)
     query = (
         db.query(
@@ -865,25 +972,58 @@ def _summary_from_service_month(
     if service_names is not None:
         query = query.filter(CostByServiceSnapshot.service_name.in_(list(service_names)))
     row = query.first()
-    if row and (row.pretax or row.usd):
-        currency_row = (
-            db.query(CostByServiceSnapshot.billing_currency)
-            .filter(CostByServiceSnapshot.subscription_id == sub)
-            .first()
-        )
-        return {
-            "pretax_total": round(float(row.pretax or 0), 2),
-            "cost_usd_total": round(float(row.usd or 0), 2),
-            "billing_currency": (currency_row[0] if currency_row else None) or "CAD",
-        }
-    run = subscription_mtd_from_sync_run(db, sub, month)
-    if not run:
+    if not row or (not row.pretax and not row.usd):
         return None
+    return {
+        "pretax_total": round(float(row.pretax or 0), 2),
+        "cost_usd_total": round(float(row.usd or 0), 2),
+        "billing_currency": subscription_billing_currency(db, sub, model=CostByServiceSnapshot),
+        "total_source": "service_rows_sum",
+        "source": "database",
+    }
+
+
+def _sync_run_covers_slice(run: dict, slice_start: date, slice_end: date) -> bool:
+    """True when a CostSyncRun period fully covers the requested date slice."""
+    run_start = (run.get("mtd_start") or "")[:10]
+    run_end = (run.get("mtd_end") or "")[:10]
+    if not run_start or not run_end:
+        return False
+    return run_start <= slice_start.isoformat() and run_end >= slice_end.isoformat()
+
+
+def _chunk_from_sync_run(run: dict) -> dict:
     return {
         "pretax_total": run["pretax_total"],
         "cost_usd_total": run["cost_usd_total"],
         "billing_currency": run["billing_currency"],
+        "total_source": run.get("total_source") or "azure_subscription_query",
+        "source": "database",
     }
+
+
+def _month_cost_chunk(
+    db: Session,
+    subscription_id: str,
+    month_key: str,
+    slice_start: date,
+    slice_end: date,
+    *,
+    service_names: set[str] | None = None,
+) -> dict | None:
+    """Resolve one month's spend: subscription sync run → daily rows → service sum."""
+    sub = _normalize_sub(subscription_id)
+    run = subscription_mtd_from_sync_run(db, sub, month_key)
+    if run and _sync_run_covers_slice(run, slice_start, slice_end):
+        return _chunk_from_sync_run(run)
+    chunk = _summary_from_daily(
+        db, sub, slice_start, slice_end, service_names=service_names,
+    )
+    if chunk:
+        return chunk
+    return _summary_from_service_month(
+        db, sub, month_key, service_names=service_names,
+    )
 
 
 def _summary_from_multi_month(
@@ -896,40 +1036,20 @@ def _summary_from_multi_month(
     today: date | None = None,
 ) -> dict | None:
     """Aggregate subscription spend across multiple calendar months."""
-    today = today or date.today()
     pretax = 0.0
     usd = 0.0
     currency = "CAD"
     parts = 0
 
     for month_key, slice_start, slice_end in _iter_month_slices(start, end):
-        month_start = date(slice_start.year, slice_start.month, 1)
-        month_end = _month_last_day(slice_start.year, slice_start.month)
-        is_current_month = (slice_start.year, slice_start.month) == (today.year, today.month)
-        is_full_month = slice_start == month_start and slice_end == month_end
-
-        chunk = None
-        if is_current_month:
-            chunk = _summary_from_daily(
-                db, subscription_id, slice_start, slice_end, service_names=service_names,
-            )
-            if not chunk:
-                chunk = _summary_from_service_month(
-                    db, subscription_id, month_key, service_names=service_names,
-                )
-        elif is_full_month:
-            chunk = _summary_from_service_month(
-                db, subscription_id, month_key, service_names=service_names,
-            )
-        else:
-            chunk = _summary_from_daily(
-                db, subscription_id, slice_start, slice_end, service_names=service_names,
-            )
-            if not chunk:
-                chunk = _summary_from_service_month(
-                    db, subscription_id, month_key, service_names=service_names,
-                )
-
+        chunk = _month_cost_chunk(
+            db,
+            subscription_id,
+            month_key,
+            slice_start,
+            slice_end,
+            service_names=service_names,
+        )
         if not chunk:
             continue
         pretax += float(chunk.get("pretax_total") or 0)
@@ -976,6 +1096,8 @@ def cost_by_service_from_db(
         )
         if daily:
             return {**daily, **period, "month": period["month"]}
+        if (timeframe or "").strip() not in _MONTH_BUCKET_TIMEFRAMES:
+            return None
 
     if type_filter:
         arm_types = _arm_resource_types_for_filter(db, subscription_id, m, type_filter)
@@ -996,21 +1118,9 @@ def cost_by_service_from_db(
             .order_by(func.sum(CostByResourceSnapshot.cost_billing).desc())
             .all()
         )
-        if not grouped and month is None:
-            latest = _latest_synced_month(db, subscription_id)
-            if latest and latest != m:
-                return cost_by_service_from_db(
-                    db, subscription_id, timeframe, month=latest,
-                    from_date=from_date, to_date=to_date, resource_types=resource_types,
-                )
         if not grouped:
             return None
-        currency_row = (
-            db.query(CostByResourceSnapshot.billing_currency)
-            .filter(CostByResourceSnapshot.subscription_id == sub)
-            .first()
-        )
-        billing_currency = (currency_row[0] if currency_row else None) or "CAD"
+        billing_currency = subscription_billing_currency(db, sub, model=CostByResourceSnapshot)
         return {
             "properties": {
                 "columns": [
@@ -1045,10 +1155,6 @@ def cost_by_service_from_db(
         .order_by(CostByServiceSnapshot.cost_billing.desc())
         .all()
     )
-    if not rows and month is None:
-        latest = _latest_synced_month(db, subscription_id)
-        if latest and latest != m:
-            return cost_by_service_from_db(db, subscription_id, timeframe, month=latest)
     if not rows:
         return None
     billing_currency = rows[0].billing_currency or "CAD"
@@ -1088,6 +1194,10 @@ def cost_by_resource_type_from_db(
     """MTD cost by ARM resource type from cost_by_resource_type."""
     from app.cost_explorer_sync import resource_type_display_name
 
+    tf = (timeframe or "MonthToDate").strip()
+    if tf not in _MONTH_BUCKET_TIMEFRAMES:
+        return None
+
     sub = _normalize_sub(subscription_id)
     m = month or month_for_timeframe(timeframe)
     type_filter = _expanded_resource_types(resource_types)
@@ -1100,10 +1210,6 @@ def cost_by_resource_type_from_db(
         if type_match is not None:
             query = query.filter(type_match)
     rows = query.order_by(CostByResourceTypeSnapshot.cost_billing.desc()).all()
-    if not rows and month is None:
-        latest = _latest_cost_sync_month(db, subscription_id) or _latest_synced_month(db, subscription_id)
-        if latest and latest != m:
-            return cost_by_resource_type_from_db(db, subscription_id, timeframe, month=latest)
     if not rows:
         return None
     billing_currency = rows[0].billing_currency or "CAD"
@@ -1209,6 +1315,7 @@ def cost_summary_from_db(
 ) -> dict | None:
     """Subscription totals for the selected period."""
     sub = _normalize_sub(subscription_id)
+    tf = (timeframe or "MonthToDate").strip()
     start, end = _date_range_for_timeframe(timeframe, from_date=from_date, to_date=to_date)
     period = period_for_timeframe(timeframe, from_date=from_date, to_date=to_date)
     type_filter = _expanded_resource_types(resource_types)
@@ -1219,46 +1326,53 @@ def cost_summary_from_db(
         else None
     )
 
-    if not _uses_monthly_service_snapshot(timeframe, start, end):
-        if _spans_multiple_months(start, end):
-            multi_summary = _summary_from_multi_month(
-                db, sub, start, end, service_names=service_names,
-            )
-            if multi_summary:
-                payload = {**multi_summary, **period, "month": period["month"]}
-                if type_filter:
-                    payload["resource_types"] = sorted(type_filter)
-                return payload
+    def _with_period(summary: dict, *, month_key: str | None = None) -> dict:
+        payload = {**summary, **period, "month": month_key or period["month"]}
+        if type_filter:
+            payload["resource_types"] = sorted(type_filter)
+        return payload
+
+    if type_filter:
+        return _summary_from_resource_type_snapshots(
+            db, sub, m, type_filter,
+            timeframe=timeframe, from_date=from_date, to_date=to_date,
+        )
+
+    if tf != "Custom":
+        from app.cost_period_totals import period_total_from_db
+
+        stored = period_total_from_db(
+            db,
+            sub,
+            tf,
+            period_start=start.isoformat(),
+            period_end=end.isoformat(),
+        )
+        if stored:
+            return _with_period(stored)
+
+    if tf in _ROLLING_DAILY_TIMEFRAMES:
         daily_summary = _summary_from_daily(
             db, sub, start, end, service_names=service_names,
         )
         if daily_summary:
-            payload = {**daily_summary, **period, "month": period["month"]}
-            if type_filter:
-                payload["resource_types"] = sorted(type_filter)
-            return payload
-        if _spans_multiple_months(start, end):
+            return _with_period(daily_summary)
+        return None
+
+    if tf in _MULTI_MONTH_TIMEFRAMES or (
+        _spans_multiple_months(start, end) and tf not in _CALENDAR_MTD_TIMEFRAMES
+    ):
+        multi_summary = _summary_from_multi_month(
+            db, sub, start, end, service_names=service_names,
+        )
+        if multi_summary:
+            return _with_period(multi_summary)
+        if tf in _MULTI_MONTH_TIMEFRAMES:
             return None
 
-    if type_filter:
-        filtered = _summary_from_resource_type_snapshots(
-            db, sub, m, type_filter,
-            timeframe=timeframe, from_date=from_date, to_date=to_date,
-        )
-        if not filtered and month is None:
-            latest = _latest_cost_sync_month(db, subscription_id) or _latest_synced_month(db, subscription_id)
-            if latest and latest != m:
-                return cost_summary_from_db(
-                    db, subscription_id, timeframe, month=latest,
-                    from_date=from_date, to_date=to_date, resource_types=resource_types,
-                )
-        return filtered
-
-    run_summary = subscription_mtd_from_sync_run(db, sub, m)
-    if not run_summary and month is None:
-        latest = _latest_cost_sync_month(db, subscription_id) or _latest_synced_month(db, subscription_id)
-        if latest and latest != m:
-            return cost_summary_from_db(db, subscription_id, timeframe, month=latest)
+    period_meta = mtd_period_for_timeframe(timeframe, from_date=from_date, to_date=to_date)
+    if m != period_meta["month"]:
+        period_meta = {**period_meta, "month": m}
 
     service_rows = (
         db.query(CostByServiceSnapshot)
@@ -1268,43 +1382,48 @@ def cost_summary_from_db(
         )
         .all()
     )
-    if not run_summary and not service_rows and month is None:
-        latest = _latest_synced_month(db, subscription_id)
-        if latest and latest != m:
-            return cost_summary_from_db(db, subscription_id, timeframe, month=latest)
-    if not run_summary and not service_rows:
+
+    if tf in _CALENDAR_MTD_TIMEFRAMES or tf == "TheLastMonth":
+        run_summary = subscription_mtd_from_sync_run(db, sub, m)
+        if run_summary:
+            mtd_start = run_summary.get("mtd_start") or period_meta.get("mtd_start")
+            mtd_end = run_summary.get("mtd_end") or period_meta.get("mtd_end")
+            return {
+                **run_summary,
+                "row_count": len(service_rows),
+                "month": m,
+                "mtd_start": mtd_start,
+                "mtd_end": mtd_end,
+                "period_start": mtd_start,
+                "period_end": mtd_end,
+            }
+        daily_summary = _summary_from_daily(
+            db, sub, start, end, service_names=service_names,
+        )
+        if daily_summary:
+            return {**daily_summary, **period_meta, "month": m}
+        if service_rows:
+            pretax = sum(r.cost_billing or 0.0 for r in service_rows)
+            usd = sum(r.cost_usd or 0.0 for r in service_rows)
+            billing_currency = service_rows[0].billing_currency or "CAD"
+            return {
+                "pretax_total": round(pretax, 2),
+                "cost_usd_total": round(usd, 2),
+                "billing_currency": billing_currency,
+                "row_count": len(service_rows),
+                "total_source": "service_rows_sum",
+                "source": "database",
+                "month": m,
+                **period_meta,
+            }
         return None
 
-    period_meta = mtd_period_for_timeframe(timeframe, from_date=from_date, to_date=to_date)
-    if m != period_meta["month"]:
-        period_meta = {**period_meta, "month": m}
-
-    if run_summary:
-        mtd_start = run_summary.get("mtd_start") or period_meta.get("mtd_start")
-        mtd_end = run_summary.get("mtd_end") or period_meta.get("mtd_end")
-        return {
-            **run_summary,
-            "row_count": len(service_rows),
-            "month": m,
-            "mtd_start": mtd_start,
-            "mtd_end": mtd_end,
-            "period_start": mtd_start,
-            "period_end": mtd_end,
-        }
-
-    pretax = sum(r.cost_billing or 0.0 for r in service_rows)
-    usd = sum(r.cost_usd or 0.0 for r in service_rows)
-    billing_currency = service_rows[0].billing_currency or "CAD"
-    return {
-        "pretax_total": round(pretax, 2),
-        "cost_usd_total": round(usd, 2),
-        "billing_currency": billing_currency,
-        "row_count": len(service_rows),
-        "total_source": "service_rows_sum",
-        "source": "database",
-        "month": m,
-        **period_meta,
-    }
+    daily_summary = _summary_from_daily(
+        db, sub, start, end, service_names=service_names,
+    )
+    if daily_summary:
+        return _with_period(daily_summary)
+    return None
 
 
 def daily_service_trend_from_db(
@@ -1385,19 +1504,35 @@ def resource_daily_cost_histories(
         return {}
 
     histories: dict[str, list[float]] = {}
+    normalized_rids = {}
     for resource_id in resource_ids:
         rid = normalize_arm_id(resource_id).lower()
-        if not rid:
-            continue
-        row = (
-            db.query(CostByResourceSnapshot)
-            .filter(
-                CostByResourceSnapshot.subscription_id == sub,
-                CostByResourceSnapshot.resource_id == rid,
-            )
-            .order_by(CostByResourceSnapshot.month.desc())
-            .first()
+        if rid:
+            normalized_rids[rid] = resource_id
+
+    if not normalized_rids:
+        return histories
+
+    # Batch query all resources, order by month desc
+    rows = (
+        db.query(CostByResourceSnapshot)
+        .filter(
+            CostByResourceSnapshot.subscription_id == sub,
+            CostByResourceSnapshot.resource_id.in_(list(normalized_rids.keys())),
         )
+        .order_by(CostByResourceSnapshot.resource_id, CostByResourceSnapshot.month.desc())
+        .all()
+    )
+
+    # Build dict, keeping latest month per resource
+    resource_dict: dict[str, CostByResourceSnapshot] = {}
+    for row in rows:
+        if row.resource_id not in resource_dict:
+            resource_dict[row.resource_id] = row
+
+    # Process with O(1) lookups
+    for rid in normalized_rids.keys():
+        row = resource_dict.get(rid)
         if not row or not row.service_name:
             continue
         service_series = service_daily.get(row.service_name) or []

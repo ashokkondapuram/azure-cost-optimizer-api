@@ -8,6 +8,9 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models import OptimizationAction, OptimizationRolloutStage, OptimizationScoring
+from app.optimization_actions import _distinct_savings_for_query
+from app.optimization_savings import distinct_scoreboard_savings
+from app.savings_aggregation import aggregate_subscription_savings
 
 
 def _today() -> str:
@@ -36,16 +39,25 @@ def get_optimization_trends(db: Session, subscription_id: str) -> dict[str, Any]
         )
 
     tier_counts: dict[str, int] = defaultdict(int)
-    total_savings = 0.0
     score_values: list[float] = []
     resolved_eval_date = scoring_rows[0].evaluation_date if scoring_rows else None
     for row in scoring_rows:
         tier_counts[row.recommendation_tier or "unknown"] += 1
-        total_savings += row.cost_savings_monthly or 0.0
         if row.overall_recommendation_score is not None:
             score_values.append(float(row.overall_recommendation_score))
 
     average_score = round(sum(score_values) / len(score_values), 1) if score_values else None
+    scoreboard_savings = distinct_scoreboard_savings(scoring_rows)
+
+    actions_q = db.query(OptimizationAction).filter(OptimizationAction.subscription_id == sub)
+    action_savings = _distinct_savings_for_query(actions_q)
+    unified = aggregate_subscription_savings(db, sub)
+    unified_savings = float(unified.get("unified_estimated_monthly_savings") or 0.0)
+    canonical_savings = (
+        unified_savings
+        if unified_savings > 0
+        else (action_savings if action_savings > 0 else scoreboard_savings)
+    )
 
     stages = (
         db.query(OptimizationRolloutStage)
@@ -77,7 +89,11 @@ def get_optimization_trends(db: Session, subscription_id: str) -> dict[str, Any]
         "evaluation_date": resolved_eval_date,
         "resources_scored": resources_scored,
         "tier_counts": dict(tier_counts),
-        "total_estimated_monthly_savings": round(total_savings, 2),
+        "total_estimated_monthly_savings": canonical_savings,
+        "unified_estimated_monthly_savings": unified_savings,
+        "distinct_estimated_monthly_savings": action_savings,
+        "action_pipeline_savings": action_savings,
+        "distinct_scoreboard_savings": scoreboard_savings,
         "scoring": {
             "total": resources_scored,
             "average_score": average_score,

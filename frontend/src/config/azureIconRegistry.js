@@ -66,6 +66,8 @@ import AzManagementPortal from 'react-az-icons/dist/components/AzManagementPorta
 import AzActivityLog from 'react-az-icons/dist/components/AzActivityLog';
 import AzMonitorDashboard from 'react-az-icons/dist/components/AzMonitorDashboard';
 import AzCognativeServicesRecommendations from 'react-az-icons/dist/components/AzCognativeServicesRecommendations';
+import AzServiceHealth from 'react-az-icons/dist/components/AzServiceHealth';
+import AzUpdates from 'react-az-icons/dist/components/AzUpdates';
 
 /** Logical key → Azure icon component */
 export const ICON_COMPONENTS = {
@@ -139,6 +141,8 @@ export const ICON_COMPONENTS = {
   findings: AzCostAnalysis,
   recommendations: AzCognativeServicesRecommendations,
   history: AzActivityLog,
+  serviceHealth: AzServiceHealth,
+  updates: AzUpdates,
   engine: AzMonitorDashboard,
   optimization: AzMonitorDashboard,
   default: AzManagementPortal,
@@ -368,6 +372,10 @@ export const NAV_GROUP_KEYS = {
   security: 'keyVault',
   optimization: 'optimization',
   settings: 'portal',
+  insights: 'costAnalysis',
+  savings: 'costBudgets',
+  governance: 'keyVault',
+  operations: 'automation',
 };
 
 export const PAGE_ICON_KEYS = {
@@ -376,7 +384,24 @@ export const PAGE_ICON_KEYS = {
   findings: 'findings',
   recommendations: 'recommendations',
   actions: 'recommendations',
-  scoreboard: 'recommendations',
+  scoreboard: 'engine',
+  optimizationHub: 'recommendations',
+  wasteHeatmap: 'costAnalysis',
+  anomalyDetector: 'monitor',
+  demandForecaster: 'machineLearning',
+  savingsPlanner: 'costBudgets',
+  reservationAdvisor: 'recommendations',
+  budgetsNav: 'costBudgets',
+  tagCompliance: 'resourceGroup',
+  policyEnforcement: 'keyVault',
+  governanceDashboard: 'monitor',
+  plannedMaintenance: 'updates',
+  quotaUsage: 'subscription',
+  autoScheduler: 'automation',
+  notificationsNav: 'signalR',
+  optimizationTimeline: 'history',
+  costAllocation: 'costBilling',
+  exportCenter: 'dataFactory',
   rollout: 'optimization',
   engine: 'engine',
   history: 'history',
@@ -444,12 +469,10 @@ export const ROUTE_ICON_KEYS = {
   '/': 'dashboard',
   '/costs': 'costManagement',
   '/cost-resources': 'costBilling',
-  '/findings': 'findings',
   '/recommendations': 'recommendations',
-  '/optimization-hub': 'actions',
-  '/optimize/actions': 'actions',
-  '/optimize/scoreboard': 'scoreboard',
-  '/optimize/rollout-monitor': 'rollout',
+  '/optimization-hub': 'recommendations',
+  '/optimize/actions': 'recommendations',
+  '/optimize/scoreboard': 'engine',
   '/engine': 'engine',
   '/admin/optimization': 'optimization',
   '/k8s': 'kubernetes',
@@ -499,17 +522,23 @@ export const ROUTE_ICON_KEYS = {
   '/analytics': 'databricks',
   '/backup': 'recoveryVault',
   '/search': 'cognitiveSearch',
-  // ── Advanced tools (Phase 1) ──────────────────────────────────────────────
-  '/waste-heatmap':    'costAnalysis',
-  '/tag-compliance':   'costBudgets',
-  '/auto-scheduler':   'history',
-  '/notifications':    'portal',
-  '/anomaly-detector': 'costManagement',
-  '/timeline':         'history',
-  // ── Advanced tools (Phase 2) ──────────────────────────────────────────────
-  '/budgets':          'costBudgets',
-  '/savings-planner':  'costAnalysis',
-  '/policy':           'costBudgets',
+  // ── Advanced tools ─────────────────────────────────────────────────────────
+  '/waste-heatmap': 'costAnalysis',
+  '/tag-compliance': 'resourceGroup',
+  '/planned-maintenance': 'updates',
+  '/quota-usage': 'subscription',
+  '/auto-scheduler': 'automation',
+  '/notifications': 'signalR',
+  '/anomaly-detector': 'monitor',
+  '/timeline': 'history',
+  '/budgets': 'costBudgets',
+  '/savings-planner': 'costBudgets',
+  '/policy': 'keyVault',
+  '/reservation-advisor': 'recommendations',
+  '/governance': 'monitor',
+  '/cost-allocation': 'costBilling',
+  '/export-center': 'dataFactory',
+  '/demand-forecaster': 'machineLearning',
 };
 
 export const API_PATH_KEYS = {
@@ -782,6 +811,11 @@ export function iconKeyFromResourceId(resourceId) {
   return match ? iconKeyForAzureType(match[1]) : null;
 }
 
+export function resolvePageIconKey(iconKey) {
+  if (!iconKey) return null;
+  return PAGE_ICON_KEYS[iconKey] || iconKey;
+}
+
 export function resolveIconKey({
   iconKey,
   src,
@@ -795,8 +829,8 @@ export function resolveIconKey({
   serviceName,
 } = {}) {
   return (
-    iconKey
-    || (src && !src.startsWith('/') ? src : null)
+    resolvePageIconKey(iconKey)
+    || (src && !src.startsWith('/') ? resolvePageIconKey(src) : null)
     || legacySrcToKey(src)
     || iconKeyFromResourceId(resourceId)
     || iconKeyForAzureType(armType)

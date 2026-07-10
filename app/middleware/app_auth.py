@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.settings import get_settings
 from app.spa_utils import is_browser_document_navigation
-from app.user_auth import ROLE_ADMIN, decode_access_token, parse_bearer_token, user_from_request
+from app.user_auth import ROLE_ADMIN, ROLE_SUPERUSER, decode_access_token, parse_bearer_token, user_from_request, is_privileged_role
 
 log = structlog.get_logger()
 
@@ -24,6 +24,7 @@ PUBLIC_API_EXACT = {
     "/health/live",
     "/health/ready",
     "/auth/login",
+    "/costs/timeframes",
 }
 
 ADMIN_ONLY_API_EXACT = {
@@ -78,6 +79,15 @@ def _should_protect(path: str) -> bool:
         "/alerts",
         "/outliers",
         "/budgets",
+        "/idle-resources",
+        "/tag-compliance",
+        "/anomalies",
+        "/savings",
+        "/engine",
+        "/reservations",
+        "/security-posture",
+        "/quota",
+        "/carbon",
     )
     return any(path.startswith(root) for root in protected_roots)
 
@@ -104,6 +114,8 @@ class AppAuthMiddleware(BaseHTTPMiddleware):
         token = parse_bearer_token(request.headers.get("Authorization"))
         if token:
             payload = decode_access_token(token)
+            if not payload:
+                log.warning("invalid_token_provided", path=path)
             if payload:
                 from app.database import SessionLocal
                 from app.models import AppUser
@@ -134,7 +146,13 @@ class AppAuthMiddleware(BaseHTTPMiddleware):
             return JSONResponse(status_code=401, content={"detail": "Session expired. Sign in again."})
 
         user = user_from_request(request)
-        if _is_admin_only_api_path(api_path) and user.get("role") != ROLE_ADMIN:
+        if _is_admin_only_api_path(api_path) and not is_privileged_role(user.get("role")):
             return JSONResponse(status_code=403, content={"detail": "Admin access required"})
 
-        return await call_next(request)
+        response = await call_next(request)
+        if response is None:
+            return JSONResponse(
+                status_code=500,
+                content={"error": {"code": "internal_error", "message": "No response produced."}},
+            )
+        return response

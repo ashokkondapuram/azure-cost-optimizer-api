@@ -66,7 +66,7 @@ def test_estimate_vm_sku_savings_retail_delta():
     assert result["estimated_monthly_savings_usd"] == pytest.approx(73.0)
 
 
-def test_estimate_vm_sku_savings_scales_with_actual_cost():
+def test_estimate_vm_sku_savings_scales_with_monthly_run_rate():
     def side_effect(filter_expr: str):
         if "Standard_D4s_v3" in filter_expr:
             return [_vm_item("Virtual Machines Dsv3 Series Linux", 0.20)]
@@ -80,10 +80,13 @@ def test_estimate_vm_sku_savings_scales_with_actual_cost():
             "Standard_D4s_v3",
             "Standard_D2s_v3",
             os_type="linux",
-            actual_monthly_cost=200.0,
+            actual_monthly_cost=63.0,
+            monthly_run_rate_usd=244.0,
         )
 
-    assert result["estimated_monthly_savings_usd"] == pytest.approx(100.0)
+    assert result["savings_basis"] == "monthly_run_rate"
+    assert result["estimated_monthly_savings_usd"] == pytest.approx(122.0)
+    assert result["retail_monthly_savings_usd"] == pytest.approx(73.0)
 
 
 def test_estimate_disk_tier_savings():

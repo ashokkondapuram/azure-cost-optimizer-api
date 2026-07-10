@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.cost_db import _apply_daily_cost_scope
 from app.database import get_db
 from app.models import CostDailyByServiceSnapshot
 
@@ -27,7 +28,7 @@ def _daily_totals(
 ) -> list[dict]:
     """Return daily aggregated cost rows for the given subscription/date range."""
     sub = subscription_id.strip().lower()
-    rows = (
+    query = (
         db.query(
             CostDailyByServiceSnapshot.cost_date,
             func.sum(CostDailyByServiceSnapshot.cost_billing).label("total"),
@@ -37,12 +38,12 @@ def _daily_totals(
             CostDailyByServiceSnapshot.subscription_id == sub,
             CostDailyByServiceSnapshot.cost_date >= start.isoformat(),
             CostDailyByServiceSnapshot.cost_date <= end.isoformat(),
-            CostDailyByServiceSnapshot.service_name != "__subscription__",
         )
-        .group_by(CostDailyByServiceSnapshot.cost_date)
-        .order_by(CostDailyByServiceSnapshot.cost_date)
-        .all()
     )
+    query = _apply_daily_cost_scope(query, db, sub, start, end, service_names=None)
+    rows = query.group_by(CostDailyByServiceSnapshot.cost_date).order_by(
+        CostDailyByServiceSnapshot.cost_date,
+    ).all()
     return [
         {"date": r.cost_date, "total": round(float(r.total or 0), 2), "currency": r.currency or "CAD"}
         for r in rows
@@ -95,20 +96,37 @@ def get_cost_anomalies(
     start = end - timedelta(days=window_days + lookback_days)
     daily = _daily_totals(db, subscription_id, start, end)
     if not daily:
-        return {"anomalies": [], "message": "No daily cost data found. Run a cost sync first.", "source": "database"}
+        return {
+            "anomalies": [],
+            "series": [],
+            "message": "No daily cost data found. Run a cost sync first.",
+            "source": "database",
+        }
 
-    anomalies = _detect_anomalies(daily, window_days, threshold_sigma, lookback_days)
+    insufficient_history = len(daily) < window_days + 1
+    anomalies = [] if insufficient_history else _detect_anomalies(
+        daily, window_days, threshold_sigma, lookback_days,
+    )
     currency = daily[-1]["currency"] if daily else "CAD"
-    return {
+    payload: dict[str, Any] = {
         "subscription_id": subscription_id,
+        "series": daily,
         "anomalies": anomalies,
         "anomaly_count": len(anomalies),
         "window_days": window_days,
         "threshold_sigma": threshold_sigma,
         "lookback_days": lookback_days,
         "billing_currency": currency,
+        "days_available": len(daily),
         "source": "database",
     }
+    if insufficient_history:
+        payload["insufficient_history"] = True
+        payload["message"] = (
+            f"Only {len(daily)} day(s) of synced cost data — need at least {window_days + 1} "
+            "for baseline analysis. Run a cost sync (stores 90 days), or lower the baseline window."
+        )
+    return payload
 
 
 @router.get("/service/{subscription_id}")

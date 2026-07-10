@@ -23,6 +23,17 @@ def _snapshot(created_days_ago: int = 120) -> dict:
     }
 
 
+def test_display_state_uses_vmss_power_state():
+    from app.resource_store import _display_state
+
+    state = _display_state(
+        "compute/vmss",
+        "Running",
+        {"powerState": "Running", "provisioningState": "Succeeded", "instance_count": 2},
+    )
+    assert state == "Running"
+
+
 def test_display_state_uses_creation_time_for_snapshots():
     created = datetime(2024, 3, 15, tzinfo=timezone.utc)
     state = _display_state(

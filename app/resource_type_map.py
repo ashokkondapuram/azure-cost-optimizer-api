@@ -36,6 +36,7 @@ ARM_PROVIDER_TO_INTERNAL: dict[str, str] = {
     "microsoft.network/azurefirewalls": "network/firewall",
     "microsoft.network/firewallpolicies": "network/firewall",
     "microsoft.network/expressroutecircuits": "network/expressroute",
+    "microsoft.network/trafficmanagerprofiles": "network/trafficmanager",
     "microsoft.network/vpngateways": "network/vpngateway",
     "microsoft.cdn/profiles": "network/cdn",
     # Databases

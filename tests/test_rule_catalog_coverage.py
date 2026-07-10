@@ -11,6 +11,14 @@ from app.optimizer.rule_catalog import (
 )
 from app.optimizer.rule_registry import ALL_KNOWN_RULE_IDS, is_known_rule, rule_engine_tier
 from app.resources.registry import ALL_RESOURCE_MODULES
+from app.rule_behavior import get_rule_behavior
+
+
+def test_every_advanced_rule_has_central_behavior():
+    from app.optimizer.advanced_rules import ADVANCED_RULES
+
+    missing = [rid for rid in ADVANCED_RULES if get_rule_behavior(rid) is None]
+    assert not missing, f"Add rule_behavior override or pattern for: {missing[:5]}"
 
 
 def test_every_canonical_resource_type_has_rules():

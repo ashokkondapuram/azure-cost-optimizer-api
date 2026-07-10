@@ -1,19 +1,9 @@
-from app.resources.types import TechnicalFetchSpec, metric
+"""Compatibility shim — implementation: it_services.analytics_databricks.resource_profile"""
 
-CANONICAL_TYPE = "analytics/databricks"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Databricks/workspaces",
-    display_name="Azure Databricks",
-    sync_property_paths=("provisioningState", "parameters"),
-    generic_arm_sync=True,
-    fields=(),
-)
+_impl = import_module("it_services.analytics_databricks.resource_profile")
 
-EXTRA_USAGE_METRICS = (
-    metric("cost_export", "mtd_cost", "monthly_cost_usd",
-           "Month-to-date billed cost", "P7D", "DATABRICKS_CLUSTER"),
-)
 
-MONITOR_PROFILE = None
+def __getattr__(name: str):
+    return getattr(_impl, name)

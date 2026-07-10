@@ -39,13 +39,35 @@ export function anomalyDays(dailyPoints, factor = 1.5) {
   return rows.filter((r) => r.cost > avg * factor);
 }
 
-export function mergeForecastSeries(dailyChart, projectedTotal) {
-  if (!dailyChart?.length || projectedTotal == null) return dailyChart;
-  const avg = projectedTotal / 30;
-  return dailyChart.map((d, i) => ({
-    ...d,
-    forecast: i >= dailyChart.length - 2 ? avg : null,
-  }));
+export function mergeForecastSeries(dailyChart, forecastDailyPoints = []) {
+  if (!dailyChart?.length) return dailyChart;
+
+  const forecastByDate = Object.fromEntries(
+    (forecastDailyPoints || [])
+      .map((p) => {
+        const date = String(p.date || '').slice(0, 10);
+        const cost = Number(p.cost_billing ?? p.cost ?? p.cost_usd ?? 0);
+        return date ? [date, cost] : null;
+      })
+      .filter(Boolean),
+  );
+
+  if (!Object.keys(forecastByDate).length) return dailyChart;
+
+  const merged = dailyChart.map((row) => {
+    const date = String(row.date || '').slice(0, 10);
+    const forecast = forecastByDate[date];
+    return forecast != null ? { ...row, forecast } : row;
+  });
+
+  const knownDates = new Set(merged.map((row) => String(row.date || '').slice(0, 10)));
+  for (const [date, forecast] of Object.entries(forecastByDate)) {
+    if (!knownDates.has(date)) {
+      merged.push({ date, cost: null, forecast });
+    }
+  }
+
+  return merged.sort((a, b) => String(a.date).localeCompare(String(b.date)));
 }
 
 export const CHART_RANK_COLORS = [

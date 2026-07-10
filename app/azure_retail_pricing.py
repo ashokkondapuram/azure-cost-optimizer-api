@@ -300,39 +300,51 @@ def estimate_vm_sku_savings(
     *,
     os_type: str = "linux",
     actual_monthly_cost: float | None = None,
+    monthly_run_rate_usd: float | None = None,
 ) -> dict[str, Any]:
     """
     Compute monthly savings from Azure retail on-demand pricing.
 
-    Uses retail price delta (current SKU − suggested SKU). When actual MTD cost
-    is available, also computes a cost-adjusted estimate scaled by retail ratio.
+    Retail list-price delta is always computed. When billed MTD cost or a monthly
+    run-rate is available, primary savings use run-rate × (1 − target/current retail).
     """
+    from app.cost_utils import project_mtd_to_monthly_run_rate
+
     current_retail = get_vm_monthly_price(region, current_sku, os_type=os_type)
     suggested_retail = get_vm_monthly_price(region, suggested_sku, os_type=os_type)
 
     retail_savings = 0.0
-    if current_retail is not None and suggested_retail is not None:
+    retail_ratio: float | None = None
+    if current_retail is not None and suggested_retail is not None and current_retail > 0:
         retail_savings = max(0.0, round(current_retail - suggested_retail, 2))
+        retail_ratio = suggested_retail / current_retail
 
-    adjusted_savings = retail_savings
-    if (
-        actual_monthly_cost
-        and actual_monthly_cost > 0
-        and current_retail
-        and current_retail > 0
-        and suggested_retail is not None
-    ):
-        ratio = suggested_retail / current_retail
-        adjusted_savings = max(0.0, round(actual_monthly_cost * (1.0 - ratio), 2))
+    run_rate = monthly_run_rate_usd
+    if run_rate is None and actual_monthly_cost and actual_monthly_cost > 0:
+        run_rate = project_mtd_to_monthly_run_rate(actual_monthly_cost)
 
-    savings = adjusted_savings if actual_monthly_cost and actual_monthly_cost > 0 else retail_savings
+    run_rate_savings = 0.0
+    if run_rate and run_rate > 0 and retail_ratio is not None:
+        run_rate_savings = max(0.0, round(run_rate * (1.0 - retail_ratio), 2))
+
+    if run_rate and run_rate > 0 and retail_ratio is not None:
+        savings = run_rate_savings
+        savings_basis = "monthly_run_rate"
+    else:
+        savings = retail_savings
+        savings_basis = "retail_list"
 
     payload = {
         "current_sku_monthly_usd": current_retail,
         "suggested_sku_monthly_usd": suggested_retail,
         "estimated_monthly_savings_usd": savings,
         "retail_monthly_savings_usd": retail_savings,
+        "run_rate_monthly_savings_usd": run_rate_savings if run_rate else None,
+        "mtd_cost_usd": actual_monthly_cost,
+        "monthly_run_rate_usd": run_rate,
         "actual_mtd_cost_usd": actual_monthly_cost,
+        "savings_basis": savings_basis,
+        "retail_price_ratio": round(retail_ratio, 6) if retail_ratio is not None else None,
         "pricing_source": "azure_retail_prices",
         "pricing_model": "consumption",
         "hours_per_month": HOURS_PER_MONTH,
@@ -444,8 +456,16 @@ def estimate_disk_tier_savings(
         retail_savings = max(0.0, round(current_retail - suggested_retail, 2))
 
     savings = retail_savings
-    if actual_monthly_cost and actual_monthly_cost > 0 and current_retail and current_retail > 0 and suggested_retail is not None:
-        savings = max(0.0, round(actual_monthly_cost * (1.0 - suggested_retail / current_retail), 2))
+    if actual_monthly_cost and actual_monthly_cost > 0:
+        if current_retail and current_retail > 0 and suggested_retail is not None:
+            savings = max(0.0, round(actual_monthly_cost * (1.0 - suggested_retail / current_retail), 2))
+        else:
+            from app.managed_disk_catalog import disk_type_spec
+
+            cur_rel = float(disk_type_spec(current_tier).get("relative_cost") or 1.0)
+            sug_rel = float(disk_type_spec(suggested_tier).get("relative_cost") or 1.0)
+            if cur_rel > sug_rel > 0:
+                savings = max(0.0, round(actual_monthly_cost * (1.0 - sug_rel / cur_rel), 2))
 
     return {
         "current_tier": current_tier,
@@ -456,8 +476,10 @@ def estimate_disk_tier_savings(
         "estimated_monthly_savings_usd": savings,
         "retail_monthly_savings_usd": retail_savings,
         "actual_mtd_cost_usd": actual_monthly_cost,
-        "pricing_source": "azure_retail_prices",
-        "pricing_status": "available" if current_retail is not None and suggested_retail is not None else "unavailable",
+        "pricing_source": "azure_billed_mtd" if actual_monthly_cost and actual_monthly_cost > 0 else "azure_retail_prices",
+        "pricing_status": "available" if (actual_monthly_cost and actual_monthly_cost > 0) or (
+            current_retail is not None and suggested_retail is not None
+        ) else "unavailable",
     }
 
 
@@ -580,6 +602,24 @@ def estimate_app_service_tier_savings(
     }
 
 
+def estimate_cosmos_throughput_savings(
+    region: str,
+    current_model: str,
+    suggested_model: str,
+    *,
+    actual_monthly_cost: float | None = None,
+) -> dict[str, Any]:
+    """Retail pricing for Cosmos DB throughput model transitions."""
+    return estimate_service_tier_savings(
+        region,
+        "Azure Cosmos DB",
+        current_model,
+        suggested_model,
+        cache_prefix="cosmos",
+        actual_monthly_cost=actual_monthly_cost,
+    )
+
+
 def estimate_postgresql_tier_savings(
     region: str,
     current_sku: str,
@@ -602,6 +642,55 @@ def estimate_postgresql_tier_savings(
     }
 
 
+def estimate_postgresql_ha_savings(
+    actual_monthly_cost: float,
+    ha_mode: str | None,
+    *,
+    disable: bool = True,
+) -> float:
+    """Estimate monthly savings from disabling HA on a PostgreSQL flexible server."""
+    from app.postgresql_sku_catalog import ha_mode_spec
+
+    if actual_monthly_cost <= 0 or not disable:
+        return 0.0
+    multiplier = float(ha_mode_spec(ha_mode).get("cost_multiplier") or 1.0)
+    if multiplier <= 1.0:
+        return 0.0
+    base_cost = actual_monthly_cost / multiplier
+    return max(0.0, round(actual_monthly_cost - base_cost, 2))
+
+
+def estimate_redis_tier_transition(
+    region: str,
+    current_tier: str,
+    current_capacity: int,
+    suggested_tier: str,
+    suggested_capacity: int,
+    *,
+    actual_monthly_cost: float | None = None,
+) -> dict[str, Any]:
+    """Retail pricing for arbitrary Redis tier/capacity transitions."""
+    cur_frag = f"{current_tier} C{current_capacity}"
+    sug_frag = f"{suggested_tier} C{suggested_capacity}"
+    current = _service_monthly_price(region, "Redis Cache", cur_frag, cache_prefix="redis")
+    suggested = _service_monthly_price(region, "Redis Cache", sug_frag, cache_prefix="redis")
+    retail_savings = max(0.0, round((current or 0) - (suggested or 0), 2)) if current and suggested else 0.0
+    savings = retail_savings
+    if actual_monthly_cost and actual_monthly_cost > 0 and current and current > 0 and suggested is not None:
+        savings = max(0.0, round(actual_monthly_cost * (1.0 - suggested / current), 2))
+    return {
+        "current_tier": current_tier,
+        "suggested_tier": suggested_tier,
+        "current_capacity": current_capacity,
+        "suggested_capacity": suggested_capacity,
+        "current_sku_monthly_usd": current,
+        "suggested_sku_monthly_usd": suggested,
+        "estimated_monthly_savings_usd": savings,
+        "pricing_source": "azure_retail_prices",
+        "pricing_status": "available" if current is not None and suggested is not None else "unavailable",
+    }
+
+
 def estimate_redis_tier_savings(
     region: str,
     current_capacity: int,
@@ -610,21 +699,14 @@ def estimate_redis_tier_savings(
     tier: str = "Premium",
     actual_monthly_cost: float | None = None,
 ) -> dict[str, Any]:
-    cur_frag = f"{tier} C{current_capacity}"
-    sug_frag = f"Standard C{suggested_capacity}"
-    current = _service_monthly_price(region, "Redis Cache", cur_frag, cache_prefix="redis")
-    suggested = _service_monthly_price(region, "Redis Cache", sug_frag, cache_prefix="redis")
-    retail_savings = max(0.0, round((current or 0) - (suggested or 0), 2)) if current and suggested else 0.0
-    savings = retail_savings
-    if actual_monthly_cost and actual_monthly_cost > 0 and current and current > 0 and suggested is not None:
-        savings = max(0.0, round(actual_monthly_cost * (1.0 - suggested / current), 2))
-    return {
-        "current_sku_monthly_usd": current,
-        "suggested_sku_monthly_usd": suggested,
-        "estimated_monthly_savings_usd": savings,
-        "pricing_source": "azure_retail_prices",
-        "pricing_status": "available" if current is not None and suggested is not None else "unavailable",
-    }
+    return estimate_redis_tier_transition(
+        region,
+        tier,
+        current_capacity,
+        "Standard",
+        suggested_capacity,
+        actual_monthly_cost=actual_monthly_cost,
+    )
 
 
 def estimate_service_tier_savings(

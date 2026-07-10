@@ -14,6 +14,14 @@ import InsightFindingsPanel from './InsightFindingsPanel';
 import ResourceAzureMetrics from './ResourceAzureMetrics';
 import ResourceCostDrivingSignals from './ResourceCostDrivingSignals';
 import ResourceDrawerOverview from './ResourceDrawerOverview';
+import {
+  enrichInventoryContext,
+  resolveCostDriversDefaultOpen,
+  resolvePropertiesPanel,
+  shouldCollapseMetricsSection,
+  shouldHideStateKpi,
+  shouldSkipOverviewTiles,
+} from '../it-services/registry';
 import DrawerCollapsibleSection from './DrawerCollapsibleSection';
 import useResizableDrawerWidth from '../hooks/useResizableDrawerWidth';
 import usePersistedMetricTimespan from '../hooks/usePersistedMetricTimespan';
@@ -29,6 +37,7 @@ import AdvisorResourceSection from './advisor/AdvisorResourceSection';
 import AdvancedResourceSection from './optimization/AdvancedResourceSection';
 import { lookupAdvisorForResource } from '../utils/resourceAdvisorUtils';
 import { countTriggerMetricsForFindings } from '../utils/triggerUtils';
+import { syncTypesForApiPath } from '../utils/syncScope';
 
 function stateTone(state) {
   const value = String(state || '').toLowerCase();
@@ -89,6 +98,7 @@ export default function ResourceInsightDrawer({
   suppressLiveMetrics = false,
   currency = 'CAD',
   children,
+  focusSection = null,
 }) {
   const { isAdmin } = useAuth();
   const { subscription } = useContext(AppCtx);
@@ -121,6 +131,17 @@ export default function ResourceInsightDrawer({
     };
   }, [onClose]);
 
+  useEffect(() => {
+    if (!resource || !focusSection) return undefined;
+    const sectionId = focusSection === 'advanced-analysis'
+      ? 'drawer-advanced-analysis'
+      : `drawer-${focusSection}`;
+    const timer = window.setTimeout(() => {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [resource, focusSection]);
+
   const resolved = useMemo(() => {
     if (!resource) return null;
     const rid = resource.id || resource.resource_id || '';
@@ -132,16 +153,18 @@ export default function ResourceInsightDrawer({
 
   const inventoryContext = useMemo(() => {
     if (!resource) return null;
-    return {
+    const canonicalFromPath = syncTypesForApiPath(apiPath)[0] || null;
+    const base = {
       sku: toDisplayText(resource.sku) || null,
       resourceGroup: toDisplayText(resource.resourceGroup || resource.resource_group) || null,
       location: toDisplayText(resource.location) || null,
       state: toDisplayText(resource.state) || null,
       armType: toDisplayText(resource.type) || null,
-      canonicalType: resource.type || null,
+      canonicalType: canonicalFromPath || resource.type || null,
       liveMetricsShown: !suppressLiveMetrics,
     };
-  }, [resource, suppressLiveMetrics]);
+    return enrichInventoryContext(base, resource, apiPath);
+  }, [resource, apiPath, suppressLiveMetrics]);
 
   const displayFindings = useMemo(
     () => (resource ? resolveResourceFindings(resource, findings, { indexReady }) : []),
@@ -161,7 +184,7 @@ export default function ResourceInsightDrawer({
     timespan: metricsTimespan,
     enabled: shouldLoadBundle,
   });
-  const bundleMetrics = drawerBundle?.metrics ?? null;
+  const bundleMetrics = drawerBundle?.metrics;
   const bundleAnalysis = drawerBundle?.advanced_analysis ?? null;
 
   const {
@@ -175,6 +198,12 @@ export default function ResourceInsightDrawer({
   );
   const subscriptionHasAdvisor = advisorByResourceId.size > 0;
   const triggerCount = countTriggerMetricsForFindings(displayFindings);
+  const costDriversDefaultOpen = resolveCostDriversDefaultOpen({
+    resource,
+    apiPath,
+    findingsCount: displayFindings.length,
+    triggerCount,
+  });
 
   const totalCost = resourceTotalCost(resource);
   const costTrend = resourceCostTrend(resource);
@@ -184,6 +213,8 @@ export default function ResourceInsightDrawer({
   );
 
   const resourceState = toDisplayText(resource?.state || resource?._state);
+  const PropertiesPanel = resolvePropertiesPanel(resource, apiPath);
+  const hideStateKpi = shouldHideStateKpi(resource, apiPath);
   const displayTags = localTags ?? resource?.tags ?? {};
   const resourceGroup = toDisplayText(resource?.resourceGroup || resource?.resource_group);
   const resourceLocation = toDisplayText(resource?.location);
@@ -196,7 +227,8 @@ export default function ResourceInsightDrawer({
     ? 'No open findings for this resource. Sync and analyze from Optimization center to generate recommendations.'
     : 'No open findings for this resource yet. Check Recommendations for subscription-wide opportunities.';
 
-  const showMetricsSection = (rid && !suppressLiveMetrics) || (rid && suppressLiveMetrics && children);
+  const showMetricsSection = !shouldCollapseMetricsSection(resource, apiPath)
+    && ((rid && !suppressLiveMetrics) || (rid && suppressLiveMetrics && children));
 
   return (
     <div className="insight-drawer-overlay" onClick={onClose} role="presentation">
@@ -250,7 +282,7 @@ export default function ResourceInsightDrawer({
                     </span>
                   )}
                 </div>
-                {resourceState && (
+                {resourceState && !hideStateKpi && (
                   <div className={`insight-drawer__kpi insight-drawer__kpi--${stateTone(resourceState)}`}>
                     <span className="insight-drawer__kpi-label">State</span>
                     <span className="insight-drawer__kpi-value">{resourceState}</span>
@@ -300,7 +332,19 @@ export default function ResourceInsightDrawer({
         <div className="insight-drawer__body">
           <div className="insight-drawer__stack insight-drawer__stack--compact">
             <section className="insight-drawer__summary" id="drawer-overview">
-              <ResourceDrawerOverview resource={resource} compact />
+              {PropertiesPanel && (
+                <PropertiesPanel
+                  resource={resource}
+                  metricsData={bundleMetrics}
+                  metricsLoading={drawerBundleLoading}
+                  metricsError={drawerBundleError ? drawerBundleErrorDetail : null}
+                  timespan={metricsTimespan}
+                  onTimespanChange={onMetricsTimespanChange}
+                />
+              )}
+              {!shouldSkipOverviewTiles(resource, apiPath) && (
+                <ResourceDrawerOverview resource={resource} apiPath={apiPath} compact />
+              )}
               {rid && <ResourceIdRow resourceId={rid} compact />}
             </section>
 
@@ -374,6 +418,7 @@ export default function ResourceInsightDrawer({
                     <ResourceAzureMetrics
                       resourceId={rid}
                       enabled
+                      embedded
                       sectionTitle="Azure Monitor metrics"
                       timespan={metricsTimespan}
                       onTimespanChange={onMetricsTimespanChange}
@@ -432,6 +477,7 @@ export default function ResourceInsightDrawer({
                   prefetchedData={bundleAnalysis}
                   prefetchedLoading={drawerBundleLoading}
                   prefetchedError={drawerBundleError ? drawerBundleErrorDetail : null}
+                  forceOpen={focusSection === 'advanced-analysis'}
                 />
               </div>
             )}
@@ -440,7 +486,7 @@ export default function ResourceInsightDrawer({
               <DrawerCollapsibleSection
                 title="Cost drivers"
                 storageKey="cost-drivers"
-                defaultOpen={displayFindings.length > 0 || countTriggerMetricsForFindings(displayFindings) > 0}
+                defaultOpen={costDriversDefaultOpen}
                 compact
                 onOpenChange={setCostDriversSectionOpen}
               >

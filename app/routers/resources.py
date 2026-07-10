@@ -55,14 +55,18 @@ def _db_or_live(
     }:
         include_properties = True
     from app.perf_cache import cached_cost_map
+    from app.pagination import validate_pagination
+
     cost_map = cached_cost_map(
         f"cost_map:{subscription_id.lower()}",
         lambda: resource_cost_map_from_db(db, subscription_id),
     )
     if limit is not None:
+        cursor = (request.query_params.get("cursor") or "").strip() or None
+        pg = validate_pagination(limit, offset, cursor=cursor)
         return get_resources_db_page(
             db, subscription_id, resource_type,
-            limit=limit, offset=offset,
+            limit=pg.limit, offset=pg.offset, cursor=pg.cursor,
             include_properties=include_properties,
             cost_map=cost_map,
         )

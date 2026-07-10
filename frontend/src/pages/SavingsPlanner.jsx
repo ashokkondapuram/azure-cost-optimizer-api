@@ -1,172 +1,388 @@
-import React, { useMemo, useState } from 'react';
-import { PiggyBank, TrendingDown, Calendar, DollarSign } from 'lucide-react';
-
 /**
- * Savings Planner — Phase 2
- * Models pay-as-you-go vs Azure savings plan commitments (1-year / 3-year)
- * and computes break-even and total savings. Swap the static rates for
- * real data from /api/savings-plan/estimate once that endpoint exists.
+ * Savings Planner — live Azure cost + commitment modelling.
  */
 
-const RATES = {
-  payg:   { label: 'Pay-as-you-go',       multiplier: 1.0,  discount: 0 },
-  one:    { label: '1-year savings plan',  multiplier: 0.83, discount: 17 },
-  three:  { label: '3-year savings plan',  multiplier: 0.70, discount: 30 },
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { TrendingDown, Sparkles, Cloud } from 'lucide-react';
+import { fetchSavingsEstimate, syncSavingsPlanner } from '../api/savingsPlanner';
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
+import {
+  AdvSkeleton,
+  AdvSyncButton,
+  AdvPageCard,
+  AdvPageStack,
+  AdvEmptyState,
+  AdvSeverityBadge,
+  fmtCurrency,
+} from '../components/advanced/AdvUI';
+import { AdvHeroFooter } from '../components/advanced/AdvancedToolHero';
+
+const SOURCE_LABELS = {
+  azure_live: 'Azure live cost',
+  database: 'Synced DB',
+  empty: 'No data',
 };
 
-const SERVICE_PRESETS = [
-  { id: 'vms',      label: 'Virtual machines',  monthlyCost: 6200 },
-  { id: 'aks',      label: 'AKS clusters',       monthlyCost: 3100 },
-  { id: 'sql',      label: 'SQL databases',       monthlyCost: 1800 },
-  { id: 'storage',  label: 'Storage accounts',    monthlyCost:  420 },
-  { id: 'appsvcs',  label: 'App services',         monthlyCost:  780 },
-];
-
 export default function SavingsPlanner() {
-  const [monthlyCost, setMonthlyCost] = useState(12300);
-  const [plan, setPlan] = useState('one');
-  const [selectedServices, setSelectedServices] = useState(new Set(['vms', 'aks']));
+  const { subscription } = useAdvancedSubscription();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [error, setError] = useState(null);
+  const [planId, setPlanId] = useState('savings_plan_1yr');
+  const [excludedCategories, setExcludedCategories] = useState(new Set());
+  const [lookbackDays, setLookbackDays] = useState(30);
+  const [hideWarnings, setHideWarnings] = useState(false);
 
-  const derivedCost = useMemo(() => {
-    const sum = SERVICE_PRESETS
-      .filter((s) => selectedServices.has(s.id))
-      .reduce((acc, s) => acc + s.monthlyCost, 0);
-    return sum || monthlyCost;
-  }, [selectedServices, monthlyCost]);
+  const includedCategories = useMemo(() => {
+    const all = (data?.all_categories ?? []).map((c) => c.id);
+    if (!all.length || excludedCategories.size === 0) return undefined;
+    return all.filter((id) => !excludedCategories.has(id));
+  }, [data?.all_categories, excludedCategories]);
 
-  const rate = RATES[plan];
-  const monthlySaving = derivedCost * (1 - rate.multiplier);
-  const yearsInPlan = plan === 'three' ? 3 : 1;
-  const totalSaving = monthlySaving * 12 * yearsInPlan;
-  const breakEvenMonths = rate.discount === 0 ? null : Math.ceil((derivedCost * rate.multiplier * 2) / (monthlySaving || 1));
+  const load = useCallback(async () => {
+    if (!subscription?.trim()) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetchSavingsEstimate(subscription, {
+        lookback_days: lookbackDays,
+        categories: includedCategories,
+        include_live_azure: true,
+      });
+      setData(result);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [subscription, lookbackDays, includedCategories]);
 
-  function toggleService(id) {
-    setSelectedServices((prev) => {
+  const sync = useCallback(async () => {
+    if (!subscription?.trim()) return;
+    setSyncing(true);
+    setError(null);
+    try {
+      const result = await syncSavingsPlanner(subscription, {
+        lookback_days: lookbackDays,
+        categories: includedCategories,
+        trigger_advisor_generate: true,
+      });
+      setData(result);
+      setHideWarnings(false);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setSyncing(false);
+    }
+  }, [subscription, lookbackDays, includedCategories]);
+
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    setExcludedCategories(new Set());
+    setPlanId('savings_plan_1yr');
+    setHideWarnings(false);
+  }, [subscription]);
+
+  useEffect(() => {
+    if (data?.recommended_plan_id) setPlanId(data.recommended_plan_id);
+  }, [data?.recommended_plan_id]);
+
+  const currency = data?.billing_currency ?? 'CAD';
+  const baseline = data?.monthly_baseline ?? 0;
+  const plans = data?.plans ?? [];
+  const activePlan = plans.find((p) => p.id === planId) ?? plans[0];
+  const categories = data?.all_categories ?? [];
+  const activeCommitments = data?.active_commitments ?? [];
+  const advisorRecs = data?.advisor_recommendations ?? [];
+  const capacityRecs = data?.azure_reservation_recommendations ?? [];
+
+  const toggleCategory = (id) => {
+    setExcludedCategories((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
-  }
+  };
+
+  const years = activePlan?.years || 1;
+  const breakEvenMonths = activePlan?.monthly_saving > 0
+    ? Math.max(1, Math.ceil((baseline * (activePlan?.multiplier ?? 1) * 2) / activePlan.monthly_saving))
+    : null;
+
+  const costSourceLabel = SOURCE_LABELS[data?.sources?.cost_baseline] ?? data?.source;
+  const metaItems = [
+    `${lookbackDays}-day window`,
+    costSourceLabel && `Baseline: ${costSourceLabel}`,
+    data?.period_start && data?.period_end && `${data.period_start} – ${data.period_end}`,
+  ].filter(Boolean);
+
+  const recommendedPlan = plans.find((p) => p.id === data?.recommended_plan_id);
 
   return (
-    <div className="page-shell">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title icon-inline"><PiggyBank size={20} /> Savings planner</h1>
-          <p className="page-subtitle">Model Azure savings plan commitments vs pay-as-you-go and estimate total savings.</p>
-        </div>
-      </div>
+    <AdvancedToolLayout
+      title="Savings planner"
+      subtitle="Model savings plans and reserved instances using live Azure cost data, Advisor, and your active commitments."
+      iconKey="savingsPlanner"
+      iconRoute="/savings-planner"
+      accent="savings"
+      metaItems={metaItems}
+      sources={data?.sources}
+      warnings={data?.warnings}
+      hideWarnings={hideWarnings}
+      onDismissWarnings={() => setHideWarnings(true)}
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      errorTitle="Could not load savings estimate"
+      headerActions={<AdvSyncButton onClick={sync} syncing={syncing} loading={loading} />}
+      hero={{
+        isLoading: loading && !data,
+        metrics: [
+          {
+            label: 'Monthly baseline',
+            value: fmtCurrency(baseline, currency),
+            featured: true,
+            sub: costSourceLabel || 'Pay-as-you-go',
+          },
+          {
+            label: 'Advisor opportunity',
+            value: fmtCurrency(data?.advisor_opportunity_monthly, currency),
+            tone: (data?.advisor_opportunity_monthly ?? 0) > 0 ? 'success' : 'default',
+            sub: `${advisorRecs.length} recs`,
+          },
+          {
+            label: 'RI recommendations',
+            value: fmtCurrency(data?.azure_capacity_opportunity_monthly, currency),
+            tone: (data?.azure_capacity_opportunity_monthly ?? 0) > 0 ? 'success' : 'default',
+            sub: `${capacityRecs.length} from Azure`,
+          },
+          {
+            label: 'Active commitments',
+            value: activeCommitments.length.toLocaleString(),
+            sub: `${lookbackDays}d window`,
+          },
+        ],
+        footer: recommendedPlan && recommendedPlan.id !== 'payg' ? (
+          <AdvHeroFooter label="Recommended plan" icon={Sparkles}>
+            <span className="adv-hero__plan-chip">
+              <strong>{recommendedPlan.label}</strong>
+              · {fmtCurrency(recommendedPlan.monthly_saving, currency)}/mo saving
+              {recommendedPlan.data_source === 'azure' && ' · Azure-backed'}
+            </span>
+          </AdvHeroFooter>
+        ) : null,
+      }}
+    >
+      <div className="savings-planner-grid">
+        <AdvPageCard
+          title="Configuration"
+          subtitle="Pick services to include in the baseline, then compare commitment options."
+          className="savings-planner-controls"
+        >
+          <div className="savings-planner-controls__body">
+            <div className="anomaly-slider">
+              <div className="anomaly-slider__label">
+                <span>Spend window</span>
+                <span className="anomaly-slider__value">{lookbackDays}d</span>
+              </div>
+              <input
+                type="range"
+                min={7}
+                max={90}
+                step={1}
+                value={lookbackDays}
+                disabled={loading}
+                onChange={(e) => setLookbackDays(Number(e.target.value))}
+              />
+              <p className="anomaly-slider__help">Days of Azure cost data summed into the baseline (live query when available).</p>
+            </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 360px) 1fr', gap: '1.25rem', alignItems: 'start' }}>
-        {/* Controls */}
-        <div className="panel">
-          <h3 style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.85rem' }}>Configuration</h3>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <label className="form-label" htmlFor="sp-cost">Monthly baseline cost (CAD)</label>
-            <input
-              id="sp-cost"
-              className="input-field"
-              type="number"
-              min="1"
-              value={monthlyCost}
-              onChange={(e) => { setMonthlyCost(Number(e.target.value)); setSelectedServices(new Set()); }}
-            />
-            <p style={{ fontSize: '0.75rem', color: 'var(--text3)', marginTop: '0.3rem' }}>Or pick services below to auto-fill.</p>
-          </div>
-
-          <div style={{ marginBottom: '1rem' }}>
-            <div className="form-label" style={{ marginBottom: '0.4rem' }}>Commitment term</div>
-            {Object.entries(RATES).map(([key, r]) => (
-              <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem', cursor: 'pointer', fontSize: '0.85rem' }}>
-                <input type="radio" name="sp-plan" value={key} checked={plan === key} onChange={() => setPlan(key)} />
-                {r.label}{r.discount > 0 ? ` (${r.discount}% off)` : ''}
-              </label>
-            ))}
-          </div>
-
-          <div>
-            <div className="form-label" style={{ marginBottom: '0.4rem' }}>Services to model</div>
-            {SERVICE_PRESETS.map((s) => (
-              <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', cursor: 'pointer', fontSize: '0.82rem' }}>
-                <input
-                  type="checkbox"
-                  checked={selectedServices.has(s.id)}
-                  onChange={() => toggleService(s.id)}
+            <div>
+              <p className="tag-rg-explorer__pane-title" style={{ marginBottom: '0.5rem' }}>Services to model</p>
+              {loading && !categories.length ? (
+                <AdvSkeleton className="h-24 rounded-lg" />
+              ) : !categories.length ? (
+                <AdvEmptyState
+                  title="No spend data"
+                  description="Sync from Azure or run a cost sync to populate service costs."
+                  icon={Cloud}
                 />
-                {s.label} <span style={{ color: 'var(--text3)', marginLeft: 'auto' }}>${s.monthlyCost.toLocaleString()}/mo</span>
-              </label>
-            ))}
+              ) : (
+                <div className="savings-planner-categories">
+                  {categories.map((cat) => {
+                    const included = !excludedCategories.has(cat.id);
+                    return (
+                      <label key={cat.id} className={`savings-planner-category${included ? ' savings-planner-category--on' : ''}`}>
+                        <input type="checkbox" checked={included} onChange={() => toggleCategory(cat.id)} />
+                        <span className="savings-planner-category__label">{cat.label}</span>
+                        <span className="savings-planner-category__cost">{fmtCurrency(cat.monthly_cost, currency)}/mo</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {excludedCategories.size > 0 && (
+                <button type="button" className="chip mt-2" onClick={() => setExcludedCategories(new Set())}>
+                  Include all services
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        </AdvPageCard>
 
-        {/* Results */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="grid-4">
-            <div className="stat-card accent">
-              <div className="stat-label">Monthly cost (PAYG)</div>
-              <div className="stat-value">${derivedCost.toLocaleString()}</div>
-              <div className="stat-sub">CAD, no commitment</div>
-            </div>
-            <div className="stat-card success">
-              <div className="stat-label">Monthly saving</div>
-              <div className="stat-value">${Math.round(monthlySaving).toLocaleString()}</div>
-              <div className="stat-sub">{rate.discount}% discount applied</div>
-            </div>
-            <div className="stat-card info">
-              <div className="stat-label">Total saving ({yearsInPlan}yr)</div>
-              <div className="stat-value">${Math.round(totalSaving).toLocaleString()}</div>
-              <div className="stat-sub">Over {yearsInPlan * 12} months</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-label">Break-even</div>
-              <div className="stat-value">{breakEvenMonths ? `${breakEvenMonths} mo` : '—'}</div>
-              <div className="stat-sub">{breakEvenMonths ? 'Months to recoup' : 'No commitment'}</div>
-            </div>
-          </div>
+        <AdvPageStack className="savings-planner-results">
+          {loading && !data ? (
+            <AdvSkeleton className="h-48 rounded-xl" />
+          ) : data?.message && !categories.length ? (
+            <AdvEmptyState
+              title={data.message}
+              description="Use Sync from Azure to pull live cost and commitment data."
+              icon={Cloud}
+            />
+          ) : (
+            <>
+              <AdvPageCard
+                title="Plan comparison"
+                subtitle="Click a row to select a commitment scenario. Azure-backed savings override static estimates."
+                className="savings-planner-compare"
+                actions={data?.recommended_plan_id && (
+                  <span className="chip active">
+                    <Sparkles size={12} /> Recommended: {plans.find((p) => p.id === data.recommended_plan_id)?.label}
+                  </span>
+                )}
+                noPadding
+              >
+                <div className="tag-rg-explorer__scroll">
+                  <table className="tag-rg-table">
+                    <thead>
+                      <tr>
+                        {['Plan', 'Monthly', 'Annual', 'Total saving', 'Discount', 'Source'].map((h) => (
+                          <th key={h}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {plans.map((p) => (
+                        <tr
+                          key={p.id}
+                          className={`tag-rg-table__row tag-rg-table__row--clickable${planId === p.id ? ' tag-rg-table__row--active' : ''}`}
+                          onClick={() => setPlanId(p.id)}
+                          role="button"
+                          tabIndex={0}
+                        >
+                          <td className="tag-rg-table__name">{p.label}</td>
+                          <td className="tag-rg-table__count">{fmtCurrency(p.monthly_cost, currency)}</td>
+                          <td className="tag-rg-table__count">{fmtCurrency(p.annual_cost, currency)}</td>
+                          <td className="tag-rg-table__count" style={{ color: p.total_saving > 0 ? 'var(--success-text)' : undefined }}>
+                            {p.total_saving > 0 ? fmtCurrency(p.total_saving, currency) : '—'}
+                          </td>
+                          <td>
+                            {p.discount_pct > 0 ? (
+                              <span className="anomaly-pct anomaly-pct--drop">{p.discount_pct}%</span>
+                            ) : '—'}
+                          </td>
+                          <td>
+                            <span className={`chip${p.data_source === 'azure' ? ' active' : ''}`}>
+                              {p.data_source === 'azure' ? 'Azure' : 'Estimate'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </AdvPageCard>
 
-          {/* Comparison table */}
-          <div className="panel">
-            <h3 style={{ fontSize: '0.88rem', fontWeight: 700, marginBottom: '0.85rem' }}>Plan comparison</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.6rem', color: 'var(--text2)', fontWeight: 600 }}>Plan</th>
-                  <th style={{ textAlign: 'right', padding: '0.5rem 0.6rem', color: 'var(--text2)', fontWeight: 600 }}>Monthly</th>
-                  <th style={{ textAlign: 'right', padding: '0.5rem 0.6rem', color: 'var(--text2)', fontWeight: 600 }}>Annual</th>
-                  <th style={{ textAlign: 'right', padding: '0.5rem 0.6rem', color: 'var(--text2)', fontWeight: 600 }}>Total saving</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(RATES).map(([key, r]) => {
-                  const monthly = Math.round(derivedCost * r.multiplier);
-                  const annual = monthly * 12;
-                  const saving = Math.round((derivedCost - derivedCost * r.multiplier) * 12 * (key === 'three' ? 3 : 1));
-                  const isSelected = key === plan;
-                  return (
-                    <tr
-                      key={key}
-                      style={{
-                        borderBottom: '1px solid var(--border)',
-                        background: isSelected ? 'var(--primary-muted)' : 'transparent',
-                        cursor: 'pointer',
-                      }}
-                      onClick={() => setPlan(key)}
-                    >
-                      <td style={{ padding: '0.55rem 0.6rem', fontWeight: isSelected ? 700 : 400 }}>{r.label}</td>
-                      <td style={{ padding: '0.55rem 0.6rem', textAlign: 'right' }}>${monthly.toLocaleString()}</td>
-                      <td style={{ padding: '0.55rem 0.6rem', textAlign: 'right' }}>${annual.toLocaleString()}</td>
-                      <td style={{ padding: '0.55rem 0.6rem', textAlign: 'right', color: saving > 0 ? 'var(--success)' : 'var(--text2)' }}>
-                        {saving > 0 ? `$${saving.toLocaleString()}` : '—'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              {activeCommitments.length > 0 && (
+                <AdvPageCard title="Active commitments from Azure" subtitle="Reservations and savings plans currently applied to this subscription" noPadding>
+                  <div className="tag-rg-explorer__scroll" style={{ maxHeight: '14rem' }}>
+                    <table className="tag-rg-table">
+                      <thead><tr>{['Name', 'Type', 'Term', 'Utilization'].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {activeCommitments.map((c) => (
+                          <tr key={c.id} className="tag-rg-table__row">
+                            <td className="tag-rg-table__name" title={c.id}>{c.display_name || c.name}</td>
+                            <td>{c.commitment_type === 'savings_plan' ? 'Savings plan' : 'Reservation'}</td>
+                            <td>{c.term || '—'}</td>
+                            <td className="tag-rg-table__count">{c.utilization_percent != null ? `${c.utilization_percent}%` : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </AdvPageCard>
+              )}
+
+              {advisorRecs.length > 0 && (
+                <AdvPageCard title="Azure Advisor recommendations" subtitle="Commitment opportunities from Azure Advisor cost recommendations" noPadding>
+                  <div className="tag-rg-explorer__scroll" style={{ maxHeight: '14rem' }}>
+                    <table className="tag-rg-table">
+                      <thead><tr>{['Recommendation', 'Type', 'Est. savings/mo'].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {advisorRecs.map((r) => (
+                          <tr key={r.id} className="tag-rg-table__row">
+                            <td className="tag-rg-table__name" title={r.detail}>{r.title}</td>
+                            <td>{r.commitment_type === 'savings_plan' ? 'Savings plan' : 'Reservation'}</td>
+                            <td className="tag-rg-table__count">{fmtCurrency(r.estimated_monthly_savings, currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </AdvPageCard>
+              )}
+
+              {capacityRecs.length > 0 && (
+                <AdvPageCard title="Azure reservation purchase recommendations" subtitle="Live recommendations from Azure Capacity API" noPadding>
+                  <div className="tag-rg-explorer__scroll" style={{ maxHeight: '14rem' }}>
+                    <table className="tag-rg-table">
+                      <thead><tr>{['SKU', 'Term', 'Qty', 'Est. savings/mo'].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {capacityRecs.map((r) => (
+                          <tr key={r.id} className="tag-rg-table__row">
+                            <td className="tag-rg-table__name">{r.sku_name || r.title}</td>
+                            <td>{r.term || `${r.years}yr`}</td>
+                            <td className="tag-rg-table__count">{r.recommended_quantity ?? '—'}</td>
+                            <td className="tag-rg-table__count">{fmtCurrency(r.monthly_saving, currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </AdvPageCard>
+              )}
+
+              {(data?.commitment_opportunities ?? []).length > 0 && (
+                <AdvPageCard title="Engine commitment findings" subtitle="Open findings that suggest reservations or savings plans" noPadding>
+                  <div className="tag-rg-explorer__scroll" style={{ maxHeight: '14rem' }}>
+                    <table className="tag-rg-table">
+                      <thead><tr>{['Finding', 'Severity', 'Est. savings/mo'].map((h) => <th key={h}>{h}</th>)}</tr></thead>
+                      <tbody>
+                        {data.commitment_opportunities.map((o) => (
+                          <tr key={o.finding_id} className="tag-rg-table__row">
+                            <td className="tag-rg-table__name" title={o.title}>{o.title}</td>
+                            <td><AdvSeverityBadge severity={o.severity} /></td>
+                            <td className="tag-rg-table__count">{fmtCurrency(o.estimated_savings_monthly, currency)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </AdvPageCard>
+              )}
+
+              {breakEvenMonths && planId !== 'payg' && (
+                <div className="ai-analysis-hero-banner ai-analysis-hero-banner--ok">
+                  <TrendingDown size={16} className="inline mr-2" />
+                  Estimated break-even for <strong>{activePlan?.label}</strong>: {breakEvenMonths} months at current baseline.
+                </div>
+              )}
+            </>
+          )}
+        </AdvPageStack>
       </div>
-    </div>
+    </AdvancedToolLayout>
   );
 }

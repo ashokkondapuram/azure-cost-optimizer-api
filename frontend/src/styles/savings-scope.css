@@ -1,0 +1,47 @@
+/* Savings scope notes — clarify what each headline measures */
+
+.savings-scope-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin: 0.55rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--info) 22%, var(--border));
+  background: color-mix(in srgb, var(--info) 6%, var(--surface));
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text2);
+  max-width: 62ch;
+}
+
+.savings-scope-note__icon {
+  flex-shrink: 0;
+  margin-top: 0.12rem;
+  color: var(--info);
+}
+
+.savings-scope-note strong {
+  font-weight: 650;
+  color: var(--text);
+}
+
+.page-hero__scope-note--embedded {
+  margin-top: 0;
+  margin-bottom: 0.65rem;
+  max-width: none;
+}
+
+.page-hero--embedded .savings-scope-note {
+  font-size: 0.74rem;
+}
+
+.dashboard-hero.page-hero--hub-overview-hero .savings-scope-note {
+  max-width: 68ch;
+}
+
+@media (max-width: 640px) {
+  .savings-scope-note {
+    max-width: none;
+  }
+}

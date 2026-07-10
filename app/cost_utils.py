@@ -619,6 +619,23 @@ def normalize_monthly_cost_usd(value: Any) -> float | None:
     return amount if amount > 0 else None
 
 
+def project_mtd_to_monthly_run_rate(
+    mtd_cost_usd: float,
+    *,
+    as_of: Any | None = None,
+) -> float:
+    """Project month-to-date billed cost to a full-month run-rate (Advisor-style baseline)."""
+    if mtd_cost_usd <= 0:
+        return 0.0
+    from datetime import date
+    import calendar
+
+    today = as_of if isinstance(as_of, date) else date.today()
+    days_elapsed = max(1, today.day)
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    return round(mtd_cost_usd * (days_in_month / days_elapsed), 2)
+
+
 def savings_from_factor(baseline: float, factor: float) -> float:
     """Apply a savings factor to a billed baseline; returns 0 when baseline is unknown."""
     if baseline <= 0:

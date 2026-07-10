@@ -24,13 +24,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.auth import auth_headers
 from app.database import get_db
 from app.http_client import _get, get_all_pages, BASE, AzureAPIError
-from app.user_auth import require_viewer
+from app.user_auth import require_authenticated_user
 
 router = APIRouter(prefix="/quota", tags=["Quota"])
 
@@ -41,7 +41,11 @@ _QUOTA_WARN_PCT = 80.0  # trigger warning notification above this %
 _QUOTA_CRITICAL_PCT = 95.0
 
 
-def _db(db: Session = Depends(get_db), _=Depends(require_viewer)):
+def _auth_dep(request: Request):
+    return require_authenticated_user(request)
+
+
+def _db(db: Session = Depends(get_db), _=Depends(_auth_dep)):
     return db
 
 
@@ -188,6 +192,7 @@ def all_quota(
     all_items = compute + network + storage
     near = _near_limit(all_items)
     critical = [i for i in near if i.get("status") == "critical"]
+    ok_count = sum(1 for i in all_items if i.get("status") == "ok" and "error" not in i)
 
     return {
         "subscription_id": subscription_id,
@@ -196,13 +201,49 @@ def all_quota(
             "compute": len(compute),
             "network": len(network),
             "storage": len(storage),
+            "all": len(all_items),
+            "ok": ok_count,
         },
         "near_limit_count": len(near),
         "critical_count": len(critical),
         "near_limit": near,
+        "items": sorted(
+            [i for i in all_items if "error" not in i],
+            key=lambda row: (-float(row.get("usage_pct") or 0), row.get("name") or ""),
+        ),
         "compute": compute,
         "network": network,
         "storage": storage,
+    }
+
+
+@router.get("/{subscription_id}/locations")
+def quota_locations(
+    subscription_id: str,
+    db: Session = Depends(_db),
+) -> dict[str, Any]:
+    """Regions to check — from synced inventory, with sensible defaults."""
+    from app.models import ResourceSnapshot
+
+    sub = subscription_id.strip().lower()
+    rows = (
+        db.query(ResourceSnapshot.location)
+        .filter(
+            ResourceSnapshot.subscription_id == sub,
+            ResourceSnapshot.is_active.is_(True),
+            ResourceSnapshot.location.isnot(None),
+        )
+        .distinct()
+        .all()
+    )
+    locations = sorted({(r[0] or "").strip().lower() for r in rows if r[0]})
+    if not locations:
+        locations = ["eastus", "westus2", "centralus", "canadacentral"]
+    return {
+        "subscription_id": sub,
+        "locations": locations,
+        "default_location": locations[0],
+        "source": "inventory" if rows else "defaults",
     }
 
 

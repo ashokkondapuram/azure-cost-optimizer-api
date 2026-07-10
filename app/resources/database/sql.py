@@ -1,16 +1,9 @@
-from app.resources.types import TechnicalFetchSpec, field
+"""Compatibility shim — implementation: it_services.database_sql.resource_profile"""
 
-CANONICAL_TYPE = "database/sql"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Sql/servers",
-    display_name="SQL server",
-    sync_property_paths=("version", "state", "minimalTlsVersion", "publicNetworkAccess"),
-    fields=(
-        field("version", "props:version", "SQL version", "configuration"),
-        field("public_network_access", "props:publicNetworkAccess", "Public network access", "governance"),
-    ),
-)
+_impl = import_module("it_services.database_sql.resource_profile")
 
-MONITOR_PROFILE = None
+
+def __getattr__(name: str):
+    return getattr(_impl, name)

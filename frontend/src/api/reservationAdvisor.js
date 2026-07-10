@@ -1,20 +1,43 @@
 /**
  * API client for /reservations endpoints.
- * Mirrors app/routers/reservation_coverage.py
  */
-const BASE = '/api';
+import api from './client';
+
+export async function fetchReservationAdvisor(subscriptionId, params = {}) {
+  const {
+    commitment_type = 'all',
+    month,
+    include_live_azure = true,
+  } = params;
+  const { data } = await api.get(`/reservations/advisor/${encodeURIComponent(subscriptionId)}`, {
+    params: {
+      commitment_type,
+      include_live_azure,
+      ...(month ? { month } : {}),
+    },
+  });
+  return data;
+}
+
+export async function syncReservationAdvisor(subscriptionId, { trigger_advisor_generate = false } = {}) {
+  const { data } = await api.post(
+    `/reservations/sync/${encodeURIComponent(subscriptionId)}`,
+    null,
+    { params: { trigger_advisor_generate } },
+  );
+  return data;
+}
 
 export async function fetchReservationCoverage(subscriptionId, month) {
-  const qs = new URLSearchParams();
-  if (month) qs.set('month', month);
-  const res = await fetch(`${BASE}/reservations/coverage/${encodeURIComponent(subscriptionId)}?${qs}`);
-  if (!res.ok) throw new Error(`Coverage failed: ${res.status}`);
-  return res.json();
+  const { data } = await api.get(`/reservations/coverage/${encodeURIComponent(subscriptionId)}`, {
+    params: month ? { month } : {},
+  });
+  return data;
 }
 
 export async function fetchReservationRecommendations(subscriptionId, commitmentType = 'all') {
-  const qs = new URLSearchParams({ commitment_type: commitmentType });
-  const res = await fetch(`${BASE}/reservations/recommendations/${encodeURIComponent(subscriptionId)}?${qs}`);
-  if (!res.ok) throw new Error(`Recommendations failed: ${res.status}`);
-  return res.json();
+  const { data } = await api.get(`/reservations/recommendations/${encodeURIComponent(subscriptionId)}`, {
+    params: { commitment_type: commitmentType },
+  });
+  return data;
 }

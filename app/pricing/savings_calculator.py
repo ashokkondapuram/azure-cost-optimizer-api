@@ -30,6 +30,33 @@ def savings_from_retail_or_none(pricing: dict[str, Any] | None) -> float | None:
     return savings_from_retail_delta(pricing)
 
 
+def savings_from_disk_pricing(
+    pricing: dict[str, Any] | None,
+    *,
+    billed_mtd: float,
+    full_baseline_for_delete: bool = False,
+) -> float:
+    """
+    Prefer Azure MTD billed cost (PreTaxCost from Cost Management sync).
+    Falls back to retail tier delta when billed cost is unavailable.
+    """
+    if full_baseline_for_delete and billed_mtd > 0:
+        return round(billed_mtd, 2)
+    if pricing:
+        est = pricing.get("estimated_monthly_savings_usd")
+        if billed_mtd > 0 and est is not None:
+            try:
+                return max(0.0, round(float(est), 2))
+            except (TypeError, ValueError):
+                pass
+        retail = savings_from_retail_or_none(pricing)
+        if retail is not None and retail > 0:
+            return retail
+    if billed_mtd > 0:
+        return round(billed_mtd, 2)
+    return 0.0
+
+
 def savings_from_retail_or_factor(
     pricing: dict[str, Any] | None,
     *,

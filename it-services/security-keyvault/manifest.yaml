@@ -1,0 +1,22 @@
+service_id: security-keyvault
+canonical_type: security/keyvault
+display_name: Key vault
+api_path: /resources/keyvaults
+arm_type: Microsoft.KeyVault/vaults
+component: Key Vault
+drawer_ui: false
+
+backend:
+  package: it_services/security_keyvault
+  modules:
+    - it_services/security_keyvault/resource_profile.py
+  related_app_modules:
+    - app/resources/security/keyvault.py
+    - app/optimizer/resource_engines/security/keyvault/
+
+frontend:
+  root: frontend/src/it-services/security-keyvault
+  entry: frontend/src/it-services/security-keyvault/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

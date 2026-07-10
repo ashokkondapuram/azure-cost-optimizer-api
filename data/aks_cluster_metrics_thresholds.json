@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "service": "Azure Kubernetes Service",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/aks/",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-containerservice-managedclusters-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/"
+  },
+  "node_pool_defaults": {
+    "min_nodes_production": 2,
+    "min_nodes_system": 1,
+    "spot_savings_pct": 0.80,
+    "reserved_savings_pct": 0.60
+  },
+  "pricing": {
+    "node_hourly_usd_baseline": 0.096
+  },
+  "optimization_thresholds": {
+    "cluster_cpu_scale_out_pct": 70.0,
+    "cluster_memory_pressure_pct": 80.0,
+    "node_cpu_downsize_pct": 20.0,
+    "node_memory_pressure_pct": 85.0,
+    "node_disk_usage_pct": 85.0,
+    "pod_density_low_threshold": 3,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 15.0
+  }
+}

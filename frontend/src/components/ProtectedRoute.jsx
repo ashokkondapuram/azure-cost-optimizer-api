@@ -5,13 +5,16 @@ import { hasActiveSession } from '../api/tokenStorage';
 import { LoadingState } from './QueryStates';
 
 import { loginPathWithNext } from '../utils/authRedirect';
+import { useNavAccess } from '../hooks/useNavAccess';
+import { normalizeNavPath } from '../utils/navAccess';
 
 function loginPathFor(location) {
   return loginPathWithNext(location.pathname, location.search);
 }
 
-export default function ProtectedRoute({ children, adminOnly = false }) {
+export default function ProtectedRoute({ children, adminOnly = false, requireNavAccess = true }) {
   const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { canView, loading: navLoading } = useNavAccess();
   const location = useLocation();
   const navigate = useNavigate();
   const sessionActive = hasActiveSession();
@@ -23,7 +26,7 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
     navigate(loginPathFor(location), { replace: true, state: { from: location } });
   }, [loading, allowed, location, navigate]);
 
-  if (loading) {
+  if (loading || (requireNavAccess && navLoading)) {
     return <LoadingState message="Checking session…" />;
   }
 
@@ -32,6 +35,10 @@ export default function ProtectedRoute({ children, adminOnly = false }) {
   }
 
   if (adminOnly && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requireNavAccess && !canView(normalizeNavPath(location.pathname))) {
     return <Navigate to="/" replace />;
   }
 

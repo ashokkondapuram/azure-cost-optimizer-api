@@ -9,6 +9,8 @@ import {
   fetchRulesByComponent,
   fetchProfiles,
   fetchProfileConfig,
+  fetchCompareProfiles,
+  fetchGlobalConfigDefaults,
   deleteProfileConfig,
   fetchMetricsTriggers,
   reanalyzeAfterRuleConfig,
@@ -251,7 +253,23 @@ export default function EngineConfig() {
     retry: 1,
   });
 
+  const { data: compareData } = useQuery({
+    queryKey: ['config-compare'],
+    queryFn: () => fetchCompareProfiles(),
+    enabled: !backendOffline,
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+
+  const { data: globalDefaults } = useQuery({
+    queryKey: ['global-config-defaults'],
+    queryFn: fetchGlobalConfigDefaults,
+    staleTime: 60 * 60_000,
+    retry: 1,
+  });
+
   const profileList = profileData?.profiles || [];
+  const globalEdit = edits.__global__ || { enabled: true, overrides: globalDefaults?.defaults || {} };
   const totalRules = components.reduce((n, c) => n + (c.rule_count || c.rules?.length || 0), 0)
     || STATIC_RULES.length;
 
@@ -270,7 +288,7 @@ export default function EngineConfig() {
       const allRuleIds = new Set(components.flatMap(c => (c.rules || []).map(r => r.id)));
       await Promise.all(
         Object.entries(edits)
-          .filter(([id]) => allRuleIds.has(id))
+          .filter(([id]) => allRuleIds.has(id) || id === '__global__')
           .map(([rule_id, { enabled, overrides }]) =>
             api.post(`/optimize/config/${profile}`, {
               rule_id,
@@ -390,6 +408,57 @@ export default function EngineConfig() {
       />
 
       <OptimizationHubLinks className="optimization-hub--page" />
+
+      <section className="page-section card">
+        <h2 className="card__title">Global filters</h2>
+        <p className="card__subtitle">Exclude resources from analysis by tag, resource group pattern, or type.</p>
+        <div className="settings-grid">
+          <div className="setting-field">
+            <div className="setting-field__label">Non-prod severity cap</div>
+            <select
+              value={globalEdit.overrides?.nonprod_severity_cap || 'MEDIUM'}
+              onChange={(e) => setEdits({
+                ...edits,
+                __global__: {
+                  ...globalEdit,
+                  overrides: { ...globalEdit.overrides, nonprod_severity_cap: e.target.value },
+                },
+              })}
+            >
+              {['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'].map((opt) => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
+          <div className="setting-field">
+            <div className="setting-field__label">Exclude resource group patterns</div>
+            <input
+              type="text"
+              placeholder="Regex patterns, comma-separated"
+              value={(globalEdit.overrides?.exclude_resource_group_patterns || []).join(', ')}
+              onChange={(e) => setEdits({
+                ...edits,
+                __global__: {
+                  ...globalEdit,
+                  overrides: {
+                    ...globalEdit.overrides,
+                    exclude_resource_group_patterns: e.target.value.split(',').map((s) => s.trim()).filter(Boolean),
+                  },
+                },
+              })}
+            />
+          </div>
+        </div>
+      </section>
+
+      {compareData?.profiles?.length > 1 && (
+        <section className="page-section card">
+          <h2 className="card__title">Profile comparison</h2>
+          <p className="card__subtitle">
+            Comparing {compareData.profiles.join(', ')} — {compareData.rules?.length || 0} rules with overrides.
+          </p>
+        </section>
+      )}
 
       {backendOffline && (
         <div className="alert alert--warning page-section" role="status">

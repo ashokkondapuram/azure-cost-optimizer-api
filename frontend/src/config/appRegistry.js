@@ -9,17 +9,51 @@ import { buildPerTypeResourcePages } from './resourcePageCatalog';
 
 /** Product name shown in sidebar, login, and browser title. */
 export const APP_NAME = 'InfinityOps';
-export const APP_TAGLINE = 'Internal Azure cost and operations';
+export const APP_TAGLINE = 'Cost and optimization for Azure';
 
 /** Login page copy (internal tool) */
 export const LOGIN_HERO_TITLE = 'Azure spend, inventory, and optimization';
 export const LOGIN_HERO_DESC =
-  'InfinityOps brings cost tracking, resource inventory, and optimization workflows together for the platform team.';
-export const LOGIN_CARD_SUBTITLE = 'Sign in to InfinityOps.';
+  'Track subscription spend, browse synced resources, and review optimization actions for the Operations team.';
+/** Generic login hover copy — rotates on each interaction (not product-feature specific). */
+export const LOGIN_OPTIMIZATION_REVEALS = [
+  {
+    eyebrow: 'Cloud efficiency',
+    headline: 'Spend less without losing capacity',
+    bullets: [
+      'Spot waste across subscriptions and resource types',
+      'Focus reviews where cost and risk overlap',
+      'Keep savings tied to real usage patterns',
+    ],
+  },
+  {
+    eyebrow: 'Azure operations',
+    headline: 'See spend and inventory together',
+    bullets: [
+      'Browse synced resources with cost context',
+      'Compare what you provision to what you use',
+      'Share one source of truth with your team',
+    ],
+  },
+  {
+    eyebrow: 'FinOps signals',
+    headline: 'Make every dollar accountable',
+    bullets: [
+      'Track trends before they become surprises',
+      'Surface anomalies and idle spend early',
+      'Prioritize changes that move the needle',
+    ],
+  },
+];
+/** @deprecated Use LOGIN_OPTIMIZATION_REVEALS */
+export const LOGIN_OPTIMIZATION_REVEAL = LOGIN_OPTIMIZATION_REVEALS[0];
+/** @deprecated Use LOGIN_OPTIMIZATION_REVEALS */
+export const LOGIN_OPTIMIZATION_HINT = LOGIN_OPTIMIZATION_REVEALS[0].headline;
+export const LOGIN_CARD_SUBTITLE = 'Sign in to continue.';
 export const LOGIN_FEATURES = [
-  { id: 'cost', label: 'Cost and utilization', desc: 'Track spend, budgets, and trends across subscriptions' },
-  { id: 'inventory', label: 'Resource inventory', desc: 'Browse synced Azure resources from a single catalog' },
-  { id: 'optimize', label: 'Optimization hub', desc: 'Findings, Advisor, cost signals, metrics, and actions' },
+  { id: 'cost', label: 'Cost explorer', desc: 'MTD spend, budgets, and trends by subscription' },
+  { id: 'inventory', label: 'Resource inventory', desc: 'Synced Azure resources in one catalog' },
+  { id: 'optimize', label: 'Optimization hub', desc: 'Open findings, proposed actions, and est. savings per resource' },
 ];
 
 /** @typedef {'ResourceList' | 'VirtualMachines' | 'AKSClusters'} PageComponent */
@@ -386,34 +420,70 @@ export const NAV_RESOURCE_GROUPS = [
 export const OVERVIEW_NAV = [
   { path: '/', title: 'Dashboard', iconKey: 'dashboard', end: true },
   { path: '/costs', title: 'Cost explorer', iconKey: 'costs' },
-  { path: '/optimization-hub', title: 'Optimization hub', iconKey: 'actions' },
+  { path: '/optimization-hub', title: 'Optimization hub', iconKey: 'optimizationHub' },
 ];
 
 /**
- * Advanced tools nav group shown in the Overview section of the sidebar.
+ * Advanced tools sidebar groups (between Overview and Resources).
  * Each item maps directly to a lazy-loaded route in App.js.
  */
-export const ADVANCED_TOOLS_NAV = [
-  { path: '/waste-heatmap',       title: 'Waste heatmap',          iconKey: 'history' },
-  { path: '/tag-compliance',      title: 'Tag compliance',         iconKey: 'settings' },
-  { path: '/auto-scheduler',      title: 'Auto scheduler',         iconKey: 'history' },
-  { path: '/notifications',       title: 'Notification channels',  iconKey: 'settings' },
-  { path: '/anomaly-detector',    title: 'Anomaly detector',       iconKey: 'costs' },
-  { path: '/timeline',            title: 'Optimization timeline',  iconKey: 'history' },
-  { path: '/ai-analysis',         title: 'AI analysis',            iconKey: 'engine' },
-  // Phase 2
-  { path: '/budgets',             title: 'Budget manager',         iconKey: 'costs' },
-  { path: '/savings-planner',     title: 'Savings planner',        iconKey: 'costs' },
-  { path: '/policy',              title: 'Policy enforcement',     iconKey: 'settings' },
-  // Week 4
-  { path: '/reservation-advisor', title: 'Reservation advisor',    iconKey: 'costs' },
-  { path: '/governance',          title: 'Governance dashboard',   iconKey: 'settings' },
-  // Week 5
-  { path: '/cost-allocation',     title: 'Cost allocation',        iconKey: 'costs' },
-  { path: '/export-center',       title: 'Export center',          iconKey: 'history' },
-  // Ongoing
-  { path: '/demand-forecaster',   title: 'Demand forecaster',      iconKey: 'costs' },
+export const ADVANCED_NAV_GROUPS = [
+  {
+    id: 'advanced-insights',
+    label: 'Cost insights',
+    iconKey: 'insights',
+    color: '#f97316',
+    defaultOpen: true,
+    items: [
+      { path: '/waste-heatmap', title: 'Waste heatmap', iconKey: 'wasteHeatmap' },
+      { path: '/anomaly-detector', title: 'Anomaly detector', iconKey: 'anomalyDetector' },
+      { path: '/demand-forecaster', title: 'Demand forecaster', iconKey: 'demandForecaster' },
+    ],
+  },
+  {
+    id: 'advanced-savings',
+    label: 'Savings & budgets',
+    iconKey: 'savings',
+    color: '#22c55e',
+    defaultOpen: false,
+    items: [
+      { path: '/savings-planner', title: 'Savings planner', iconKey: 'savingsPlanner' },
+      { path: '/reservation-advisor', title: 'Reservation advisor', iconKey: 'reservationAdvisor' },
+      { path: '/budgets', title: 'Budget manager', iconKey: 'budgetsNav' },
+    ],
+  },
+  {
+    id: 'advanced-governance',
+    label: 'Governance',
+    iconKey: 'governance',
+    color: '#6366f1',
+    defaultOpen: false,
+    items: [
+      { path: '/tag-compliance', title: 'Tag compliance', iconKey: 'tagCompliance' },
+      { path: '/policy', title: 'Policy enforcement', iconKey: 'policyEnforcement' },
+      { path: '/governance', title: 'Governance dashboard', iconKey: 'governanceDashboard' },
+    ],
+  },
+  {
+    id: 'advanced-operations',
+    label: 'Operations',
+    iconKey: 'operations',
+    color: '#8b5cf6',
+    defaultOpen: false,
+    items: [
+      { path: '/planned-maintenance', title: 'Planned maintenance', iconKey: 'plannedMaintenance' },
+      { path: '/quota-usage', title: 'Quota usage', iconKey: 'quotaUsage' },
+      { path: '/auto-scheduler', title: 'Auto scheduler', iconKey: 'autoScheduler' },
+      { path: '/notifications', title: 'Notification channels', iconKey: 'notificationsNav' },
+      { path: '/timeline', title: 'Optimization timeline', iconKey: 'optimizationTimeline' },
+      { path: '/cost-allocation', title: 'Cost allocation', iconKey: 'costAllocation' },
+      { path: '/export-center', title: 'Export center', iconKey: 'exportCenter' },
+    ],
+  },
 ];
+
+/** Flat list of advanced tool routes (nav access, command palette, titles). */
+export const ADVANCED_TOOLS_NAV = ADVANCED_NAV_GROUPS.flatMap((group) => group.items);
 
 /** Collapsible sidebar group for optimization tools and admin settings. */
 export const SYSTEM_NAV_GROUP = {
@@ -425,10 +495,7 @@ export const SYSTEM_NAV_GROUP = {
   adminOnly: true,
 };
 
-/**
- * Advanced tools nav group definition (collapsible, always visible).
- * Rendered by SidebarNav between Overview and Resources.
- */
+/** @deprecated Legacy single-group id; use ADVANCED_NAV_GROUPS. */
 export const ADVANCED_NAV_GROUP = {
   id: 'advanced',
   label: 'Advanced tools',
@@ -502,6 +569,19 @@ export const SYSTEM_NAV = [
   },
 ];
 
+/** Path → sidebar/page iconKey for overview, advanced, optimization, and system routes. */
+export const PATH_ICON_KEYS = Object.fromEntries([
+  ...OVERVIEW_NAV,
+  ...ADVANCED_TOOLS_NAV,
+  ...OPTIMIZATION_NAV_ITEMS,
+  ...SYSTEM_NAV,
+].map((item) => [item.path, item.iconKey]));
+
+/** Resolve the page icon key alias for a nav route path. */
+export function iconKeyForPath(path) {
+  return PATH_ICON_KEYS[path] || null;
+}
+
 /** @type {DashboardSectionDef[]} */
 export const DASHBOARD_SECTIONS = [
   {
@@ -511,7 +591,7 @@ export const DASHBOARD_SECTIONS = [
     iconKey: 'costs',
     items: [
       { type: 'page', path: '/costs', title: 'Cost explorer', iconKey: 'costs', alwaysShow: true },
-      { type: 'page', path: '/optimization-hub', title: 'Optimization hub', iconKey: 'actions', alwaysShow: true },
+      { type: 'page', path: '/optimization-hub', title: 'Optimization hub', iconKey: 'optimizationHub', alwaysShow: true },
     ],
   },
   {
@@ -608,12 +688,18 @@ export const NAV_GROUPS = Object.fromEntries(
   NAV_RESOURCE_GROUPS.map((g) => [g.id, { label: g.label, routes: g.resourceIds.map((id) => RESOURCE_PAGES[id].path) }]),
 );
 
+/** Master collapsible section wrapping all advanced tool groups. */
+export const ADVANCED_SECTION_ID = 'advanced-section';
+
 export const DEFAULT_NAV_OPEN = {
   ...Object.fromEntries(
     NAV_RESOURCE_GROUPS.map((g) => [g.id, !!g.defaultOpen]),
   ),
+  ...Object.fromEntries(
+    ADVANCED_NAV_GROUPS.map((g) => [g.id, !!g.defaultOpen]),
+  ),
+  [ADVANCED_SECTION_ID]: true,
   [SYSTEM_NAV_GROUP.id]: SYSTEM_NAV_GROUP.defaultOpen,
-  [ADVANCED_NAV_GROUP.id]: ADVANCED_NAV_GROUP.defaultOpen,
 };
 
 const OPTIMIZATION_PATHS = OPTIMIZATION_NAV_ITEMS.map((item) => item.path);
@@ -655,9 +741,26 @@ export function systemNavGroupOpen(groups) {
   return !!SYSTEM_NAV_GROUP.defaultOpen;
 }
 
+/** Resolve persisted open state for an advanced nav subgroup (migrates legacy `advanced` key). */
+export function advancedNavGroupOpen(groups, groupId) {
+  if (groups?.[groupId] != null) return !!groups[groupId];
+  if (groups?.advanced != null) return !!groups.advanced;
+  const group = ADVANCED_NAV_GROUPS.find((g) => g.id === groupId);
+  return !!group?.defaultOpen;
+}
+
+/** Whether the Advanced section (all tool groups) is expanded in the sidebar. */
+export function advancedNavSectionOpen(groups) {
+  if (groups?.[ADVANCED_SECTION_ID] != null) return !!groups[ADVANCED_SECTION_ID];
+  return true;
+}
+
 export function groupForPath(pathname) {
   if (isSystemPath(pathname)) return SYSTEM_NAV_GROUP.id;
-  if (isAdvancedPath(pathname)) return ADVANCED_NAV_GROUP.id;
+  const advancedGroup = ADVANCED_NAV_GROUPS.find((group) =>
+    group.items.some((item) => pathname === item.path || pathname.startsWith(`${item.path}/`)),
+  );
+  if (advancedGroup) return advancedGroup.id;
   return Object.entries(NAV_GROUPS).find(([, g]) =>
     g.routes.some((r) => pathname === r || pathname.startsWith(`${r}/`)),
   )?.[0] ?? null;
@@ -666,18 +769,17 @@ export function groupForPath(pathname) {
 export function getPageTitle(pathname) {
   const extra = {
     '/costs': 'Cost explorer',
-    '/findings': 'Recommendations',
-    '/rollout-monitor': 'Rollout monitor',
     '/admin/api-explorer': 'API explorer',
     '/optimization-hub': 'Optimization hub',
     // Phase 1 advanced
     '/waste-heatmap':    'Waste heatmap',
     '/tag-compliance':   'Tag compliance',
+    '/planned-maintenance': 'Planned maintenance',
+    '/quota-usage': 'Quota usage',
     '/auto-scheduler':   'Auto scheduler',
     '/notifications':    'Notification channels',
     '/anomaly-detector': 'Anomaly detector',
     '/timeline':         'Optimization timeline',
-    '/ai-analysis':      'AI analysis',
     // Phase 2
     '/budgets':          'Budget manager',
     '/savings-planner':  'Savings planner',
@@ -876,7 +978,19 @@ export function validateAppRegistry() {
       if (item.type === 'resource' && !RESOURCE_PAGES[item.id]) {
         errors.push(`Dashboard section "${section.id}" references unknown resource "${item.id}"`);
       }
+      if (item.iconKey && !PAGE_ICON_KEYS[item.iconKey]) {
+        errors.push(`Dashboard item "${item.path || item.id}" missing page icon`);
+      }
     }
+    if (section.iconKey && !PAGE_ICON_KEYS[section.iconKey]) {
+      errors.push(`Dashboard section "${section.id}" missing icon key`);
+    }
+  }
+  for (const nav of [...OVERVIEW_NAV, ...ADVANCED_TOOLS_NAV, ...OPTIMIZATION_NAV_ITEMS, ...SYSTEM_NAV]) {
+    if (!PAGE_ICON_KEYS[nav.iconKey]) errors.push(`Nav "${nav.path}" missing page icon`);
+  }
+  for (const group of ADVANCED_NAV_GROUPS) {
+    if (!NAV_GROUP_KEYS[group.iconKey]) errors.push(`Advanced nav group "${group.id}" missing icon key`);
   }
   return errors;
 }

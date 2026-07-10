@@ -4,7 +4,6 @@ import { toDisplayText } from '../../utils/formatDisplay';
 import { formatCurrency, formatDateRange } from '../../utils/format';
 import AdminOnly from '../AdminOnly';
 import TrendBadge from '../visual/TrendBadge';
-import ResponsiveHeroKpis from '../responsive/ResponsiveHeroKpis';
 
 function HeroMetric({
   label,
@@ -49,10 +48,17 @@ function HeroSkeleton() {
           <div className="dashboard-kpi-skeleton dashboard-kpi-skeleton--lg" />
           <div className="dashboard-kpi-skeleton dashboard-kpi-skeleton--md" />
         </div>
-        <div className="dashboard-hero__metrics">
-          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
-            <div key={i} className="dashboard-kpi-skeleton dashboard-kpi-skeleton--metric" />
-          ))}
+        <div className="dashboard-hero__metrics dashboard-hero__metrics--secondary dashboard-hero__metrics--grouped">
+          <div className="dashboard-hero__metric-group dashboard-hero__metric-group--cost">
+            {[1, 2].map((i) => (
+              <div key={i} className="dashboard-kpi-skeleton dashboard-kpi-skeleton--metric" />
+            ))}
+          </div>
+          <div className="dashboard-hero__metric-group dashboard-hero__metric-group--resources">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="dashboard-kpi-skeleton dashboard-kpi-skeleton--metric" />
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -70,6 +76,7 @@ export default function DashboardHero({
   isLoading,
   resourceTypeFilterActive = false,
   costPeriodLabel,
+  costPeriod = 'MonthToDate',
 }) {
   if (isLoading && !portal) {
     return <HeroSkeleton />;
@@ -142,7 +149,7 @@ export default function DashboardHero({
                   ? `${mtdDateRangeLabel}${resourceTypeFilterActive ? ' · selected types only' : ''}`
                   : (resourceTypeFilterActive ? 'Selected types only' : 'This billing period')}
                 tone="default"
-                href="/costs?timeframe=MonthToDate"
+                href={`/costs?timeframe=${encodeURIComponent(costPeriod)}`}
                 trendAmount={mtdDelta}
                 currency={billingCurrency}
               />
@@ -173,43 +180,58 @@ export default function DashboardHero({
             })}
           </div>
         </div>
-        <ResponsiveHeroKpis className="dashboard-hero__metrics dashboard-hero__metrics--secondary">
-          <HeroMetric
-            label={`Weekly cost (${billingCurrency})`}
-            value={formatCurrency(weeklyCost, { currency: billingCurrency, decimals: 0 })}
-            tone="default"
-            href="/costs"
-            trendAmount={kpisById.weekly_cost?.delta_usd}
-            currency={billingCurrency}
-          />
-          <HeroMetric
-            label={`Forecast month (${billingCurrency})`}
-            value={formatCurrency(projectedMonthly, { currency: billingCurrency, decimals: 0 })}
-            sub={kpisById.monthly_trend?.sub || null}
-            tone="default"
-            href="/costs"
-            trendAmount={kpisById.monthly_trend?.delta_usd}
-            currency={billingCurrency}
-          />
-          <HeroMetric
-            label="Open findings"
-            value={Number(openFindings).toLocaleString()}
-            tone={openFindings > 0 ? 'warning' : 'default'}
-            href="/optimization-hub?tab=actions"
-          />
-          <HeroMetric
-            label="Total resources"
-            value={Number(totalResources).toLocaleString()}
-            sub={kpisById.total_resources?.sub || null}
-            tone="default"
-          />
-          <HeroMetric
-            label={`Est. savings/mo (${billingCurrency})`}
-            value={formatCurrency(estSavings, { currency: billingCurrency, decimals: 0 })}
-            tone="success"
-            href="/optimization-hub?tab=actions"
-          />
-        </ResponsiveHeroKpis>
+        <div
+          className="dashboard-hero__metrics dashboard-hero__metrics--secondary dashboard-hero__metrics--grouped"
+          aria-label="Subscription metrics"
+        >
+          <div
+            className="dashboard-hero__metric-group dashboard-hero__metric-group--cost"
+            role="group"
+            aria-label="Cost"
+          >
+            <HeroMetric
+              label={`Weekly cost (${billingCurrency})`}
+              value={formatCurrency(weeklyCost, { currency: billingCurrency, decimals: 0 })}
+              tone="default"
+              href="/costs"
+              trendAmount={kpisById.weekly_cost?.delta_usd}
+              currency={billingCurrency}
+            />
+            <HeroMetric
+              label={`Forecast month (${billingCurrency})`}
+              value={formatCurrency(projectedMonthly, { currency: billingCurrency, decimals: 0 })}
+              sub={kpisById.monthly_trend?.sub || null}
+              tone="default"
+              href="/costs"
+              trendAmount={kpisById.monthly_trend?.delta_usd}
+              currency={billingCurrency}
+            />
+          </div>
+          <div
+            className="dashboard-hero__metric-group dashboard-hero__metric-group--resources"
+            role="group"
+            aria-label="Resources and findings"
+          >
+            <HeroMetric
+              label="Total resources"
+              value={Number(totalResources).toLocaleString()}
+              sub={kpisById.total_resources?.sub || null}
+              tone="default"
+            />
+            <HeroMetric
+              label="Open findings"
+              value={Number(openFindings).toLocaleString()}
+              tone={openFindings > 0 ? 'warning' : 'default'}
+              href="/optimization-hub?tab=actions"
+            />
+            <HeroMetric
+              label={`Est. savings/mo (${billingCurrency})`}
+              value={formatCurrency(estSavings, { currency: billingCurrency, decimals: 0 })}
+              tone="success"
+              href="/optimization-hub?tab=actions"
+            />
+          </div>
+        </div>
       </div>
       {primaryBudget && (
         <p className="dashboard-hero__budget-note">

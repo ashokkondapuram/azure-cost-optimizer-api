@@ -4,6 +4,8 @@ from app.vm_utils import (
     filter_standalone_vms,
     is_scale_set_instance,
     vmss_display_sku,
+    vmss_operational_state,
+    vmss_operational_state_from_props,
 )
 
 
@@ -50,6 +52,24 @@ def test_filter_standalone_vms():
     vms = [_standalone_vm("a"), _vmss_instance(), _standalone_vm("b")]
     filtered = filter_standalone_vms(vms)
     assert [v["name"] for v in filtered] == ["a", "b"]
+
+
+def test_vmss_operational_state_running_and_stopped():
+    running = {
+        "properties": {"provisioningState": "Succeeded"},
+        "sku": {"capacity": 3},
+    }
+    stopped = {
+        "properties": {"provisioningState": "Succeeded"},
+        "sku": {"capacity": 0},
+    }
+    assert vmss_operational_state(running) == "Running"
+    assert vmss_operational_state(stopped) == "Stopped"
+
+
+def test_vmss_operational_state_from_props_uses_synced_power_state():
+    assert vmss_operational_state_from_props({"powerState": "Running"}, "Succeeded") == "Running"
+    assert vmss_operational_state_from_props({"instance_count": 0}, None) == "Stopped"
 
 
 def test_vmss_display_sku():

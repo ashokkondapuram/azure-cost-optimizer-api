@@ -1,7 +1,7 @@
 /**
  * Generic resource list page with per-resource analysis drawer.
  */
-import React, { useContext, useState, useEffect, useMemo } from 'react';
+import React, { useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -16,7 +16,6 @@ import {
 } from '../utils/filterUtils';
 import { AppCtx } from '../App';
 import PageHeader from '../components/PageHeader';
-import PrintExportButton from '../components/PrintExportButton';
 import AssetIcon from '../components/AssetIcon';
 import FetchFromAzureButton from '../components/FetchFromAzureButton';
 import AdminOnly from '../components/AdminOnly';
@@ -31,6 +30,7 @@ import { useToast } from '../context/ToastContext';
 import { bulkPatchResourceTags } from '../api/azure';
 import ResourceInsightDrawer from '../components/ResourceInsightDrawer';
 import ResourceListHero from '../components/resources/ResourceListHero';
+import ResourceInventoryPageShell from '../components/resources/ResourceInventoryPageShell';
 import useResourceSync from '../hooks/useResourceSync';
 import usePaginatedResources from '../hooks/usePaginatedResources';
 import useResourceSource from '../hooks/useResourceSource';
@@ -46,21 +46,24 @@ import ColumnPicker from '../components/ColumnPicker';
 import {
   LoadingState, SubscriptionRequired, EmptyState, QueryErrorState,
 } from '../components/QueryStates';
+import ResourceTableFooter from '../components/table/ResourceTableFooter';
+import useInventoryInspectDeepLink from '../hooks/useInventoryInspectDeepLink';
+import { resourceTableWrapClass } from '../utils/resourceTableLayout';
 import { iconForRow, iconForApiPath } from '../config/assetIcons';
 import { inventorySourceLabel, resourceLoadingMessage } from '../utils/viewerUi';
-import { toDisplayText } from '../utils/formatDisplay';
+import { toDisplayText, formatPowerState } from '../utils/formatDisplay';
 import { formatCurrency, formatDate } from '../utils/format';
 import { resourceTotalCost } from '../utils/costCurrency';
-import { enrichVnetRow, vnetDisplaySku } from '../utils/vnetNormalize';
-import { enrichPrivateEndpointRow, privateEndpointDisplayConnection } from '../utils/privateEndpointNormalize';
-import { enrichPrivateLinkServiceRow, privateLinkServiceDisplaySummary } from '../utils/privateLinkServiceNormalize';
-import { enrichPrivateDnsRow, privateDnsDisplaySummary } from '../utils/privateDnsNormalize';
+import { enrichVnetRow, vnetDisplaySku } from '../it-services/network-vnet';
+import { enrichPrivateEndpointRow, privateEndpointDisplayConnection } from '../it-services/network-privateendpoint';
+import { enrichPrivateLinkServiceRow, privateLinkServiceDisplaySummary } from '../it-services/network-privatelinkservice';
+import { enrichPrivateDnsRow, privateDnsDisplaySummary } from '../it-services/network-privatedns';
 import {
   enrichAppServicePlanRow,
   enrichAppServiceWebappRow,
   appServicePlanDisplaySku,
   appServiceWebappDisplaySku,
-} from '../utils/appServiceNormalize';
+} from '../it-services/appservice-webapp';
 import { resolveResourceSku } from '../utils/resourceSkuUtils';
 import {
   resolveResourceFindings,
@@ -70,6 +73,15 @@ import {
   sumResolvedSavingsForRows,
 } from '../utils/resourceFindingsUtils';
 import { fetchBilledResourceProperties } from '../api/azure';
+
+function resolveRowState(row) {
+  const raw = row.state
+    || row.properties?.diskState
+    || row.properties?.powerState
+    || row.properties?.provisioningState;
+  if (raw == null || raw === '') return '—';
+  return formatPowerState(raw);
+}
 
 function rowValue(row, col) {
   if (col.key === 'findings') return null;
@@ -102,7 +114,7 @@ function buildSortAccessors() {
     location: (row) => row.location || '',
     resource_group: (row) => resourceGroupOf(row),
     sku: (row) => toDisplayText(resolveResourceSku(row)),
-    state: (row) => toDisplayText(row.state || row.properties?.provisioningState || ''),
+    state: (row) => resolveRowState(row),
     monthlyCost: (row) => resourceTotalCost(row),
     cost: (row) => resourceTotalCost(row),
   };
@@ -149,6 +161,7 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
   const [sortKey, setSortKey] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
   const [selected, setSelected] = useState(null);
+  const [drawerFocus, setDrawerFocus] = useState(null);
   const [bulkSelected, setBulkSelected] = useState(new Set());
   const [showBulkTagModal, setShowBulkTagModal] = useState(false);
   const [bulkTagPending, setBulkTagPending] = useState(false);
@@ -231,6 +244,11 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
     const q = searchParams.get('search');
     if (q != null) setSearch(q);
   }, [searchParams]);
+
+  const handleInspectOpen = useCallback((row, section) => {
+    setSelected(row);
+    setDrawerFocus(section || 'advanced-analysis');
+  }, []);
 
   const { byResourceId, savingsByResource, truncated, indexReady } = useFindingsIndex(subscription);
   const {
@@ -354,6 +372,17 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
     [rows, sortKey, sortDir, sortAccessors],
   );
 
+  useInventoryInspectDeepLink({
+    items: displayRows,
+    isLoading,
+    isLoadingMore,
+    getResourceId: (row) => resourceId(row),
+    hasMore,
+    loadMore,
+    onOpen: handleInspectOpen,
+    enabled: !!subscription,
+  });
+
   const handleSort = (key) => {
     const next = toggleSort(sortKey, sortDir, key);
     setSortKey(next.key);
@@ -393,14 +422,18 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
 
   const renderCell = (row, col) => {
     if (col.type === 'advisor') {
+      const rid = resourceId(row);
       const recommendations = lookupAdvisorForResource(advisorByResourceId, row);
+      const indexFindings = byResourceId.get(rid) || [];
       return (
         <AdvisorTableCell
           recommendations={recommendations}
+          findings={indexFindings}
           indexReady={advisorIndexReady && !advisorIndexLoading}
+          findingsIndexReady={indexReady}
           isError={advisorIndexError}
-          currency={currency}
           subscriptionHasAdvisor={advisorByResourceId.size > 0}
+          subscriptionHasFindings={byResourceId.size > 0}
         />
       );
     }
@@ -532,7 +565,7 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
 
     if (col.type === 'state') {
       const status = row.azureStatus;
-      const stateText = toDisplayText(rowValue(row, col));
+      const stateText = resolveRowState(row);
       return <StateBadge stateText={stateText} status={status} />;
     }
 
@@ -557,7 +590,7 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
   const sourceLabel = inventorySourceLabel({ isAdmin, isLive });
 
   return (
-    <div className="page-shell resource-list-page">
+    <div className="page-shell resource-list-page resource-inventory-page--shell">
       <PageHeader title={title} iconKey={pageIcon}>
         <div className="page-header-actions__row">
           <AdminOnly>
@@ -583,64 +616,91 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
       {!subscription && <SubscriptionRequired />}
 
       {subscription && (
-        <div className="resource-list-layout">
-          <ResourceListHero
-            title={title}
-            subscriptionLabel={subLabel}
-            filteredCount={rows.length}
-            totalCount={dataTotal}
-            sourceLabel={sourceLabel}
-            resourcesWithFindings={resourcesWithFindings}
-            openFindings={openFindings}
-            totalSavings={totalSavings}
-            currency={currency}
-            isLive={isLive}
-            isLoading={isLoading}
-          />
-
-          {truncated && resourcesWithFindings > 0 && (
-            <div className="rec-truncation-banner" role="status">
-              Findings index capped at 2,000 — some badges may be incomplete until you narrow the list.
-            </div>
+        <ResourceInventoryPageShell
+          hero={(
+            <>
+              <ResourceListHero
+                title={title}
+                subscriptionLabel={subLabel}
+                filteredCount={rows.length}
+                totalCount={dataTotal}
+                sourceLabel={sourceLabel}
+                resourcesWithFindings={resourcesWithFindings}
+                openFindings={openFindings}
+                totalSavings={totalSavings}
+                currency={currency}
+                isLive={isLive}
+                isLoading={isLoading}
+              />
+              {truncated && resourcesWithFindings > 0 && (
+                <div className="rec-truncation-banner" role="status">
+                  Findings index capped at 2,000 — some badges may be incomplete until you narrow the list.
+                </div>
+              )}
+            </>
           )}
-
-          <section className="rec-filter-panel card">
-            <FilterBar
-              className="rec-filter-bar"
-              search={{
-                value: search,
-                onChange: setSearch,
-                placeholder: 'Search name, group, location…',
-              }}
-              selects={resourceGroups.length > 0 ? [{
-                id: 'rg',
-                label: 'Resource group',
-                value: rgFilter,
-                onChange: setRgFilter,
-                options: [
-                  { value: '', label: 'All resource groups' },
-                  ...resourceGroups.map((rg) => ({ value: rg, label: rg })),
-                ],
-              }] : []}
-              toggles={[
-                { id: 'findings', label: 'With open findings', checked: findingsOnly, onChange: setFindingsOnly },
-                { id: 'cost', label: 'With total cost', checked: costOnly, onChange: setCostOnly },
-              ]}
-              onClear={hasFilters ? () => {
-                setSearch('');
-                setRgFilter('');
-                setFindingsOnly(false);
-                setCostOnly(false);
-              } : undefined}
+          toolbar={(
+            <>
+              <section className="rec-filter-panel card">
+                <FilterBar
+                  className="rec-filter-bar"
+                  search={{
+                    value: search,
+                    onChange: setSearch,
+                    placeholder: 'Search name, group, location…',
+                  }}
+                  selects={resourceGroups.length > 0 ? [{
+                    id: 'rg',
+                    label: 'Resource group',
+                    value: rgFilter,
+                    onChange: setRgFilter,
+                    options: [
+                      { value: '', label: 'All resource groups' },
+                      ...resourceGroups.map((rg) => ({ value: rg, label: rg })),
+                    ],
+                  }] : []}
+                  toggles={[
+                    { id: 'findings', label: 'With open findings', checked: findingsOnly, onChange: setFindingsOnly },
+                    { id: 'cost', label: 'With total cost', checked: costOnly, onChange: setCostOnly },
+                  ]}
+                  onClear={hasFilters ? () => {
+                    setSearch('');
+                    setRgFilter('');
+                    setFindingsOnly(false);
+                    setCostOnly(false);
+                  } : undefined}
+                />
+                <FilterPresetsBar
+                  presets={presets}
+                  onApply={applyPreset}
+                  onSave={handleSavePreset}
+                  onDelete={deletePreset}
+                />
+              </section>
+              {isAdmin && bulkSelected.size > 0 && (
+                <BulkActionBar
+                  count={bulkSelected.size}
+                  onClear={() => setBulkSelected(new Set())}
+                  actions={[
+                    { label: 'Add tag', onClick: handleBulkAddTag, variant: 'primary' },
+                  ]}
+                />
+              )}
+            </>
+          )}
+          footer={rows.length > 0 ? (
+            <ResourceTableFooter
+              shownCount={sortedRows.length}
+              loadedCount={displayRows.length}
+              totalCount={dataTotal}
+              hasFilters={hasFilters}
+              hasMore={hasMore}
+              onLoadMore={loadMore}
+              isLoadingMore={isLoadingMore}
+              hint={hydratingId ? 'Loading Azure properties…' : 'Click a row for details'}
             />
-            <FilterPresetsBar
-              presets={presets}
-              onApply={applyPreset}
-              onSave={handleSavePreset}
-              onDelete={deletePreset}
-            />
-          </section>
-
+          ) : null}
+        >
           {isLoading && (
             <LoadingState message={resourceLoadingMessage(isAdmin, { isLive, label: title.toLowerCase() })} />
           )}
@@ -680,7 +740,7 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
                     const nameCol = cols.find((c) => c.key === 'name' || c.key === 'resource_name') || cols[0];
                     const stateCol = cols.find((c) => c.type === 'state');
                     const costCol = cols.find((c) => c.type === 'cost');
-                    const stateText = stateCol ? toDisplayText(rowValue(row, stateCol)) : '';
+                    const stateText = stateCol ? resolveRowState(row) : '';
                     return (
                       <button
                         type="button"
@@ -714,9 +774,12 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
                           />
                           <AdvisorTableCell
                             recommendations={advisorByResourceId.get(rid) || []}
+                            findings={byResourceId.get(rid) || []}
                             indexReady={advisorIndexReady && !advisorIndexLoading}
+                            findingsIndexReady={indexReady}
                             isError={advisorIndexError}
-                            currency="USD"
+                            subscriptionHasAdvisor={advisorByResourceId.size > 0}
+                            subscriptionHasFindings={byResourceId.size > 0}
                           />
                         </div>
                       </button>
@@ -724,38 +787,12 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
                   })}
                 </section>
               ))}
-              <footer className="resource-table-footer">
-                <span>
-                  {rows.length.toLocaleString()} of {dataTotal.toLocaleString()} records
-                  {hasFilters ? ' (filtered)' : ''}
-                </span>
-                {hasMore && !hasFilters && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => loadMore()}
-                    disabled={isLoadingMore}
-                  >
-                    {isLoadingMore ? 'Loading…' : 'Load more'}
-                  </button>
-                )}
-              </footer>
             </div>
-          )}
-
-          {isAdmin && bulkSelected.size > 0 && (
-            <BulkActionBar
-              count={bulkSelected.size}
-              onClear={() => setBulkSelected(new Set())}
-              actions={[
-                { label: 'Add tag', onClick: handleBulkAddTag, variant: 'primary' },
-              ]}
-            />
           )}
 
           {!isLoading && !isError && rows.length > 0 && !isMobile && (
             <div className="card resource-table-card">
-              <ResponsiveTableWrapper className="resource-table-wrap">
+              <ResponsiveTableWrapper className={resourceTableWrapClass(rows.length, 'resource-table-wrap')}>
                 <table className="table resource-table">
                   <thead>
                     <tr>
@@ -836,38 +873,21 @@ export default function ResourceList({ title, apiPath, iconSrc, iconKey }) {
                   </tbody>
                 </table>
               </ResponsiveTableWrapper>
-              <footer className="resource-table-footer">
-                <span>
-                  {rows.length.toLocaleString()} of {dataTotal.toLocaleString()} records
-                  {hasFilters ? ' (filtered)' : ''}
-                  · Click a row for details
-                  {hydratingId ? ' · Loading Azure properties…' : ''}
-                </span>
-                {hasMore && !hasFilters && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => loadMore()}
-                    disabled={isLoadingMore}
-                  >
-                    {isLoadingMore ? 'Loading…' : 'Load more'}
-                  </button>
-                )}
-              </footer>
             </div>
           )}
-        </div>
+        </ResourceInventoryPageShell>
       )}
 
       <ResourceInsightDrawer
         resource={selected}
         findings={selectedFindings}
-        onClose={() => setSelected(null)}
+        onClose={() => { setSelected(null); setDrawerFocus(null); }}
         title={title}
         iconKey={pageIcon}
         apiPath={apiPath}
         currency={currency}
         indexReady={indexReady}
+        focusSection={drawerFocus}
       />
 
       {showBulkTagModal && (

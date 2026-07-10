@@ -13,6 +13,72 @@ export function normalizeArmResourceId(resourceId) {
   return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
 }
 
+function armPathParts(resourceId) {
+  return normalizeArmResourceId(resourceId).split('/').filter(Boolean);
+}
+
+/** Classify a compute host ARM id (VM, VMSS, or VMSS instance) attached to a disk. */
+export function parseComputeHostAttachment(resourceId) {
+  const rid = normalizeArmResourceId(resourceId);
+  if (!isArmResourceId(rid)) return null;
+
+  const parts = armPathParts(rid);
+  const providersIdx = parts.findIndex((part) => part.toLowerCase() === 'providers');
+  if (providersIdx < 0 || providersIdx + 3 >= parts.length) return null;
+
+  const providerNamespace = `${parts[providersIdx + 1]}/${parts[providersIdx + 2]}`.toLowerCase();
+  const resourceName = parts[providersIdx + 3];
+
+  if (providerNamespace === 'microsoft.compute/virtualmachines') {
+    return {
+      kind: 'vm',
+      resourceId: rid,
+      name: resourceName,
+      typeLabel: 'Virtual machine',
+      displayLabel: resourceName,
+      inventoryLink: inventoryInspectLink(rid),
+      portalLink: azurePortalUrl(rid),
+    };
+  }
+
+  if (providerNamespace === 'microsoft.compute/virtualmachinescalesets') {
+    const vmssParentId = `/${parts.slice(0, providersIdx + 4).join('/')}`;
+    const isInstance = parts[providersIdx + 4]?.toLowerCase() === 'virtualmachines'
+      && parts[providersIdx + 5] != null
+      && parts[providersIdx + 5] !== '';
+
+    if (isInstance) {
+      const instanceId = parts[providersIdx + 5];
+      return {
+        kind: 'vmss_instance',
+        resourceId: rid,
+        parentResourceId: vmssParentId,
+        name: resourceName,
+        instanceId,
+        typeLabel: 'Scale set instance',
+        displayLabel: `${resourceName} / instance ${instanceId}`,
+        inventoryLink: inventoryInspectLink(vmssParentId),
+        portalLink: azurePortalUrl(rid),
+        scaleSetLabel: resourceName,
+        scaleSetInventoryLink: inventoryInspectLink(vmssParentId),
+        scaleSetPortalLink: azurePortalUrl(vmssParentId),
+      };
+    }
+
+    return {
+      kind: 'vmss',
+      resourceId: rid,
+      name: resourceName,
+      typeLabel: 'VM scale set',
+      displayLabel: resourceName,
+      inventoryLink: inventoryInspectLink(rid),
+      portalLink: azurePortalUrl(rid),
+    };
+  }
+
+  return null;
+}
+
 export function shortArmResourceLabel(resourceId) {
   const normalized = normalizeArmResourceId(resourceId);
   if (!normalized) return '';
@@ -66,4 +132,17 @@ export function appRouteForResourceId(resourceId) {
   if (!base) return null;
   const name = parts[parts.length - 1];
   return name ? `${base}?search=${encodeURIComponent(name)}` : base;
+}
+
+/** Inventory route that opens the resource drawer on the advanced analysis section. */
+export function inventoryInspectLink(resourceId, { section = 'advanced-analysis' } = {}) {
+  const route = appRouteForResourceId(resourceId);
+  if (!route) return null;
+  const [path, query = ''] = route.split('?');
+  const params = new URLSearchParams(query);
+  params.set('inspect', '1');
+  params.set('resourceId', normalizeArmResourceId(resourceId));
+  if (section) params.set('section', section);
+  const qs = params.toString();
+  return qs ? `${path}?${qs}` : path;
 }

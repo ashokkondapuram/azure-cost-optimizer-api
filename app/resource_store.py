@@ -5,14 +5,20 @@ from __future__ import annotations
 import json
 from typing import Optional
 
-from sqlalchemy import func, not_, or_
+from sqlalchemy import and_, func, not_, or_
 from sqlalchemy.orm import Session, load_only
 
 from app.focus_mapping import normalize_arm_id
 from app.resource_page_registry import COUNT_KEY_TO_CANONICAL
 from app.resources.types import sku_text
-from app.cost_db import resource_cost_map_from_db, _resolve_cost_month, resource_lifetime_cost_map_from_db, resource_cost_mom_delta_map_from_db
+from app.cost_db import (
+    resource_cost_map_from_db,
+    _resolve_cost_month,
+    resource_cost_overlays_from_db,
+)
 from app.perf_cache import cached_cost_map, cached_resource_counts
+from app.pagination import cached_total, decode_cursor, encode_cursor, page_envelope, slice_page
+from app.inventory_filters import apply_inventory_exclusions
 from app.vm_utils import is_scale_set_instance
 from app.models import CostByResourceSnapshot, CostByResourceTypeSnapshot
 from .models import ResourceSnapshot
@@ -75,10 +81,14 @@ def _is_cost_export_snapshot(props: dict) -> bool:
 def _cost_map_for_subscription(db: Session, subscription_id: str, cost_map: dict[str, dict] | None) -> dict[str, dict]:
     if cost_map is not None:
         return cost_map
+    return _subscription_cost_overlays(db, subscription_id)["mtd"]
+
+
+def _subscription_cost_overlays(db: Session, subscription_id: str) -> dict[str, dict]:
     sub = subscription_id.lower()
     return cached_cost_map(
-        f"cost_map:{sub}",
-        lambda: resource_cost_map_from_db(db, sub),
+        f"cost_overlays:{sub}",
+        lambda: resource_cost_overlays_from_db(db, sub),
     )
 
 
@@ -163,6 +173,10 @@ def _display_state(resource_type: str, state: str | None, props: dict) -> str:
             if code.lower().startswith("powerstate/"):
                 return code.split("/", 1)[-1]
         return (props.get("provisioningState") or "").strip()
+    if resource_type == "compute/vmss":
+        from app.vm_utils import vmss_operational_state_from_props
+
+        return vmss_operational_state_from_props(props, state)
     if resource_type == "storage/account":
         return (props.get("accessTier") or props.get("provisioningState") or "").strip()
     if resource_type == "network/publicip":
@@ -293,23 +307,15 @@ def _apply_resource_costs(
     db: Session | None = None,
     subscription_id: str | None = None,
 ) -> list[dict]:
-    lifetime_map = None
-    mom_map = None
+    overlays = None
     if db is not None and subscription_id:
-        sub = subscription_id.lower()
-        lifetime_map = cached_cost_map(
-            f"lifetime_cost:{sub}",
-            lambda: resource_lifetime_cost_map_from_db(db, sub),
-        )
-        mom_map = cached_cost_map(
-            f"cost_mom:{sub}",
-            lambda: resource_cost_mom_delta_map_from_db(db, sub),
-        )
+        overlays = _subscription_cost_overlays(db, subscription_id)
+    mtd = cost_map if cost_map is not None else (overlays or {}).get("mtd", {})
     return apply_costs_to_resources(
         rows,
-        cost_map,
-        lifetime_map=lifetime_map,
-        mom_map=mom_map,
+        mtd,
+        lifetime_map=(overlays or {}).get("lifetime"),
+        mom_map=(overlays or {}).get("mom"),
     )
 
 
@@ -451,13 +457,15 @@ def get_resources_db_page(
     *,
     limit: int = DEFAULT_RESOURCE_PAGE_SIZE,
     offset: int = 0,
+    cursor: str | None = None,
     cost_map: dict[str, dict] | None = None,
     include_properties: bool = False,
 ) -> dict:
-    """Paginated inventory read for list endpoints (load-more UX)."""
+    """Paginated inventory read for list endpoints (offset or keyset cursor)."""
     subscription_id = subscription_id.lower()
     limit = min(max(1, int(limit)), MAX_RESOURCE_PAGE_SIZE)
     offset = max(0, int(offset))
+    cursor_text = (cursor or "").strip() or None
 
     filters = (
         ResourceSnapshot.subscription_id == subscription_id,
@@ -466,28 +474,56 @@ def get_resources_db_page(
         _not_cost_export_sql(),
         *([_standalone_vm_sql_filter()] if resource_type == "compute/vm" else []),
     )
-    total = db.query(func.count(ResourceSnapshot.id)).filter(*filters).scalar() or 0
+    total = cached_total(
+        f"inv_total:{subscription_id}:{resource_type}",
+        lambda: db.query(func.count(ResourceSnapshot.id)).filter(*filters).scalar() or 0,
+        cache_fn=cached_cost_map,
+    )
     query = (
         db.query(ResourceSnapshot)
         .filter(*filters)
-        .order_by(ResourceSnapshot.resource_name)
-        .offset(offset)
-        .limit(limit)
+        .order_by(ResourceSnapshot.resource_name, ResourceSnapshot.resource_id)
     )
+    if cursor_text:
+        decoded = decode_cursor(cursor_text)
+        if decoded:
+            cname, cid = decoded
+            query = query.filter(
+                or_(
+                    ResourceSnapshot.resource_name > cname,
+                    and_(
+                        ResourceSnapshot.resource_name == cname,
+                        ResourceSnapshot.resource_id > cid,
+                    ),
+                ),
+            )
+    else:
+        query = query.offset(offset)
+    query = query.limit(limit + 1)
     query = _apply_list_query_options(query, include_properties=include_properties)
     rows = query.all()
-    items = rows_to_list(rows, include_properties=include_properties)
+    page_rows, has_more, page_count = slice_page(rows, limit)
+    items = rows_to_list(page_rows, include_properties=include_properties)
     if resource_type == "compute/vm":
         items = _filter_standalone_vm_dicts(items)
     cost_map = _cost_map_for_subscription(db, subscription_id, cost_map)
     items = _apply_resource_costs(items, cost_map, db=db, subscription_id=subscription_id)
-    return {
-        "items": items,
-        "total": total,
-        "limit": limit,
-        "offset": offset,
-        "has_more": offset + len(items) < total,
-    }
+    next_cursor = None
+    if has_more and items:
+        last = items[-1]
+        next_cursor = encode_cursor(last.get("name") or last.get("resource_name") or "", last.get("id") or "")
+    effective_offset = offset if not cursor_text else offset + page_count
+    return page_envelope(
+        items,
+        total=total,
+        limit=limit,
+        offset=effective_offset,
+        has_more=has_more,
+        page_count=page_count,
+        next_cursor=next_cursor,
+        recommended_page_size=DEFAULT_RESOURCE_PAGE_SIZE,
+        max_page_size=MAX_RESOURCE_PAGE_SIZE,
+    )
 
 
 def get_resource_counts(db: Session, subscription_id: str) -> dict:
@@ -618,36 +654,90 @@ def list_resources_by_types_db(
     db: Session,
     subscription_id: str,
     resource_types: list[str],
+    *,
+    global_config: dict | None = None,
+    include_costs: bool = True,
 ) -> list[dict]:
     """Load only selected canonical resource types (memory-efficient batch analysis)."""
     if not resource_types:
         return []
     sub = subscription_id.lower()
     types = list({t.strip().lower() for t in resource_types if t})
-    rows = (
+    q = (
         db.query(ResourceSnapshot)
         .filter(
             ResourceSnapshot.subscription_id == sub,
             ResourceSnapshot.is_active.is_(True),
+            ResourceSnapshot.is_cost_export_only.is_(False),
             ResourceSnapshot.resource_type.in_(types),
         )
-        .order_by(ResourceSnapshot.resource_name)
-        .all()
     )
-    return rows_to_list(_filter_azure_inventory_rows(rows))
+    q = apply_inventory_exclusions(q, global_config)
+    rows = q.order_by(ResourceSnapshot.resource_name).all()
+    result = rows_to_list(_filter_azure_inventory_rows(rows))
+    if not include_costs:
+        return result
+    cost_map = resource_cost_map_from_db(db, subscription_id)
+    return _apply_resource_costs(result, cost_map, db=db, subscription_id=subscription_id)
+
+
+def list_resources_by_types_parallel(
+    subscription_id: str,
+    resource_types: list[str],
+    *,
+    global_config: dict | None = None,
+    max_workers: int = 8,
+) -> list[dict]:
+    """Load resource types in parallel (one query per type, separate DB sessions)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.database import SessionLocal
+
+    types = sorted({t.strip().lower() for t in (resource_types or []) if t})
+    if not types:
+        return []
+    if len(types) == 1:
+        db = SessionLocal()
+        try:
+            return list_resources_by_types_db(
+                db, subscription_id, types, global_config=global_config, include_costs=False,
+            )
+        finally:
+            db.close()
+
+    workers = min(max_workers, len(types))
+
+    def _load_one(rtype: str) -> list[dict]:
+        db = SessionLocal()
+        try:
+            return list_resources_by_types_db(
+                db, subscription_id, [rtype], global_config=global_config, include_costs=False,
+            )
+        finally:
+            db.close()
+
+    merged: list[dict] = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for chunk in pool.map(_load_one, types):
+            merged.extend(chunk)
+    return merged
 
 
 def list_all_resources_db(
     db: Session,
     subscription_id: str,
     resource_type: Optional[str] = None,
+    *,
+    global_config: dict | None = None,
 ) -> list[dict]:
     q = db.query(ResourceSnapshot).filter(
         ResourceSnapshot.subscription_id == subscription_id,
         ResourceSnapshot.is_active.is_(True),
+        ResourceSnapshot.is_cost_export_only.is_(False),
     )
     if resource_type:
         q = q.filter(ResourceSnapshot.resource_type == resource_type)
+    q = apply_inventory_exclusions(q, global_config)
     rows = q.order_by(ResourceSnapshot.resource_type, ResourceSnapshot.resource_name).all()
     result = rows_to_list(_filter_azure_inventory_rows(rows))
     cost_map = resource_cost_map_from_db(db, subscription_id)

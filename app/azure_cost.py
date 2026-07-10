@@ -496,6 +496,36 @@ def daily_subscription_rows_from_response(response: dict, *, default_currency: s
     return out
 
 
+def monthly_subscription_rows_from_response(response: dict, *, default_currency: str = "CAD") -> list[dict]:
+    """One row per calendar month for subscription-level monthly cost."""
+    props = normalize_query_response(response).get("properties") or {}
+    cols = _column_index(props.get("columns") or [])
+    if not cols:
+        return []
+
+    _cell = _make_cell_lookup(cols)
+    by_month: dict[str, dict[str, Any]] = {}
+    for row in props.get("rows") or []:
+        raw_date = _cell(row, "BillingMonth", "UsageDate", "ChargePeriodStart", "Date", default="")
+        date_str = _parse_date_str(raw_date)
+        if not date_str or len(date_str) < 7:
+            continue
+        month = date_str[:7]
+        pretax = float(_cell(row, "PreTaxCost", "Cost", default=0) or 0)
+        usd = float(_cell(row, "CostUSD", default=0) or 0)
+        currency = str(_cell(row, "Currency", "BillingCurrency", default=default_currency) or default_currency)
+        cost_usd = normalize_monthly_cost_usd({"pretax": pretax, "usd": usd, "currency": currency})
+        bucket = by_month.setdefault(
+            month,
+            {"month": month, "total_spend": 0.0, "cost_usd": 0.0, "currency": currency},
+        )
+        bucket["total_spend"] = round(bucket["total_spend"] + pretax, 4)
+        bucket["cost_usd"] = round(bucket["cost_usd"] + (cost_usd if cost_usd is not None else 0.0), 4)
+        bucket["currency"] = currency
+
+    return [by_month[k] for k in sorted(by_month)]
+
+
 def billing_currency_from_response(response: dict, default: str = "CAD") -> str:
     summary = summarize_cost_response(normalize_query_response(response))
     return summary.get("billing_currency") or default
@@ -563,6 +593,26 @@ class AzureCostClient:
             to_date=to_date,
         )
         result = self._query(scope, body, throttle_label="daily_subscription")
+        result["billing_currency"] = billing_currency_from_response(result)
+        return result
+
+    def query_cost_monthly_subscription(
+        self,
+        subscription_id: str,
+        *,
+        from_date: str,
+        to_date: str,
+    ) -> dict:
+        """Subscription monthly totals — one row per billing month."""
+        scope = _normalize_scope("", subscription_id)
+        body = _query_body(
+            timeframe="Custom",
+            granularity="Monthly",
+            group_by=None,
+            from_date=from_date,
+            to_date=to_date,
+        )
+        result = self._query(scope, body, throttle_label="monthly_subscription")
         result["billing_currency"] = billing_currency_from_response(result)
         return result
 
@@ -704,8 +754,16 @@ class AzureCostClient:
         }
         return result
 
-    def query_forecast(self, subscription_id: str, timeframe: str = "MonthToDate") -> dict:
-        """Fetch a daily spend forecast.
+    def query_forecast(
+        self,
+        subscription_id: str,
+        timeframe: str = "MonthToDate",
+        *,
+        granularity: str = "Daily",
+        from_date: str | None = None,
+        to_date: str | None = None,
+    ) -> dict:
+        """Fetch spend forecast from Azure Cost Management.
 
         Returns a normalized response dict. On failure, returns an error dict
         with 'error' and 'error_status' keys so callers can distinguish
@@ -714,14 +772,21 @@ class AzureCostClient:
         scope_path = _normalize_scope("", subscription_id)
         url = f"{BASE}{scope_path}/providers/Microsoft.CostManagement/forecast"
         params = {"api-version": COST_API_VERSION}
-        body = {
+        body: dict[str, Any] = {
             "type": "ActualCost",
-            "timeframe": timeframe,
             "dataset": {
-                "granularity": "Daily",
-                "aggregation": {"totalCost": {"name": "PreTaxCost", "function": "Sum"}},
+                "granularity": granularity,
+                "aggregation": {
+                    "totalCost": {"name": "PreTaxCost", "function": "Sum"},
+                    "totalCostUSD": {"name": "CostUSD", "function": "Sum"},
+                },
             },
         }
+        if from_date and to_date:
+            body["timeframe"] = "Custom"
+            body["timePeriod"] = {"from": from_date[:10], "to": to_date[:10]}
+        else:
+            body["timeframe"] = timeframe
         headers = _headers(self._db, self._token)
         try:
             data = _cost_request("POST", url, headers, params=params, payload=body)
@@ -786,6 +851,7 @@ __all__ = [
     "cost_rg_batch_size",
     "daily_query_to_export_rows",
     "daily_subscription_rows_from_response",
+    "monthly_subscription_rows_from_response",
     "merge_query_responses",
     "normalize_query_response",
     "resource_group_filter",

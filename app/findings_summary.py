@@ -10,6 +10,7 @@ from app.db_types import json_text_like
 from app.models import OptimizationFinding
 from app.analysis_persist import dedupe_open_findings_for_display
 from app.recommendation_execution import implemented_findings_for_subscription
+from app.savings_aggregation import aggregate_subscription_savings
 
 # Rightsizing rules remain cost optimization even when retail savings are not quantified.
 COST_OPTIMIZATION_RULE_IDS = frozenset({
@@ -89,6 +90,8 @@ def build_findings_summary(db: Session, subscription_id: str | None = None) -> d
         2,
     )
 
+    unified = aggregate_subscription_savings(db, sub or "") if sub else {}
+
     with_savings_count = (
         db.query(func.count(OptimizationFinding.id))
         .filter(*filt, OptimizationFinding.estimated_savings_usd > 0)
@@ -127,6 +130,7 @@ def build_findings_summary(db: Session, subscription_id: str | None = None) -> d
         "total_findings": int(total_display),
         "open_findings": int(open_count),
         "total_estimated_savings_usd": round(float(total_savings), 2),
+        "unified_savings": unified,
         "by_status": {str(k or "unknown"): int(v) for k, v in by_status.items()},
         "by_severity": by_severity,
         "by_category": by_category,

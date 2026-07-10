@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { ShieldCheck, ShieldAlert, ShieldX, Filter } from 'lucide-react';
+import { ShieldAlert, ShieldX, Filter } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
 
 /**
  * Policy Enforcement — Phase 2
@@ -24,7 +25,7 @@ function severityBadge(sev) {
     critical: { cls: 'danger',  Icon: ShieldX },
     high:     { cls: 'danger',  Icon: ShieldAlert },
     medium:   { cls: 'warning', Icon: ShieldAlert },
-    low:      { cls: 'success', Icon: ShieldCheck },
+    low:      { cls: 'success', Icon: ShieldAlert },
   };
   return map[sev] || map.low;
 }
@@ -49,12 +50,12 @@ export default function PolicyEnforcement() {
 
   return (
     <div className="page-shell">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title icon-inline"><ShieldCheck size={20} /> Policy enforcement</h1>
-          <p className="page-subtitle">Governance and cost-guardrail compliance across tagging, SKUs, regions, and network policy.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Policy enforcement"
+        subtitle="Governance and cost-guardrail compliance across tagging, SKUs, regions, and network policy."
+        iconKey="policyEnforcement"
+        iconRoute="/policy"
+      />
 
       <div className="grid-4" style={{ marginBottom: '1.25rem' }}>
         <div className="stat-card accent">

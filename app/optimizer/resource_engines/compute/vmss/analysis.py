@@ -1,76 +1,9 @@
-"""Virtual Machine Scale Sets optimization analysis rules."""
-from __future__ import annotations
+"""Compatibility shim — implementation: it_services.compute_vmss.engine.analysis"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.core.finding import ExtendedFinding
-from app.cost_utils import resource_cost
-from app.cost_utils import savings_from_factor
-from app.resource_utilization import cpu_pct
-from app.resource_utilization import memory_pct
+_impl = import_module("it_services.compute_vmss.engine.analysis")
 
 
-def analyze_vmss(
-    engine,
-    subscription_id: str,
-    scale_sets: list[dict],
-    vm_metrics: dict[str, dict],
-    cost_by_resource: dict[str, float],
-) -> list[ExtendedFinding]:
-    out: list[ExtendedFinding] = []
-    autoscale_rule = engine.rules.get("VMSS_NO_AUTOSCALE_EXTENDED")
-    scheduling_rule = engine.rules.get("VMSS_NONPROD_SCHEDULING_EXTENDED")
-    for vmss in scale_sets:
-        name = vmss.get("name") or ""
-        tags = vmss.get("tags") or {}
-        env = str(tags.get("environment") or tags.get("env") or "").lower()
-        props = vmss.get("properties") or {}
-        sku = ((props.get("virtualMachineProfile") or {}).get("hardwareProfile") or {}).get("vmSize") or ""
-        sku_obj = vmss.get("sku") or {}
-        capacity = int(sku_obj.get("capacity") or 0)
-        autoscale = props.get("automaticRepairsPolicy")  # placeholder — check profiles
-        profiles = props.get("virtualMachineProfile") or {}
-        monthly_cost = resource_cost(cost_by_resource, vmss.get("id", ""))
-
-        # Autoscale profile lives under resource; check orchestrationProfile upgradePolicy or separate autoscale resource
-        has_autoscale = bool(props.get("upgradePolicy"))  # weak signal
-        # Better: check if sku capacity is fixed and no autoscale settings reference
-        autoscale_settings = props.get("autoscaleSettings") or props.get("profiles")
-        if autoscale_settings:
-            has_autoscale = True
-
-        if autoscale_rule and autoscale_rule.enabled and not has_autoscale and capacity > 1:
-            out.append(engine._finding(
-                rule=autoscale_rule,
-                subscription_id=subscription_id,
-                resource=vmss,
-                detail=f"VMSS '{name}' has {capacity} fixed instances without autoscale profile.",
-                recommendation="Configure Azure Monitor autoscale rules to scale based on CPU or queue depth.",
-                savings=savings_from_factor(monthly_cost, 0.25) if monthly_cost > 0 else 0,
-                waste_score=58,
-                confidence=75,
-                priority="P2",
-                impact="Reduces over-provisioned scale set capacity",
-                evidence={"capacity": capacity, "vm_size": sku, "monthly_cost_usd": monthly_cost},
-            ))
-
-        if scheduling_rule and scheduling_rule.enabled and env in scheduling_rule.nonprod_tag_values:
-            cpu = cpu_pct(vmss)
-            mem = memory_pct(vmss)
-            low_util = (cpu is not None and cpu < 15) or (mem is not None and mem < 20)
-            if low_util and (cpu is not None or mem is not None):
-                savings = savings_from_factor(monthly_cost, scheduling_rule.nonprod_shutdown_hours_per_day / 24)
-                out.append(engine._finding(
-                    rule=scheduling_rule,
-                    subscription_id=subscription_id,
-                    resource=vmss,
-                    detail=f"VMSS '{name}' appears non-production (env={env}) and may run continuously.",
-                    recommendation=f"Apply shutdown schedule or scale to zero outside business hours (up to {scheduling_rule.nonprod_shutdown_hours_per_day} hrs/day savings).",
-                    savings=savings,
-                    waste_score=55,
-                    confidence=70,
-                    priority="P2",
-                    impact="Non-prod scale set scheduling savings",
-                    evidence={"environment": env, "capacity": capacity, "avg_cpu_pct": cpu},
-                ))
-    return out
+def __getattr__(name: str):
+    return getattr(_impl, name)

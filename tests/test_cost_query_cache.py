@@ -98,6 +98,23 @@ def test_monthly_cost_trend_from_summaries():
     assert trend["projected"] == 1200.0
     assert trend["last_month"] == 1000.0
     assert trend["delta_pct"] == 20.0
+    assert trend["forecast_source"] == "azure_forecast"
+
+
+def test_monthly_cost_trend_from_summaries_prorates_without_forecast():
+    import calendar
+    from datetime import date
+
+    today = date.today()
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_elapsed = max(1, today.day)
+    trend = monthly_cost_trend_from_summaries(
+        mtd_amount=300.0,
+        last_month={"pretax_total": 900.0},
+        forecast={},
+    )
+    assert trend["projected"] == round(300.0 * (days_in_month / days_elapsed), 2)
+    assert trend["forecast_source"] == "prorated_mtd"
 
 
 @patch("app.cost_live_bundle.query_cost_summary_live")

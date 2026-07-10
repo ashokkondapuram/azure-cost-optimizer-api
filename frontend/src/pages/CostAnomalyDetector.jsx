@@ -1,292 +1,241 @@
 /**
- * Cost Anomaly Detector page
- *
- * Layout:
- *  ┌─ KPI bar ───────────────────────────────────────────┐
- *  ├─ Controls (subscription picker + parameter sliders) ─┤
- *  ├─ Time-series chart (daily cost + anomaly markers)  ──┤
- *  ├─ Anomaly alert list (severity-ranked, with actions) ─┤
- *  └─ Per-service anomaly table ───────────────────────────┘
- *
- * Real data is fetched from:
- *   GET /anomalies/daily/{subscriptionId}
- *   GET /anomalies/service/{subscriptionId}
+ * Cost Anomaly Detector — interactive rolling z-score analysis.
  */
 
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ReferenceDot,
-  ResponsiveContainer,
-  Legend,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceDot, ResponsiveContainer,
 } from 'recharts';
 import {
-  AlertTriangle,
-  TrendingDown,
-  TrendingUp,
-  RefreshCw,
-  SlidersHorizontal,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  X,
-  Zap,
+  AlertTriangle, TrendingDown, TrendingUp, SlidersHorizontal,
+  ChevronDown, ChevronUp, X,
 } from 'lucide-react';
 import { useAnomalyData } from '../hooks/useAnomalyData';
+import useCostSync from '../hooks/useCostSync';
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
+import FilterBar from '../components/FilterBar';
+import { AdvSkeleton, AdvSyncButton, fmtCurrency } from '../components/advanced/AdvUI';
+import { AdvHeroFooter } from '../components/advanced/AdvancedToolHero';
 
-// ── Try to pick up the subscription from app context if available ─────────────
-let SubscriptionContext;
-try {
-  ({ SubscriptionContext } = require('../context/SubscriptionContext'));
-} catch {
-  SubscriptionContext = null;
-}
-
-function useSubscriptionId() {
-  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line react-hooks/rules-of-hooks
-  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (n, currency = 'CAD') =>
-  new Intl.NumberFormat('en-CA', { style: 'currency', currency, maximumFractionDigits: 0 }).format(n);
+const fmt = (n, currency = 'CAD') => fmtCurrency(n, currency);
 
 const fmtDate = (iso) => {
-  const d = new Date(iso + 'T00:00:00');
+  const d = new Date(`${iso}T00:00:00`);
   return d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
 };
 
-const SEVERITY_COLOUR = {
-  high: { bg: 'bg-red-50 dark:bg-red-900/20', border: 'border-red-200 dark:border-red-800', text: 'text-red-700 dark:text-red-300', badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
-  medium: { bg: 'bg-amber-50 dark:bg-amber-900/20', border: 'border-amber-200 dark:border-amber-800', text: 'text-amber-700 dark:text-amber-300', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-};
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
 function Skeleton({ className = '' }) {
-  return <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`} />;
+  return <AdvSkeleton className={className} />;
 }
 
-// ── KPI card ──────────────────────────────────────────────────────────────────
-function KpiCard({ label, value, sub, icon: Icon, accent }) {
-  return (
-    <div className="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 shadow-sm">
-      <div className={`mt-0.5 rounded-lg p-2 ${accent}`}>
-        <Icon size={16} />
-      </div>
-      <div>
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-50">{value}</p>
-        {sub && <p className="text-xs text-gray-400 dark:text-gray-500">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
-// ── Custom chart tooltip ───────────────────────────────────────────────────────
-function CustomTooltip({ active, payload, label, anomalyDates, currency }) {
+function ChartTooltip({ active, payload, label, anomalyDates, currency, selectedDate }) {
   if (!active || !payload?.length) return null;
   const cost = payload[0]?.value;
   const isAnomaly = anomalyDates.has(label);
+  const isSelected = selectedDate === label;
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 shadow-lg text-sm">
-      <p className="font-semibold text-gray-700 dark:text-gray-200">{fmtDate(label)}</p>
-      <p className="tabular-nums text-gray-600 dark:text-gray-300">{fmt(cost, currency)}</p>
-      {isAnomaly && <p className="text-red-500 font-medium mt-0.5">⚠ Anomaly detected</p>}
+    <div className="anomaly-chart-tooltip">
+      <p className="anomaly-chart-tooltip__date">{fmtDate(label)}</p>
+      <p className="anomaly-chart-tooltip__cost">{fmt(cost, currency)}</p>
+      {isAnomaly && <p className="anomaly-chart-tooltip__flag">Anomaly detected</p>}
+      {isSelected && <p className="anomaly-chart-tooltip__flag" style={{ color: 'var(--primary)' }}>Selected</p>}
     </div>
   );
 }
 
-// ── Anomaly alert row ──────────────────────────────────────────────────────────
-function AnomalyAlert({ anomaly, currency, onDismiss }) {
+function AnomalyAlert({ anomaly, currency, active, onSelect, onDismiss }) {
   const [expanded, setExpanded] = useState(false);
-  const s = SEVERITY_COLOUR[anomaly.severity] ?? SEVERITY_COLOUR.medium;
   const isSpike = anomaly.direction === 'spike';
   const deltaPct = anomaly.baseline_mean
     ? (((anomaly.actual_cost - anomaly.baseline_mean) / anomaly.baseline_mean) * 100).toFixed(1)
     : '—';
 
   return (
-    <div className={`rounded-xl border ${s.border} ${s.bg} transition-all`}>
-      <div className="flex items-center justify-between gap-3 px-4 py-3">
-        <div className="flex items-center gap-3 min-w-0">
-          {isSpike
-            ? <TrendingUp size={16} className={s.text} />
-            : <TrendingDown size={16} className={s.text} />}
-          <div className="min-w-0">
-            <span className="font-semibold text-sm text-gray-900 dark:text-gray-50">
-              {fmtDate(anomaly.date)}
-            </span>
-            <span className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${s.badge}`}>
-              {anomaly.severity.toUpperCase()}
-            </span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="tabular-nums text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {fmt(anomaly.actual_cost, currency)}
+    <div className={`anomaly-alert anomaly-alert--${anomaly.severity}${active ? ' anomaly-alert--active' : ''}`}>
+      <div
+        className="anomaly-alert__row"
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(anomaly.date)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect(anomaly.date);
+          }
+        }}
+      >
+        <div className="anomaly-alert__meta">
+          {isSpike ? <TrendingUp size={16} className="text-red-500" /> : <TrendingDown size={16} className="text-teal-600" />}
+          <span className="anomaly-alert__date">{fmtDate(anomaly.date)}</span>
+          <span className={`anomaly-alert__badge anomaly-alert__badge--${anomaly.severity}`}>
+            {anomaly.severity}
           </span>
-          <span className={`text-xs font-medium tabular-nums ${isSpike ? 'text-red-500' : 'text-teal-600'}`}>
+        </div>
+        <div className="anomaly-alert__stats">
+          <span className="anomaly-alert__cost">{fmt(anomaly.actual_cost, currency)}</span>
+          <span className={`anomaly-pct anomaly-pct--${isSpike ? 'spike' : 'drop'}`}>
             {isSpike ? '+' : ''}{deltaPct}%
           </span>
           <button
-            onClick={() => setExpanded((e) => !e)}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+            className="text-gray-400 hover:text-gray-600"
             aria-label="Toggle detail"
           >
             {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
           </button>
           <button
-            onClick={() => onDismiss(anomaly.date)}
-            className="text-gray-300 hover:text-gray-500 dark:hover:text-gray-400"
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDismiss(anomaly.date); }}
+            className="text-gray-300 hover:text-gray-500"
             aria-label="Dismiss anomaly"
           >
             <X size={14} />
           </button>
         </div>
       </div>
-
       {expanded && (
-        <div className="border-t border-gray-200 dark:border-gray-700 px-4 pb-3 pt-2 grid grid-cols-3 gap-4 text-xs">
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Baseline mean</p>
-            <p className="font-semibold tabular-nums text-gray-800 dark:text-gray-100">
-              {fmt(anomaly.baseline_mean, currency)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Std deviation</p>
-            <p className="font-semibold tabular-nums text-gray-800 dark:text-gray-100">
-              {fmt(anomaly.baseline_stddev, currency)}
-            </p>
-          </div>
-          <div>
-            <p className="text-gray-500 dark:text-gray-400">Z-score</p>
-            <p className="font-semibold tabular-nums text-gray-800 dark:text-gray-100">
-              {anomaly.z_score.toFixed(2)}σ
-            </p>
-          </div>
+        <dl className="anomaly-alert__detail">
+          <div><dt>Baseline mean</dt><dd>{fmt(anomaly.baseline_mean, currency)}</dd></div>
+          <div><dt>Std deviation</dt><dd>{fmt(anomaly.baseline_stddev, currency)}</dd></div>
+          <div><dt>Z-score</dt><dd>{anomaly.z_score.toFixed(2)}σ</dd></div>
+        </dl>
+      )}
+    </div>
+  );
+}
+
+function ServiceAnomalyTable({ anomalies, currency, selectedDate, onSelectDate, severityFilter, search }) {
+  const [sortKey, setSortKey] = useState('z_score');
+  const [sortDir, setSortDir] = useState('desc');
+
+  const filtered = useMemo(() => {
+    let rows = anomalies ?? [];
+    if (severityFilter) rows = rows.filter((a) => a.severity === severityFilter);
+    if (selectedDate) rows = rows.filter((a) => a.date === selectedDate);
+    const q = (search || '').trim().toLowerCase();
+    if (q) rows = rows.filter((a) => (a.service_name || '').toLowerCase().includes(q));
+    return rows;
+  }, [anomalies, severityFilter, selectedDate, search]);
+
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
+    const av = a[sortKey] ?? '';
+    const bv = b[sortKey] ?? '';
+    if (typeof av === 'number') return sortDir === 'asc' ? av - bv : bv - av;
+    return sortDir === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  }), [filtered, sortKey, sortDir]);
+
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortKey(key); setSortDir('desc'); }
+  }
+
+  if (!anomalies?.length) return null;
+
+  return (
+    <div className="anomaly-page-card anomaly-service-table">
+      <div className="tag-rg-explorer__header">
+        <div>
+          <h3 className="tag-rg-explorer__title">Per-service anomalies</h3>
+          <p className="tag-rg-explorer__sub">
+            Services with abnormal spend — click a row to focus the chart on that date
+          </p>
+        </div>
+      </div>
+      {!sorted.length ? (
+        <div className="tag-rg-explorer__empty">No service anomalies match your filters.</div>
+      ) : (
+        <div className="tag-rg-explorer__scroll" style={{ maxHeight: '22rem' }}>
+          <table className="tag-rg-table">
+            <thead>
+              <tr>
+                {[
+                  { key: 'service_name', label: 'Service' },
+                  { key: 'date', label: 'Date' },
+                  { key: 'actual_cost', label: 'Actual' },
+                  { key: 'baseline_mean', label: 'Baseline' },
+                  { key: 'z_score', label: 'Z-score' },
+                  { key: 'direction', label: 'Direction' },
+                  { key: 'severity', label: 'Severity' },
+                ].map((col) => (
+                  <th
+                    key={col.key}
+                    className={`tag-rg-table__th--sortable${sortKey === col.key ? ' tag-rg-table__th--active' : ''}`}
+                    onClick={() => toggleSort(col.key)}
+                  >
+                    <span className="tag-rg-table__sort">{col.label}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((a, i) => (
+                <tr
+                  key={`${a.service_name}-${a.date}-${i}`}
+                  className={`tag-rg-table__row${selectedDate === a.date ? ' tag-rg-table__row--active' : ''}`}
+                  onClick={() => onSelectDate(a.date)}
+                  tabIndex={0}
+                  role="button"
+                >
+                  <td className="tag-rg-table__name" title={a.service_name}>{a.service_name}</td>
+                  <td className="tag-rg-table__count">{fmtDate(a.date)}</td>
+                  <td className="tag-rg-table__count">{fmt(a.actual_cost, currency)}</td>
+                  <td className="tag-rg-table__count">{fmt(a.baseline_mean, currency)}</td>
+                  <td className="tag-rg-table__count">{a.z_score.toFixed(2)}σ</td>
+                  <td>
+                    <span className={`anomaly-pct anomaly-pct--${a.direction === 'spike' ? 'spike' : 'drop'}`}>
+                      {a.direction}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`anomaly-alert__badge anomaly-alert__badge--${a.severity}`}>{a.severity}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
 
-// ── Service anomaly table ──────────────────────────────────────────────────────
-function ServiceAnomalyTable({ anomalies, currency }) {
-  if (!anomalies?.length) return null;
+function ControlsPanel({ params, setParams, open, setOpen, loading }) {
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-        <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Per-service anomalies</h3>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-          Services with abnormal spend in the inspection window, ranked by z-score
-        </p>
+    <div className="anomaly-page-card anomaly-controls">
+      <div className="anomaly-controls__head">
+        <h2 className="anomaly-controls__title">Detection parameters</h2>
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          className="chip"
+        >
+          <SlidersHorizontal size={14} />
+          {open ? 'Hide parameters' : 'Show parameters'}
+        </button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-700 text-left">
-              {['Service', 'Date', 'Actual', 'Baseline', 'Z-score', 'Direction', 'Severity'].map((h) => (
-                <th key={h} className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {anomalies.map((a, i) => {
-              const s = SEVERITY_COLOUR[a.severity] ?? SEVERITY_COLOUR.medium;
-              return (
-                <tr key={i} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                  <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-100 whitespace-nowrap">{a.service_name}</td>
-                  <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300 tabular-nums whitespace-nowrap">{fmtDate(a.date)}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-gray-800 dark:text-gray-100 whitespace-nowrap">{fmt(a.actual_cost, currency)}</td>
-                  <td className="px-4 py-2.5 tabular-nums text-gray-500 dark:text-gray-400 whitespace-nowrap">{fmt(a.baseline_mean, currency)}</td>
-                  <td className="px-4 py-2.5 tabular-nums font-semibold text-gray-800 dark:text-gray-100">{a.z_score.toFixed(2)}σ</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`inline-flex items-center gap-1 text-xs font-medium ${a.direction === 'spike' ? 'text-red-500' : 'text-teal-600'}`}>
-                      {a.direction === 'spike' ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                      {a.direction}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${s.badge}`}>
-                      {a.severity}
-                    </span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ── Controls panel ─────────────────────────────────────────────────────────────
-function ControlsPanel({ subId, setSubId, params, setParams, onRefresh, loading }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-      <div className="flex items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300" htmlFor="sub-input">
-            Subscription ID
-          </label>
-          <input
-            id="sub-input"
-            type="text"
-            value={subId}
-            onChange={(e) => setSubId(e.target.value)}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-            className="ml-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 w-80"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setOpen((o) => !o)}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            <SlidersHorizontal size={14} />
-            Parameters
-          </button>
-          <button
-            onClick={onRefresh}
-            disabled={loading}
-            className="flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 px-3 py-1.5 text-sm font-medium text-white transition-colors"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Loading…' : 'Analyze'}
-          </button>
-        </div>
-      </div>
-
       {open && (
-        <div className="border-t border-gray-100 dark:border-gray-700 px-4 py-3 grid grid-cols-3 gap-6">
+        <div className="anomaly-controls__body">
           {[
-            { key: 'window_days', label: 'Baseline window', min: 7, max: 90, step: 1, unit: 'days', help: 'Rolling window used to compute the mean and std-dev baseline.' },
-            { key: 'lookback_days', label: 'Inspect window', min: 1, max: 30, step: 1, unit: 'days', help: 'How many recent days to check for anomalies.' },
-            { key: 'threshold_sigma', label: 'Z-score threshold', min: 1.0, max: 5.0, step: 0.1, unit: 'σ', help: 'Minimum z-score to flag a day as anomalous.' },
+            { key: 'window_days', label: 'Baseline window', min: 7, max: 90, step: 1, unit: 'd', help: 'Rolling window for mean and standard deviation.' },
+            { key: 'lookback_days', label: 'Inspect window', min: 1, max: 30, step: 1, unit: 'd', help: 'Recent days checked for anomalies.' },
+            { key: 'threshold_sigma', label: 'Z-score threshold', min: 1.0, max: 5.0, step: 0.1, unit: 'σ', help: 'Minimum deviation to flag a day.' },
           ].map(({ key, label, min, max, step, unit, help }) => (
-            <div key={key}>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-medium text-gray-600 dark:text-gray-400">{label}</label>
-                <span className="text-xs tabular-nums font-semibold text-teal-600 dark:text-teal-400">
-                  {params[key]}{unit}
-                </span>
+            <div key={key} className="anomaly-slider">
+              <div className="anomaly-slider__label">
+                <span>{label}</span>
+                <span className="anomaly-slider__value">{params[key]}{unit}</span>
               </div>
               <input
                 type="range"
-                min={min} max={max} step={step}
+                min={min}
+                max={max}
+                step={step}
                 value={params[key]}
+                disabled={loading}
                 onChange={(e) => setParams((p) => ({ ...p, [key]: parseFloat(e.target.value) }))}
-                className="w-full accent-teal-600"
               />
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{help}</p>
+              <p className="anomaly-slider__help">{help}</p>
             </div>
           ))}
         </div>
@@ -295,36 +244,29 @@ function ControlsPanel({ subId, setSubId, params, setParams, onRefresh, loading 
   );
 }
 
-// ── Empty state ────────────────────────────────────────────────────────────────
-function EmptyState({ message }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400 dark:text-gray-500">
-      <Zap size={36} strokeWidth={1.5} />
-      <p className="text-sm font-medium">{message || 'No anomalies detected in the selected window.'}</p>
-      <p className="text-xs">Try widening the baseline window or lowering the z-score threshold.</p>
-    </div>
-  );
-}
-
-// ── Main page ──────────────────────────────────────────────────────────────────
 export default function CostAnomalyDetector() {
-  const ctxSubId = useSubscriptionId();
-  const [subId, setSubId] = useState(ctxSubId ?? '');
+  const { subscription } = useAdvancedSubscription();
   const [dismissed, setDismissed] = useState(new Set());
+  const [selectedDate, setSelectedDate] = useState('');
+  const [severityFilter, setSeverityFilter] = useState('');
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [params, setParams] = useState({
     window_days: 30,
     lookback_days: 7,
     threshold_sigma: 2.0,
   });
 
-  const { daily, service, loading, error, refetch } = useAnomalyData(subId, params, {
-    window_days: 21,
-    threshold_sigma: 2.5,
-  });
+  const { daily, service, loading, error, refetch } = useAnomalyData(subscription, params);
+  const { sync, syncing } = useCostSync({ subscription });
 
-  // Build chart data: merge series with anomaly flag
+  const handleCostSync = useCallback(async () => {
+    await sync();
+    await refetch();
+  }, [sync, refetch]);
+
   const { chartData, anomalyDates, currency } = useMemo(() => {
-    if (!daily?.series) return { chartData: [], anomalyDates: new Set(), currency: 'CAD' };
+    if (!daily?.series?.length) return { chartData: [], anomalyDates: new Set(), currency: daily?.billing_currency ?? 'CAD' };
     const adates = new Set((daily.anomalies ?? []).map((a) => a.date));
     const cur = daily.billing_currency ?? 'CAD';
     const data = daily.series.map((s) => ({
@@ -335,168 +277,192 @@ export default function CostAnomalyDetector() {
     return { chartData: data, anomalyDates: adates, currency: cur };
   }, [daily]);
 
-  const visibleAnomalies = useMemo(
-    () => (daily?.anomalies ?? []).filter((a) => !dismissed.has(a.date)),
-    [daily, dismissed],
-  );
+  const visibleAnomalies = useMemo(() => {
+    let rows = (daily?.anomalies ?? []).filter((a) => !dismissed.has(a.date));
+    if (severityFilter) rows = rows.filter((a) => a.severity === severityFilter);
+    if (selectedDate) rows = rows.filter((a) => a.date === selectedDate);
+    return rows;
+  }, [daily, dismissed, severityFilter, selectedDate]);
 
-  const highCount = visibleAnomalies.filter((a) => a.severity === 'high').length;
-  const medCount = visibleAnomalies.filter((a) => a.severity === 'medium').length;
+  const highCount = (daily?.anomalies ?? []).filter((a) => a.severity === 'high' && !dismissed.has(a.date)).length;
+  const medCount = (daily?.anomalies ?? []).filter((a) => a.severity === 'medium' && !dismissed.has(a.date)).length;
   const totalSpend = chartData.reduce((sum, d) => sum + (d.cost ?? 0), 0);
 
+  const toggleSeverity = useCallback((sev) => {
+    setSeverityFilter((f) => (f === sev ? '' : sev));
+  }, []);
+
+  const toggleDate = useCallback((date) => {
+    setSelectedDate((d) => (d === date ? '' : date));
+  }, []);
+
+  const hasFilters = !!(severityFilter || selectedDate || serviceSearch.trim());
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
-      {/* Page header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <AlertTriangle size={20} className="text-teal-600" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Cost Anomaly Detector</h1>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Rolling z-score analysis of daily Azure spend — flags unusual spikes and drops against the baseline window.
-        </p>
-      </div>
-
-      {/* Controls */}
-      <div className="mb-5">
-        <ControlsPanel
-          subId={subId}
-          setSubId={setSubId}
-          params={params}
-          setParams={setParams}
-          onRefresh={refetch}
+    <AdvancedToolLayout
+      title="Anomaly detector"
+      subtitle="Rolling z-score analysis of daily Azure spend — flags unusual spikes and drops against the baseline window."
+      iconKey="anomalyDetector"
+      iconRoute="/anomaly-detector"
+      accent="anomaly"
+      metaItems={[
+        `${params.lookback_days}d lookback`,
+        `${params.window_days}d baseline window`,
+        `Threshold: ${params.threshold_sigma}σ`,
+      ]}
+      onRefresh={refetch}
+      loading={loading || syncing}
+      error={error}
+      errorTitle="Could not load anomaly data"
+      headerActions={(
+        <AdvSyncButton
+          onClick={handleCostSync}
+          syncing={syncing}
           loading={loading}
+          label="Sync costs"
         />
-      </div>
+      )}
+      hero={{
+        isLoading: loading && !daily,
+        metrics: [
+          {
+            label: 'Total anomalies',
+            value: (daily?.anomaly_count ?? 0).toLocaleString(),
+            featured: true,
+            tone: (daily?.anomaly_count ?? 0) > 0 ? 'warning' : 'default',
+            sub: `${params.lookback_days}d window`,
+          },
+          {
+            label: 'High severity',
+            value: highCount.toLocaleString(),
+            tone: highCount > 0 ? 'danger' : 'default',
+            sub: 'z-score ≥ 3σ',
+          },
+          {
+            label: 'Medium severity',
+            value: medCount.toLocaleString(),
+            tone: medCount > 0 ? 'warning' : 'default',
+            sub: 'z-score ≥ 2σ',
+          },
+          {
+            label: `Total spend (${params.window_days}d)`,
+            value: chartData.length ? fmt(totalSpend, currency) : '—',
+            sub: `${chartData.length} days charted`,
+          },
+        ],
+        footer: (daily?.anomaly_count ?? 0) > 0 ? (
+          <AdvHeroFooter label="Filter by severity — click to focus alerts" icon={AlertTriangle}>
+            <div className="adv-hero__severity-row">
+              <button type="button" className={`chip${!severityFilter && !selectedDate ? ' active' : ''}`} onClick={() => { setSeverityFilter(''); setSelectedDate(''); }}>
+                All {(daily?.anomaly_count ?? 0).toLocaleString()}
+              </button>
+              <button type="button" className={`chip${severityFilter === 'high' ? ' active' : ''}`} onClick={() => toggleSeverity('high')}>
+                High {highCount.toLocaleString()}
+              </button>
+              <button type="button" className={`chip${severityFilter === 'medium' ? ' active' : ''}`} onClick={() => toggleSeverity('medium')}>
+                Medium {medCount.toLocaleString()}
+              </button>
+            </div>
+          </AdvHeroFooter>
+        ) : null,
+      }}
+    >
+      <ControlsPanel
+        params={params}
+        setParams={setParams}
+        open={controlsOpen}
+        setOpen={setControlsOpen}
+        loading={loading}
+      />
 
-      {/* Error banner */}
-      {error && (
-        <div className="mb-5 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />
-          <span>{error}</span>
-        </div>
+      {(hasFilters || dismissed.size > 0) && (
+        <FilterBar
+          className="waste-filter-bar mb-5"
+          search={{
+            value: serviceSearch,
+            onChange: setServiceSearch,
+            placeholder: 'Filter service anomalies…',
+          }}
+          onClear={hasFilters ? () => { setSeverityFilter(''); setSelectedDate(''); setServiceSearch(''); } : undefined}
+          resultCount={{
+            shown: visibleAnomalies.length,
+            total: daily?.anomaly_count ?? 0,
+            label: 'alerts',
+          }}
+        />
       )}
 
-      {/* KPI bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        {loading ? (
-          Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)
-        ) : (
-          <>
-            <KpiCard
-              label="Total anomalies"
-              value={daily?.anomaly_count ?? 0}
-              sub={`in ${params.lookback_days}d window`}
-              icon={AlertTriangle}
-              accent="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400"
-            />
-            <KpiCard
-              label="High severity"
-              value={highCount}
-              sub="z-score ≥ 3σ"
-              icon={TrendingUp}
-              accent="bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400"
-            />
-            <KpiCard
-              label="Medium severity"
-              value={medCount}
-              sub="z-score ≥ 2σ"
-              icon={Info}
-              accent="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400"
-            />
-            <KpiCard
-              label={`Total spend (${params.window_days}d)`}
-              value={chartData.length ? fmt(totalSpend, currency) : '—'}
-              sub={`${chartData.length} days of data`}
-              icon={Zap}
-              accent="bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400"
-            />
-          </>
-        )}
-      </div>
-
-      {/* Time-series chart */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm mb-5 p-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className="anomaly-page-card anomaly-chart-card">
+        <div className="anomaly-chart-card__head">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">Daily cost — {params.window_days}d baseline</h2>
-            <p className="text-xs text-gray-400 dark:text-gray-500">
-              Red dots mark days where spend deviated ≥ {params.threshold_sigma}σ from the rolling mean
+            <h2 className="anomaly-chart-card__title">Daily cost — {params.window_days}d baseline</h2>
+            <p className="anomaly-chart-card__sub">
+              Red dots mark days ≥ {params.threshold_sigma}σ from the rolling mean. Click a point to filter alerts.
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
-            <span className="flex items-center gap-1"><span className="inline-block w-3 h-0.5 bg-teal-500" /> Daily cost</span>
-            <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500" /> Anomaly</span>
+          <div className="anomaly-chart-legend">
+            <span className="anomaly-chart-legend__item"><span className="anomaly-chart-legend__line" /> Daily cost</span>
+            <span className="anomaly-chart-legend__item"><span className="anomaly-chart-legend__dot" /> Anomaly</span>
           </div>
         </div>
 
         {loading ? (
           <Skeleton className="h-64 rounded-lg" />
         ) : chartData.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-sm text-gray-400 dark:text-gray-500">
-            No data — enter a subscription ID and click Analyze
+          <div className="anomaly-chart-empty">
+            <strong>No cost data yet</strong>
+            <span>Run a cost sync for this subscription (stores 90 days of daily totals), then refresh.</span>
+            {daily?.message && <span>{daily.message}</span>}
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart
+              data={chartData}
+              margin={{ top: 4, right: 8, bottom: 0, left: 0 }}
+              onClick={(state) => {
+                const date = state?.activeLabel;
+                if (date) toggleDate(date);
+              }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.2)" />
-              <XAxis
-                dataKey="date"
-                tickFormatter={fmtDate}
-                tick={{ fontSize: 11 }}
-                interval="preserveStartEnd"
-                stroke="rgba(156,163,175,0.4)"
-              />
-              <YAxis
-                tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
-                tick={{ fontSize: 11 }}
-                stroke="rgba(156,163,175,0.4)"
-                width={52}
-              />
-              <Tooltip content={<CustomTooltip anomalyDates={anomalyDates} currency={currency} />} />
+              <XAxis dataKey="date" tickFormatter={fmtDate} tick={{ fontSize: 11 }} interval="preserveStartEnd" />
+              <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} width={52} />
+              <Tooltip content={<ChartTooltip anomalyDates={anomalyDates} currency={currency} selectedDate={selectedDate} />} />
               <Line
                 type="monotone"
                 dataKey="cost"
-                stroke="#0d9488"
+                stroke="var(--primary)"
                 strokeWidth={2}
                 dot={false}
-                activeDot={{ r: 4 }}
+                activeDot={{ r: 5, onClick: (_, p) => toggleDate(p?.payload?.date) }}
               />
-              {/* Anomaly reference dots */}
-              {chartData
-                .filter((d) => anomalyDates.has(d.date))
-                .map((d) => (
-                  <ReferenceDot
-                    key={d.date}
-                    x={d.date}
-                    y={d.cost}
-                    r={5}
-                    fill="#ef4444"
-                    stroke="#fff"
-                    strokeWidth={2}
-                  />
-                ))}
+              {chartData.filter((d) => anomalyDates.has(d.date)).map((d) => (
+                <ReferenceDot
+                  key={d.date}
+                  x={d.date}
+                  y={d.cost}
+                  r={selectedDate === d.date ? 7 : 5}
+                  fill={selectedDate === d.date ? 'var(--primary)' : '#ef4444'}
+                  stroke="#fff"
+                  strokeWidth={2}
+                  onClick={() => toggleDate(d.date)}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         )}
       </div>
 
-      {/* Anomaly alert list */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+      <div className="anomaly-alerts">
+        <div className="anomaly-alerts__head">
+          <h2 className="anomaly-alerts__title">
             Anomaly alerts
             {visibleAnomalies.length > 0 && (
-              <span className="ml-2 rounded-full bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400 px-2 py-0.5 text-xs font-medium">
-                {visibleAnomalies.length}
-              </span>
+              <span className="anomaly-alerts__count">{visibleAnomalies.length}</span>
             )}
           </h2>
           {dismissed.size > 0 && (
-            <button
-              onClick={() => setDismissed(new Set())}
-              className="text-xs text-teal-600 hover:underline"
-            >
+            <button type="button" className="chip" onClick={() => setDismissed(new Set())}>
               Restore {dismissed.size} dismissed
             </button>
           )}
@@ -507,7 +473,21 @@ export default function CostAnomalyDetector() {
             {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-14 rounded-xl" />)}
           </div>
         ) : visibleAnomalies.length === 0 ? (
-          <EmptyState message={daily ? 'No anomalies detected in the selected window.' : undefined} />
+          <div className="anomaly-chart-empty">
+            <strong>
+              {daily?.insufficient_history
+                ? 'Not enough history for baseline analysis'
+                : daily?.anomaly_count
+                  ? 'No alerts match your filters'
+                  : 'No anomalies detected'}
+            </strong>
+            <span>
+              {daily?.message
+                || (daily?.insufficient_history
+                  ? 'Lower the baseline window or run a cost sync to load 90 days of daily spend.'
+                  : 'Try widening the baseline window or lowering the z-score threshold.')}
+            </span>
+          </div>
         ) : (
           <div className="space-y-2">
             {visibleAnomalies.map((a) => (
@@ -515,6 +495,8 @@ export default function CostAnomalyDetector() {
                 key={a.date}
                 anomaly={a}
                 currency={currency}
+                active={selectedDate === a.date}
+                onSelect={toggleDate}
                 onDismiss={(date) => setDismissed((d) => new Set([...d, date]))}
               />
             ))}
@@ -522,11 +504,17 @@ export default function CostAnomalyDetector() {
         )}
       </div>
 
-      {/* Service anomaly table */}
       {!loading && service?.service_anomalies?.length > 0 && (
-        <ServiceAnomalyTable anomalies={service.service_anomalies} currency={currency} />
+        <ServiceAnomalyTable
+          anomalies={service.service_anomalies}
+          currency={currency}
+          selectedDate={selectedDate}
+          onSelectDate={toggleDate}
+          severityFilter={severityFilter}
+          search={serviceSearch}
+        />
       )}
-      {loading && <Skeleton className="h-48 rounded-xl" />}
-    </div>
+      {loading && <Skeleton className="h-48 rounded-xl mt-5" />}
+    </AdvancedToolLayout>
   );
 }

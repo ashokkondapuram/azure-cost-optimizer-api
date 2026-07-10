@@ -4,6 +4,8 @@ Dedicated API page for Azure Planned Maintenance across all resource types.
 
 Endpoints
 ---------
+GET  /maintenance/{subscription_id}/planned
+     Unified planned maintenance board (VMs, VMSS, health events)
 GET  /maintenance/{subscription_id}/summary
      High-level summary: planned events, VMSS pending updates, AKS config coverage
 GET  /maintenance/{subscription_id}/health-events
@@ -21,17 +23,64 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.user_auth import require_viewer
+from app.user_auth import require_authenticated_user
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
 
 
-def _db(db: Session = Depends(get_db), _=Depends(require_viewer)):
+def _auth_dep(request: Request):
+    return require_authenticated_user(request)
+
+
+def _db(db: Session = Depends(get_db), _=Depends(_auth_dep)):
     return db
+
+
+@router.get("/{subscription_id}/planned")
+def planned_maintenance(
+    subscription_id: str,
+    upcoming_only: bool = Query(True, description="Hide past maintenance windows"),
+    force_refresh: bool = Query(False, description="Pull live data from Azure and update cache"),
+    db: Session = Depends(_db),
+) -> dict[str, Any]:
+    """Planned maintenance across VMs, VMSS instances, activity logs, and service health."""
+    from app.maintenance_sync import load_planned_maintenance_from_db, sync_planned_maintenance
+
+    sub = subscription_id.strip().lower()
+    if force_refresh:
+        return sync_planned_maintenance(db, sub, upcoming_only=upcoming_only)
+
+    result = load_planned_maintenance_from_db(db, sub, upcoming_only=upcoming_only)
+    if result.get("synced_at") is None and not result.get("sync_in_progress"):
+        from app.maintenance_worker import is_maintenance_sync_pending, request_maintenance_sync
+
+        queued = request_maintenance_sync(sub, reason="cache_miss")
+        result["sync_pending"] = queued or is_maintenance_sync_pending(sub)
+        if result["sync_pending"]:
+            result["message"] = "No cached data yet. Sync has been queued."
+    return result
+
+
+@router.post("/{subscription_id}/sync")
+def trigger_maintenance_sync(
+    subscription_id: str,
+    db: Session = Depends(_db),
+) -> dict[str, Any]:
+    """Enqueue a background maintenance sync for this subscription."""
+    from app.maintenance_worker import is_maintenance_sync_pending, request_maintenance_sync
+
+    sub = subscription_id.strip().lower()
+    queued = request_maintenance_sync(sub, reason="api")
+    return {
+        "subscription_id": sub,
+        "queued": queued,
+        "pending": is_maintenance_sync_pending(sub),
+        "message": "Sync queued" if queued else "Sync already in progress or worker disabled",
+    }
 
 
 @router.get("/{subscription_id}/summary")

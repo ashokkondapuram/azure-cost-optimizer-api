@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Finding, CostSyncRun, ResourceSnapshot
+from app.models import OptimizationFinding, CostSyncRun, ResourceSnapshot
 
 router = APIRouter(prefix="/global-health", tags=["Global Health"])
 
@@ -60,8 +60,8 @@ def global_health_score(
     subs = [_normalize(s) for s in subscription_ids]
 
     all_findings = (
-        db.query(Finding)
-        .filter(Finding.subscription_id.in_(subs))
+        db.query(OptimizationFinding)
+        .filter(OptimizationFinding.subscription_id.in_(subs))
         .all()
     )
 
@@ -120,14 +120,14 @@ def global_top_findings(
     subs = [_normalize(s) for s in subscription_ids]
 
     query = (
-        db.query(Finding)
+        db.query(OptimizationFinding)
         .filter(
-            Finding.subscription_id.in_(subs),
-            Finding.status.in_(["open", "active", None, ""]),
+            OptimizationFinding.subscription_id.in_(subs),
+            OptimizationFinding.status.in_(["open", "active", None, ""]),
         )
     )
     if severity:
-        query = query.filter(Finding.severity == severity.lower())
+        query = query.filter(OptimizationFinding.severity == severity.lower())
 
     findings = query.all()
     findings.sort(

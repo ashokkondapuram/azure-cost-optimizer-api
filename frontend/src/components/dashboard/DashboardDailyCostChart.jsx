@@ -2,7 +2,6 @@ import React, { useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
-  Brush,
   CartesianGrid,
   Legend,
   Line,
@@ -17,6 +16,8 @@ import { formatCurrency } from '../../utils/format';
 import { formatChartAxis } from '../../utils/costCurrency';
 import { buildMtdComparisonSeries } from '../../utils/costComparisonChart';
 import TrendBadge from '../visual/TrendBadge';
+import ChartBrushNavigator from '../charts/ChartBrushNavigator';
+import { useChartBrushRange, useBrushedChartData } from '../../hooks/useChartBrushRange';
 
 function CostTooltip({ active, payload, label, currency, compareMode }) {
   if (!active || !payload?.length) return null;
@@ -42,7 +43,6 @@ export default function DashboardDailyCostChart({
   monthlyComparison = null,
 }) {
   const [hiddenSeries, setHiddenSeries] = useState({});
-  const [brushRange, setBrushRange] = useState(null);
   const [viewMode, setViewMode] = useState('daily');
 
   const { series: mtdSeries, comparison } = useMemo(
@@ -51,11 +51,21 @@ export default function DashboardDailyCostChart({
   );
 
   const activeData = viewMode === 'mtd' && mtdSeries.length ? mtdSeries : chartData;
-  const visibleChartData = useMemo(() => {
-    if (!brushRange || viewMode === 'mtd') return activeData;
-    const [start, end] = brushRange;
-    return activeData.slice(start, end + 1);
-  }, [activeData, brushRange, viewMode]);
+  const brushSource = viewMode === 'daily' ? chartData : [];
+  const {
+    startIndex,
+    endIndex,
+    maxIndex,
+    isZoomed,
+    onBrushChange,
+    resetBrush,
+  } = useChartBrushRange(brushSource.length);
+  const visibleChartData = useBrushedChartData(
+    activeData,
+    viewMode === 'daily' ? startIndex : 0,
+    viewMode === 'daily' ? endIndex : Math.max(0, activeData.length - 1),
+    viewMode === 'daily' ? maxIndex : Math.max(0, activeData.length - 1),
+  );
 
   if (!chartData?.length && !mtdSeries.length) return null;
 
@@ -69,14 +79,14 @@ export default function DashboardDailyCostChart({
           <button
             type="button"
             className={`btn btn-ghost btn-sm${viewMode === 'daily' ? ' active' : ''}`}
-            onClick={() => { setViewMode('daily'); setBrushRange(null); }}
+            onClick={() => { setViewMode('daily'); resetBrush(); }}
           >
             Daily
           </button>
           <button
             type="button"
             className={`btn btn-ghost btn-sm${viewMode === 'mtd' ? ' active' : ''}`}
-            onClick={() => { setViewMode('mtd'); setBrushRange(null); }}
+            onClick={() => { setViewMode('mtd'); resetBrush(); }}
             disabled={!mtdSeries.length}
           >
             MTD vs last month
@@ -125,8 +135,8 @@ export default function DashboardDailyCostChart({
             </>
           )}
         </div>
-        {brushRange && viewMode === 'daily' && (
-          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setBrushRange(null)}>
+        {isZoomed && viewMode === 'daily' && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={resetBrush}>
             Reset zoom
           </button>
         )}
@@ -215,20 +225,18 @@ export default function DashboardDailyCostChart({
               stroke="none"
             />
           ))}
-          {viewMode === 'daily' && (
-            <Brush
-              dataKey="date"
-              height={22}
-              stroke="var(--border)"
-              onChange={(range) => {
-                if (range?.startIndex != null && range?.endIndex != null) {
-                  setBrushRange([range.startIndex, range.endIndex]);
-                }
-              }}
-            />
-          )}
         </AreaChart>
       </ResponsiveContainer>
+      {viewMode === 'daily' && (
+        <ChartBrushNavigator
+          data={chartData}
+          dataKey="date"
+          valueKey="cost"
+          startIndex={startIndex}
+          endIndex={endIndex}
+          onRangeChange={onBrushChange}
+        />
+      )}
     </div>
   );
 }

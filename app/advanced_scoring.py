@@ -31,9 +31,11 @@ from app.models import (
     WorkloadProfile,
 )
 from app.optimizer.advanced_engine import score_resource
+from app.savings_aggregation import resolve_resource_savings
 from app.optimizer.dependency_analyzer import analyze_dependencies, enrich_dependency_criticality
 from app.optimizer.trend_analyzer import analyze_resource_trends
 from app.optimizer.workload_profiler import profile_resource, upsert_workload_profiles
+from app.optimization_savings import distinct_scoreboard_savings
 from app.utils import norm_arm_id, parse_tags_json, today_iso, utc_now
 
 log = structlog.get_logger()
@@ -209,6 +211,11 @@ def score_subscription(
         valuable_findings = [f for f in finding_rows if is_valuable_finding(f)]
         advisor_savings = sum(a.potential_savings_monthly or 0 for a in cost_advisor)
         finding_savings = sum(f.estimated_savings_usd or 0 for f in valuable_findings)
+        savings_breakdown = resolve_resource_savings(
+            resource_id=rid,
+            advisor_recs=cost_advisor,
+            findings=valuable_findings,
+        )
         rule_ids = {f.rule_id for f in valuable_findings if f.rule_id}
 
         profile = profiles.get(rid)
@@ -230,6 +237,7 @@ def score_subscription(
             trends=trends,
             advisor_savings=advisor_savings,
             finding_savings=finding_savings,
+            unified_monthly_savings=savings_breakdown.unified_monthly,
             rule_ids=rule_ids,
             has_cost_advisor=bool(cost_advisor),
             has_perf_advisor=bool(perf_advisor),
@@ -501,6 +509,13 @@ def list_scoreboard(
     }
     maintenance_held_count = tier_summary.get("maintenance_hold", 0)
 
+    savings_rows = q.with_entities(
+        OptimizationScoring.resource_id,
+        OptimizationScoring.cost_savings_monthly,
+    ).all()
+    total_savings = distinct_scoreboard_savings(savings_rows)
+    page_savings = distinct_scoreboard_savings(rows)
+
     return {
         "subscription_id": sub,
         "evaluation_date": eval_date,
@@ -508,11 +523,13 @@ def list_scoreboard(
         "total": total,
         "offset": safe_offset,
         "limit": safe_limit,
+        "has_more": safe_offset + len(rows) < total,
         "tier_summary": tier_summary,
         "maintenance_blocked_count": maintenance_held_count,
-        "total_estimated_monthly_savings": round(
-            sum(r.cost_savings_monthly or 0 for r in rows), 2,
-        ),
+        "total_estimated_monthly_savings": total_savings,
+        "distinct_estimated_monthly_savings": total_savings,
+        "distinct_page_estimated_monthly_savings": page_savings,
+        "page_estimated_monthly_savings": page_savings,
         "items": [serialize_scorecard(r) for r in rows],
         "mode": "advisory",
     }

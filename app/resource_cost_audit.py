@@ -10,7 +10,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.cost_db import month_for_timeframe, _latest_cost_sync_month, _latest_synced_month, _normalize_sub
+from app.cost_db import month_for_timeframe, _normalize_sub
 from app.cost_explorer_sync import resource_type_display_name
 from app.models import CostByResourceTypeSnapshot
 from app.optimizer.component_map import CANONICAL_TO_COMPONENT
@@ -37,10 +37,6 @@ def load_mtd_cost_by_arm_type(
         )
         .all()
     )
-    if not rows and month is None:
-        latest = _latest_cost_sync_month(db, subscription_id) or _latest_synced_month(db, subscription_id)
-        if latest and latest != m:
-            return load_mtd_cost_by_arm_type(db, subscription_id, month=latest)
     if not rows:
         return {}, None
 

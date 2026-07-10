@@ -58,9 +58,9 @@ def test_build_findings_summary_counts_status_severity_and_type(db_session):
     assert summary["by_status"]["acknowledged"] == 1
     assert summary["by_status"]["implemented"] == 0
     assert summary["by_severity"]["HIGH"] == 1
-    assert summary["by_severity"]["MEDIUM"] == 1
+    assert "MEDIUM" not in summary["by_severity"]
     assert summary["by_category"]["COMPUTE"] == 1
-    assert summary["by_category"]["SECURITY"] == 1
+    assert "SECURITY" not in summary["by_category"]
     assert summary["with_savings_findings"] == 1
     assert summary["governance_findings"] == 2
     assert summary["total_estimated_savings_usd"] == 50.0

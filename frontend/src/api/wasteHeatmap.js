@@ -1,22 +1,22 @@
 /**
  * API client for Waste Heatmap — wraps /idle-resources/sweep and /idle-resources/summary.
- * No separate backend router needed; the heatmap is derived from idle_resources data.
  */
-
-const BASE = '/api';
+import api from './client';
 
 export async function fetchIdleSweep(subscriptionId, params = {}) {
-  const { severity, category, include_resolved = false } = params;
-  const qs = new URLSearchParams({ include_resolved: String(include_resolved) });
-  if (severity) qs.set('severity', severity);
-  if (category) qs.set('category', category);
-  const res = await fetch(`${BASE}/idle-resources/sweep/${encodeURIComponent(subscriptionId)}?${qs}`);
-  if (!res.ok) throw new Error(`Idle sweep failed: ${res.status}`);
-  return res.json();
+  const { severity, category, include_resolved = false, limit = 2000 } = params;
+  const { data } = await api.get(`/idle-resources/sweep/${encodeURIComponent(subscriptionId)}`, {
+    params: {
+      include_resolved,
+      limit,
+      ...(severity ? { severity } : {}),
+      ...(category ? { category } : {}),
+    },
+  });
+  return data;
 }
 
 export async function fetchIdleSummary(subscriptionId) {
-  const res = await fetch(`${BASE}/idle-resources/summary/${encodeURIComponent(subscriptionId)}`);
-  if (!res.ok) throw new Error(`Idle summary failed: ${res.status}`);
-  return res.json();
+  const { data } = await api.get(`/idle-resources/summary/${encodeURIComponent(subscriptionId)}`);
+  return data;
 }

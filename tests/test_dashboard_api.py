@@ -454,3 +454,38 @@ def test_dashboard_overview_prefers_db_costs_over_live(db_session, monkeypatch):
     assert overview["data_source"] == "postgresql"
     assert overview["cost"]["summary"]["pretax_total"] == 250.0
     assert overview["cost"]["summary"]["source"] == "database"
+
+
+def test_dashboard_overview_skips_live_azure_bundle(db_session, monkeypatch):
+    from app.dashboard import get_dashboard_overview
+    from datetime import date
+
+    bundle_calls: list[str] = []
+
+    def _bundle_should_not_run(*args, **kwargs):
+        bundle_calls.append("called")
+        return {}
+
+    monkeypatch.setattr("app.cost_live_bundle.query_dashboard_cost_bundle_live", _bundle_should_not_run)
+    monkeypatch.setattr("app.dashboard.api._enqueue_cost_sync", lambda *a, **k: None)
+
+    sub = "sub-fast"
+    month = date.today().strftime("%Y-%m")
+    db_session.add(CostSyncRun(
+        id=str(uuid.uuid4()),
+        subscription_id=sub,
+        month=month,
+        mtd_start=f"{month}-01",
+        mtd_end=date.today().isoformat(),
+        total_billing=180.0,
+        total_usd=140.0,
+        billing_currency="CAD",
+        services_json="[]",
+        changes_json="[]",
+        synced_at=datetime.now(timezone.utc),
+    ))
+    db_session.commit()
+
+    overview = get_dashboard_overview(db_session, sub)
+    assert overview["data_source"] == "postgresql"
+    assert bundle_calls == []

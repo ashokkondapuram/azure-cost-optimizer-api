@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "service": "Azure Virtual Network",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/virtual-network/virtual-networks-overview",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-network/"
+  },
+  "integrated_services": {
+    "peering_ingress_per_gb_usd": 0.01,
+    "peering_egress_per_gb_usd": 0.01,
+    "nat_gateway_hourly_usd": 0.045,
+    "vpn_gateway_hourly_usd_baseline": 0.19,
+    "express_route_port_hourly_usd": 0.30
+  },
+  "optimization_thresholds": {
+    "peering_review_min_count": 1,
+    "peering_baseline_monthly_usd": 35.0,
+    "empty_subnet_address_prefix_min": 8,
+    "nat_gateway_consolidation_min": 2,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 10.0
+  }
+}

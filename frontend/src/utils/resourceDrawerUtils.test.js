@@ -26,4 +26,19 @@ describe('getDrawerOverviewTiles', () => {
       expect.arrayContaining(['Version', 'Nodes', 'Location']),
     );
   });
+
+  test('returns no overview tiles for disks (properties panel covers inventory)', () => {
+    const tiles = getDrawerOverviewTiles(
+      {
+        type: 'Microsoft.Compute/disks',
+        location: 'eastus',
+        resourceGroup: 'rg-prod',
+        state: 'Unattached',
+        sku: 'Premium_LRS',
+      },
+      { apiPath: '/resources/disks' },
+    );
+
+    expect(tiles).toEqual([]);
+  });
 });

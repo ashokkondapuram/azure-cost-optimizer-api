@@ -1,255 +1,314 @@
 /**
- * Reservation Advisor — RI & Savings Plan recommendations
- *
- * ┌─ KPI bar: opportunity savings / underutilised count / VM spend ──┐
- * ├─ Commitment type filter (all / reserved_instance / savings_plan) ┤
- * ├─ Recommendation cards (sortable, ranked by annual savings)       ┤
- * └─ Underutilised commitments warning panel                         ┘
- *
- * Data: GET /reservations/coverage/{id}
- *       GET /reservations/recommendations/{id}
+ * Reservation Advisor — Azure live reservations + Advisor + engine findings.
  */
-import React, { useState, useCallback, useContext } from 'react';
-import { BookMarked, DollarSign, AlertTriangle, TrendingDown, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
-import { fetchReservationCoverage, fetchReservationRecommendations } from '../api/reservationAdvisor';
 
-let SubscriptionContext;
-try { ({ SubscriptionContext } = require('../context/SubscriptionContext')); } catch { SubscriptionContext = null; }
-function useCtxSub() {
-  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line
-  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
-}
-
-const fmt = (n, cur = 'CAD') =>
-  n != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n) : '—';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import {
+  AlertTriangle, ChevronDown, ChevronUp,
+  Shield, X,
+} from 'lucide-react';
+import { fetchReservationAdvisor, syncReservationAdvisor } from '../api/reservationAdvisor';
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
+import FilterBar from '../components/FilterBar';
+import {
+  AdvSkeleton,
+  AdvSyncButton,
+  AdvFilterChips,
+  AdvHighlightPanel,
+  AdvEmptyState,
+  fmtCurrency,
+} from '../components/advanced/AdvUI';
+import { AdvHeroFooter } from '../components/advanced/AdvancedToolHero';
 
 const COMMITMENT_BADGE = {
-  reserved_instance: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  savings_plan:      'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  reserved_instance: 'ai-tier-badge ai-tier-badge--low',
+  savings_plan: 'ai-tier-badge ai-tier-badge--medium',
 };
-const SEVERITY_BADGE = {
-  high:     'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  medium:   'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  low:      'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
-  critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+const SOURCE_LABEL = {
+  azure_advisor: 'Azure Advisor',
+  engine_finding: 'Engine finding',
+  azure_capacity: 'Azure RI',
+  azure_billing_benefits: 'Savings plan',
 };
 
-function Skeleton({ className = '' }) {
-  return <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`} />;
-}
-
-function KpiCard({ label, value, sub, icon: Icon, accent }) {
+function RecRow({ rec, currency, active, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const ct = rec.commitment_type || 'reserved_instance';
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 shadow-sm">
-      <div className={`mt-0.5 rounded-lg p-2 ${accent}`}><Icon size={16} /></div>
-      <div>
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-50">{value}</p>
-        {sub && <p className="text-xs text-gray-400 dark:text-gray-500">{sub}</p>}
+    <div className={`anomaly-alert anomaly-alert--${rec.severity === 'high' ? 'high' : 'medium'}${active ? ' anomaly-alert--active' : ''}`}>
+      <div
+        className="anomaly-alert__row"
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelect(rec.id)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(rec.id); } }}
+      >
+        <div className="anomaly-alert__meta min-w-0 flex-1">
+          <span className={COMMITMENT_BADGE[ct] || 'chip'}>{ct.replace('_', ' ')}</span>
+          <span className="chip">{SOURCE_LABEL[rec.source] || rec.source}</span>
+          <span className="anomaly-alert__date truncate">{rec.title}</span>
+        </div>
+        <div className="anomaly-alert__stats">
+          <span className="anomaly-alert__cost">{fmtCurrency(rec.estimated_annual_savings, currency)}/yr</span>
+          <button type="button" className="text-gray-400" onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}>
+            {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function RecCard({ rec, currency, expanded, onToggle }) {
-  const annual = rec.estimated_annual_savings_usd ?? rec.estimated_monthly_savings_usd * 12;
-  const monthly = rec.estimated_monthly_savings_usd;
-  const ct = rec.scope === 'subscription' ? 'savings_plan'
-    : rec.commitment_type ?? (rec.rule_id?.includes('SAVINGS') ? 'savings_plan' : 'reserved_instance');
-
-  return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
-      <button onClick={onToggle} className="w-full flex items-start justify-between px-4 py-3 text-left gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            {rec.severity && (
-              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SEVERITY_BADGE[rec.severity?.toLowerCase()] ?? SEVERITY_BADGE.low}`}>
-                {rec.severity}
-              </span>
-            )}
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${COMMITMENT_BADGE[ct] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>
-              {ct?.replace('_', ' ')}
-            </span>
-            <span className="font-medium text-sm text-gray-800 dark:text-gray-100 truncate">{rec.title}</span>
-          </div>
-          <p className="text-xs text-gray-400 dark:text-gray-500 font-mono truncate" title={rec.resource_id}>{rec.resource_id}</p>
-        </div>
-        <div className="text-right shrink-0">
-          <p className="text-base font-bold tabular-nums text-teal-600 dark:text-teal-400">{fmt(annual, currency)}/yr</p>
-          <p className="text-xs tabular-nums text-gray-400 dark:text-gray-500">{fmt(monthly, currency)}/mo</p>
-        </div>
-        {expanded ? <ChevronUp size={14} className="text-gray-400 mt-1 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 mt-1 shrink-0" />}
-      </button>
-      {expanded && (
-        <div className="border-t border-gray-50 dark:border-gray-700 px-4 py-3 space-y-2">
-          {rec.detail && <p className="text-sm text-gray-600 dark:text-gray-300">{rec.detail}</p>}
-          {rec.recommendation && (
-            <div className="rounded-lg bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800 px-3 py-2">
-              <p className="text-xs font-semibold text-teal-700 dark:text-teal-300 mb-1">Recommendation</p>
-              <p className="text-sm text-teal-800 dark:text-teal-200">{rec.recommendation}</p>
-            </div>
-          )}
-          {rec.running_vm_count != null && (
-            <p className="text-xs text-gray-500">Running VMs: <span className="font-semibold">{rec.running_vm_count}</span></p>
-          )}
-          {rec.scope && (
-            <p className="text-xs text-gray-500">Scope: <span className="font-semibold capitalize">{rec.scope}</span></p>
-          )}
+      {open && (
+        <div className="anomaly-alert__detail" style={{ gridTemplateColumns: '1fr' }}>
+          {rec.detail && <p className="text-sm text-gray-600 m-0">{rec.detail}</p>}
+          {rec.recommendation && <p className="text-sm text-teal-700 m-0">{rec.recommendation}</p>}
+          {rec.resource_id && <p className="tag-rg-table__mono m-0 truncate" title={rec.resource_id}>{rec.resource_id}</p>}
         </div>
       )}
     </div>
   );
 }
 
-function UnderutilisedPanel({ items, currency }) {
-  if (!items?.length) return null;
+function CommitmentTable({ items, currency, selectedId, onSelect }) {
+  if (!items?.length) {
+    return <div className="tag-rg-explorer__empty">No active reservations or savings plans returned from Azure.</div>;
+  }
   return (
-    <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10 overflow-hidden mb-5">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-amber-100 dark:border-amber-800">
-        <AlertTriangle size={14} className="text-amber-500" />
-        <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-200">Underutilised commitments</h2>
-        <span className="ml-1 rounded-full bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-2 py-0.5 text-xs font-medium">{items.length}</span>
-      </div>
-      <div className="divide-y divide-amber-50 dark:divide-amber-900/30">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center justify-between px-4 py-2.5 gap-4">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{item.title}</p>
-              <p className="text-xs text-gray-400 font-mono truncate" title={item.resource_id}>{item.resource_id}</p>
-            </div>
-            <div className="text-right shrink-0">
-              {item.utilisation_pct != null && (
-                <p className="text-sm tabular-nums font-semibold text-amber-600">{item.utilisation_pct}% utilised</p>
-              )}
-              {item.wasted_usd > 0 && (
-                <p className="text-xs tabular-nums text-red-500">{fmt(item.wasted_usd, currency)} wasted</p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="tag-rg-explorer__scroll">
+      <table className="tag-rg-table">
+        <thead>
+          <tr>
+            {['Name', 'Type', 'Term', 'Utilization'].map((h) => <th key={h}>{h}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((c) => (
+            <tr
+              key={c.id}
+              className={`tag-rg-table__row${selectedId === c.id ? ' tag-rg-table__row--active' : ''}`}
+              onClick={() => onSelect(c.id)}
+              role="button"
+              tabIndex={0}
+            >
+              <td className="tag-rg-table__name" title={c.display_name}>{c.display_name}</td>
+              <td><span className={COMMITMENT_BADGE[c.commitment_type] || 'chip'}>{c.commitment_type?.replace('_', ' ')}</span></td>
+              <td className="tag-rg-table__count">{c.term || '—'}</td>
+              <td className="tag-rg-table__count">
+                {c.utilization_percent != null ? `${c.utilization_percent}%` : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 export default function ReservationAdvisor() {
-  const ctxSub = useCtxSub();
-  const [subId, setSubId] = useState(ctxSub ?? '');
-  const [commitmentType, setCommitmentType] = useState('all');
-  const [coverage, setCoverage] = useState(null);
-  const [recs, setRecs] = useState(null);
+  const { subscription } = useAdvancedSubscription();
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
-  const [expanded, setExpanded] = useState({});
+  const [commitmentType, setCommitmentType] = useState('all');
+  const [search, setSearch] = useState('');
+  const [selectedRecId, setSelectedRecId] = useState('');
+  const [selectedCommitmentId, setSelectedCommitmentId] = useState('');
+  const [hideWarnings, setHideWarnings] = useState(false);
 
   const load = useCallback(async () => {
-    if (!subId.trim()) return;
-    setLoading(true); setError(null);
+    if (!subscription?.trim()) return;
+    setLoading(true);
+    setError(null);
     try {
-      const [cov, rec] = await Promise.all([
-        fetchReservationCoverage(subId),
-        fetchReservationRecommendations(subId, commitmentType),
-      ]);
-      setCoverage(cov); setRecs(rec);
-    } catch (e) { setError(e.message); }
-    finally { setLoading(false); }
-  }, [subId, commitmentType]);
+      const result = await fetchReservationAdvisor(subscription, { commitment_type: commitmentType });
+      setData(result);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [subscription, commitmentType]);
 
-  const currency = coverage?.billing_currency ?? 'CAD';
-  const recsItems = recs?.recommendations ?? [];
+  useEffect(() => { load(); }, [load]);
+
+  const sync = useCallback(async () => {
+    if (!subscription?.trim()) return;
+    setSyncing(true);
+    try {
+      const result = await syncReservationAdvisor(subscription, { trigger_advisor_generate: true });
+      setData(result);
+      setHideWarnings(false);
+    } catch (e) {
+      setError(e);
+    } finally {
+      setSyncing(false);
+    }
+  }, [subscription]);
+
+  const currency = data?.billing_currency ?? 'CAD';
+  const summary = data?.summary ?? {};
+
+  const filteredRecs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let rows = data?.recommendations ?? [];
+    if (q) {
+      rows = rows.filter((r) =>
+        r.title?.toLowerCase().includes(q)
+        || r.resource_id?.toLowerCase().includes(q)
+        || r.commitment_type?.toLowerCase().includes(q),
+      );
+    }
+    if (selectedCommitmentId) {
+      rows = rows.filter((r) => !r.resource_id || r.resource_id.includes(selectedCommitmentId.split('/').pop()));
+    }
+    return rows;
+  }, [data?.recommendations, search, selectedCommitmentId]);
+
+  const syncButton = <AdvSyncButton onClick={sync} syncing={syncing} loading={loading} />;
+  const metaItems = [data?.month && `Spend month: ${data.month}`].filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1">
-          <BookMarked size={20} className="text-teal-600" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Reservation Advisor</h1>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          RI & Savings Plan purchase recommendations — ranked by annual savings opportunity.
-        </p>
-      </div>
+    <AdvancedToolLayout
+      title="Reservation advisor"
+      subtitle="Live Azure reservations and savings plans, merged with Advisor and engine commitment findings."
+      iconKey="reservationAdvisor"
+      iconRoute="/reservation-advisor"
+      accent="reservations"
+      metaItems={metaItems}
+      sources={data?.sources}
+      warnings={data?.warnings}
+      hideWarnings={hideWarnings}
+      onDismissWarnings={() => setHideWarnings(true)}
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      errorTitle="Could not load reservation advisor"
+      headerActions={syncButton}
+      hero={{
+        isLoading: loading && !data,
+        subtitle: data?.month ? `Spend month ${data.month}` : undefined,
+        metrics: [
+          {
+            label: 'Annual opportunity',
+            value: fmtCurrency(summary.total_annual_opportunity, currency),
+            featured: true,
+            tone: (summary.total_annual_opportunity ?? 0) > 0 ? 'success' : 'default',
+            sub: `${summary.total_recommendations ?? 0} recommendations`,
+          },
+          {
+            label: 'Coverage estimate',
+            value: summary.estimated_coverage_pct != null ? `${summary.estimated_coverage_pct}%` : '—',
+            sub: `${summary.active_reservations_count ?? 0} RIs · ${summary.active_savings_plans_count ?? 0} SPs`,
+          },
+          {
+            label: 'VM spend',
+            value: fmtCurrency(summary.total_vm_spend_monthly, currency),
+            sub: data?.month || 'Current month',
+          },
+          {
+            label: 'Underutilised',
+            value: (summary.underutilised_count ?? 0).toLocaleString(),
+            tone: (summary.underutilised_count ?? 0) > 0 ? 'warning' : 'default',
+            sub: 'below 80% utilisation',
+          },
+        ],
+        footer: (data?.active_commitments ?? []).length > 0 ? (
+          <AdvHeroFooter label="Azure inventory" icon={Shield}>
+            <span className="adv-hero__plan-chip">
+              <strong>{(data?.active_commitments ?? []).length}</strong> active commitments synced from Azure
+            </span>
+          </AdvHeroFooter>
+        ) : null,
+      }}
+    >
+      <AdvFilterChips
+        options={[
+          { id: 'all', label: 'All' },
+          { id: 'reserved_instance', label: 'Reserved instance' },
+          { id: 'savings_plan', label: 'Savings plan' },
+        ]}
+        value={commitmentType}
+        onChange={setCommitmentType}
+      />
 
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <input
-          type="text" value={subId} onChange={(e) => setSubId(e.target.value)}
-          placeholder="Subscription ID"
-          className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 w-80"
-        />
-        <div className="flex items-center gap-2">
-          {['all', 'reserved_instance', 'savings_plan'].map((ct) => (
-            <button key={ct}
-              onClick={() => setCommitmentType(ct)}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors capitalize ${
-                commitmentType === ct
-                  ? 'bg-teal-600 text-white'
-                  : 'border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              {ct.replace('_', ' ')}
+      <FilterBar
+        className="waste-filter-bar mb-5"
+        search={{ value: search, onChange: setSearch, placeholder: 'Search recommendations…' }}
+        onClear={search ? () => setSearch('') : undefined}
+        resultCount={{ shown: filteredRecs.length, total: data?.recommendations?.length ?? 0, label: 'recommendations' }}
+      />
+
+      <div className="tag-rg-explorer mb-5">
+        <div className="tag-rg-explorer__header">
+          <div>
+            <h3 className="tag-rg-explorer__title">Active commitments and recommendations</h3>
+            <p className="tag-rg-explorer__sub">Select a commitment on the left; review purchase recommendations on the right.</p>
+          </div>
+          {(selectedRecId || selectedCommitmentId) && (
+            <button type="button" className="chip active" onClick={() => { setSelectedRecId(''); setSelectedCommitmentId(''); }}>
+              Clear selection <X size={12} />
             </button>
-          ))}
+          )}
         </div>
-        <button onClick={load} disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 px-4 py-1.5 text-sm font-medium text-white transition-colors">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Loading…' : 'Load'}
-        </button>
-      </div>
-
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />{error}
-        </div>
-      )}
-
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
-        {loading ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />) : (
-          <>
-            <KpiCard label="Annual opportunity" value={fmt(recs?.total_estimated_annual_savings_usd, currency)}
-              sub={`${recs?.total_recommendations ?? '—'} recommendations`} icon={DollarSign}
-              accent="bg-teal-100 text-teal-600 dark:bg-teal-900/40 dark:text-teal-400" />
-            <KpiCard label="Monthly opportunity" value={fmt(coverage?.total_opportunity_savings_usd, currency)}
-              sub="from open findings" icon={TrendingDown}
-              accent="bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400" />
-            <KpiCard label="Underutilised" value={coverage?.underutilised_commitments?.length ?? '—'}
-              sub="active commitments" icon={AlertTriangle}
-              accent="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400" />
-          </>
-        )}
-      </div>
-
-      {/* Underutilised */}
-      {!loading && <UnderutilisedPanel items={coverage?.underutilised_commitments} currency={currency} />}
-
-      {/* Recommendation cards */}
-      {!loading && recsItems.length > 0 && (
-        <div className="mb-5">
-          <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">
-            Recommendations
-            <span className="ml-2 text-xs font-normal text-gray-400">{recsItems.length} items — click to expand</span>
-          </h2>
-          <div className="space-y-2">
-            {recsItems.map((rec, i) => (
-              <RecCard key={i} rec={rec} currency={currency}
-                expanded={!!expanded[i]}
-                onToggle={() => setExpanded((e) => ({ ...e, [i]: !e[i] }))}
+        <div className="tag-rg-explorer__grid">
+          <div className="tag-rg-explorer__pane tag-rg-explorer__pane--groups">
+            <div className="tag-rg-explorer__pane-head">
+              <p className="tag-rg-explorer__pane-title">Azure inventory</p>
+              <p className="tag-rg-explorer__pane-meta">{(data?.active_commitments ?? []).length} active</p>
+            </div>
+            <CommitmentTable
+              items={data?.active_commitments}
+              currency={currency}
+              selectedId={selectedCommitmentId}
+              onSelect={(id) => setSelectedCommitmentId((v) => (v === id ? '' : id))}
+            />
+          </div>
+          <div className="tag-rg-explorer__pane tag-rg-explorer__pane--resources">
+            <div className="tag-rg-explorer__pane-head">
+              <p className="tag-rg-explorer__pane-title">Purchase recommendations</p>
+              <p className="tag-rg-explorer__pane-meta">{filteredRecs.length.toLocaleString()} showing</p>
+            </div>
+            {loading ? <AdvSkeleton className="h-48 m-4 rounded-xl" /> : !filteredRecs.length ? (
+              <AdvEmptyState
+                title="No recommendations match"
+                description="Run Sync from Azure to refresh Advisor and inventory."
               />
-            ))}
+            ) : (
+              <div className="p-3 space-y-2 max-h-[28rem] overflow-auto">
+                {filteredRecs.map((rec) => (
+                  <RecRow
+                    key={rec.id}
+                    rec={rec}
+                    currency={currency}
+                    active={selectedRecId === rec.id}
+                    onSelect={(id) => setSelectedRecId((v) => (v === id ? '' : id))}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
-      {loading && <div className="space-y-2">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>}
-
-      {!loading && !coverage && !error && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500 gap-3">
-          <BookMarked size={40} strokeWidth={1.5} />
-          <p className="text-sm font-medium">Enter a subscription ID and click Load</p>
-        </div>
+      {!loading && (data?.underutilised_commitments ?? []).length > 0 && (
+        <AdvHighlightPanel
+          title="Underutilised commitments"
+          count={data.underutilised_commitments.length}
+          icon={AlertTriangle}
+          accent="warning"
+        >
+          {data.underutilised_commitments.map((item) => (
+            <div key={item.id} className="ai-analysis-hp__item">
+              <div>
+                <p className="tag-rg-table__name">{item.title}</p>
+                <p className="tag-rg-table__mono">{item.commitment_type?.replace('_', ' ')}</p>
+              </div>
+              <div className="text-right">
+                {item.utilisation_pct != null && <p className="text-amber-600 font-semibold">{item.utilisation_pct}% utilised</p>}
+                {item.wasted_usd > 0 && <p className="text-xs text-red-500">{fmtCurrency(item.wasted_usd, currency)} at risk</p>}
+              </div>
+            </div>
+          ))}
+        </AdvHighlightPanel>
       )}
-    </div>
+    </AdvancedToolLayout>
   );
 }

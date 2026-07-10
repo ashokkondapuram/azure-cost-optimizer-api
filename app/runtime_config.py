@@ -36,7 +36,7 @@ def get_cors_origins() -> list[str]:
         raw = (app_cfg.get("cors_allowed_origins") or "").strip()
         if raw:
             origins = [o.strip() for o in raw.split(",") if o.strip()]
-    except Exception:
+    except (ValueError, KeyError, AttributeError, TypeError):
         pass
 
     with _lock:
@@ -57,7 +57,7 @@ def get_request_timeout_seconds() -> int:
         app_cfg = _with_db(lambda db: get_effective_config(db, "application"))
         if app_cfg.get("request_timeout_seconds") is not None:
             timeout = int(app_cfg["request_timeout_seconds"])
-    except Exception:
+    except (ValueError, KeyError, AttributeError, TypeError):
         pass
 
     with _lock:
@@ -81,7 +81,7 @@ def get_runtime_status() -> dict:
         if stored_db:
             stored_url = mask_database_url(build_database_url(db_cfg))
         azure_auth_mode = _with_db(lambda db: get_effective_config(db, "azure").get("auth_mode"))
-    except Exception:
+    except (ValueError, KeyError, AttributeError, TypeError):
         pass
 
     from app.ai_client import build_ai_config
@@ -94,7 +94,7 @@ def get_runtime_status() -> dict:
     try:
         ai_cfg = _with_db(lambda db: get_effective_config(db, "ai"))
         ai_ready = bool(build_ai_config(ai_cfg))
-    except Exception:
+    except (ValueError, KeyError, AttributeError, TypeError):
         pass
 
     from app.cost_export import export_config_summary

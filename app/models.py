@@ -243,6 +243,28 @@ class CostSyncRun(Base):
     synced_at          = Column(DateTime(timezone=True), default=_now)
 
 
+class CostPeriodTotalSnapshot(Base):
+    """
+    Authoritative subscription totals from Azure Cost Management for calendar presets
+    (e.g. ThisYear YTD). Refreshed on every cost sync (default: hourly).
+  """
+    __tablename__ = "cost_period_totals"
+    __table_args__ = (
+        UniqueConstraint("subscription_id", "timeframe", name="uq_cost_period_totals_sub_tf"),
+        Index("ix_cpt_sub_synced", "subscription_id", "synced_at"),
+    )
+
+    id               = Column(String, primary_key=True)
+    subscription_id  = Column(String, nullable=False)
+    timeframe        = Column(String, nullable=False)   # ThisYear, ThisQuarter, …
+    period_start     = Column(String, nullable=False)     # YYYY-MM-DD
+    period_end       = Column(String, nullable=False)     # YYYY-MM-DD
+    pretax_total     = Column(Float, nullable=False, default=0.0)
+    cost_usd_total   = Column(Float, nullable=False, default=0.0)
+    billing_currency = Column(String, default="CAD")
+    synced_at        = Column(DateTime(timezone=True), default=_now)
+
+
 class CostByServiceSnapshot(Base):
     """
     MTD cost aggregated by Azure service name (e.g. 'Virtual Machines', 'Storage').
@@ -293,6 +315,50 @@ class ComponentSyncState(Base):
     synced_at    = Column(DateTime(timezone=True), nullable=False)
     last_status  = Column(String, nullable=True)
     updated_at   = Column(DateTime(timezone=True), default=_now, onupdate=_now)
+
+
+class MaintenanceSyncRun(Base):
+    """One row per planned-maintenance Azure → DB sync."""
+    __tablename__ = "maintenance_sync_runs"
+    __table_args__ = (
+        Index("ix_msr_sub_started", "subscription_id", "started_at"),
+    )
+
+    id              = Column(String, primary_key=True)
+    subscription_id = Column(String, nullable=False, index=True)
+    started_at      = Column(DateTime(timezone=True), nullable=False)
+    finished_at     = Column(DateTime(timezone=True), nullable=True)
+    status          = Column(String, default="running")
+    items_count     = Column(Integer, default=0)
+    error_message   = Column(Text, nullable=True)
+
+
+class PlannedMaintenanceItem(Base):
+    """Cached planned maintenance rows served to the UI."""
+    __tablename__ = "planned_maintenance_items"
+    __table_args__ = (
+        UniqueConstraint("subscription_id", "external_id", name="uq_pmi_sub_external"),
+        Index("ix_pmi_sub_synced", "subscription_id", "synced_at"),
+        Index("ix_pmi_sub_source", "subscription_id", "source"),
+    )
+
+    id              = Column(String, primary_key=True)
+    subscription_id = Column(String, nullable=False, index=True)
+    external_id     = Column(String, nullable=False)
+    source          = Column(String, nullable=False)
+    resource_type   = Column(String, nullable=True)
+    resource_name   = Column(String, nullable=True)
+    resource_id     = Column(String, nullable=True)
+    resource_group  = Column(String, nullable=True)
+    location        = Column(String, nullable=True)
+    title           = Column(String, nullable=True)
+    status          = Column(String, nullable=True)
+    window_start    = Column(String, nullable=True)
+    window_end      = Column(String, nullable=True)
+    detail          = Column(Text, nullable=True)
+    payload_json    = Column(Text, default="{}")
+    sync_run_id     = Column(String, nullable=True)
+    synced_at       = Column(DateTime(timezone=True), nullable=False)
 
 
 # ---------------------------------------------------------------------------
@@ -415,7 +481,7 @@ class AppUser(Base):
     username      = Column(String, nullable=False, unique=True)
     display_name  = Column(String)
     password_hash = Column(String, nullable=False)
-    role          = Column(String, nullable=False, default="viewer")  # admin | viewer
+    role          = Column(String, nullable=False, default="viewer")  # superuser | admin | viewer
     is_active     = Column(Boolean, default=True)
     created_at    = Column(DateTime(timezone=True), default=_now)
     last_login_at = Column(DateTime(timezone=True), nullable=True)
@@ -605,6 +671,9 @@ class AdvisorRecommendation(Base):
     description               = Column(Text, nullable=True)
     potential_savings_monthly = Column(Float, nullable=True)
     potential_savings_yearly  = Column(Float, nullable=True)
+    recommendation_type_id    = Column(String, nullable=True)
+    current_sku               = Column(String, nullable=True)
+    target_sku                = Column(String, nullable=True)
     status                    = Column(String, nullable=False, default="Active")
     generated_at              = Column(DateTime(timezone=True), nullable=False)
     synced_at                 = Column(DateTime(timezone=True), default=_now, onupdate=_now)

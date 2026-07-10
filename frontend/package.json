@@ -2,6 +2,9 @@
   "name": "azure-cost-optimizer-ui",
   "version": "5.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@csstools/normalize.css": "^12.1.1",
     "@tanstack/react-query": "^5.40.0",

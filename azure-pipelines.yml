@@ -8,6 +8,7 @@ trigger:
       - main
       - feature-ashok
       - dev-slot
+      - features/all-improvements
 
 pr: none
 
@@ -27,7 +28,7 @@ stages:
     # included in the zip; main.py serves frontend/build as static files.
     - task: NodeTool@0
       inputs:
-        versionSpec: 18.x
+        versionSpec: 22.x
 
     - script: |
         set -euo pipefail

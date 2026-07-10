@@ -114,7 +114,7 @@ def resolve_auth_config(db=None) -> dict:
         try:
             from app.services.system_settings import get_effective_config
             config = get_effective_config(session, "azure")
-        except Exception:
+        except (ImportError, AttributeError, KeyError):
             pass
         return config
 
@@ -168,12 +168,12 @@ def reload_credential(db=None) -> None:
     try:
         from app import azure_client
         azure_client.reset_client_cache()
-    except Exception:
+    except (ImportError, AttributeError):
         pass
     try:
         from app import http_client
         http_client.clear_cache()
-    except Exception:
+    except (ImportError, AttributeError):
         pass
 
 

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "service": "Azure Private Link Service",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/private-link/private-link-service-overview",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-privatelinkservices-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/private-link/"
+  },
+  "pricing": {
+    "hourly_usd_baseline": 0.01,
+    "data_processed_per_gb_usd": 0.01,
+    "nat_ports_per_instance": 64000
+  },
+  "optimization_thresholds": {
+    "nat_port_pressure_pct": 80.0,
+    "nat_port_low_pct": 30.0,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5.0
+  }
+}

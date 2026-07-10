@@ -1,36 +1,9 @@
-from app.resources.types import ResourceMonitorProfile, TechnicalFetchSpec, field, metric
+"""Compatibility shim — implementation: it_services.network_privatelinkservice.resource_profile"""
 
-CANONICAL_TYPE = "network/privatelinkservice"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Network/privateLinkServices",
-    display_name="Private link service",
-    sync_property_paths=(
-        "visibility",
-        "autoApproval",
-        "fqdns",
-        "ipConfigurations",
-        "privateEndpointConnections",
-        "provisioningState",
-    ),
-    generic_arm_sync=True,
-    enrich_if_missing=("privateEndpointConnections",),
-    fields=(
-        field("connection_count", "computed:pls_connection_count", "Private endpoint connections", "association",
-              "PRIVATE_LINK_UNUSED_EXTENDED"),
-    ),
-)
+_impl = import_module("it_services.network_privatelinkservice.resource_profile")
 
-EXTRA_USAGE_METRICS = (
-    metric("cost_export", "mtd_cost", "monthly_cost_usd",
-           "Month-to-date billed cost", "P7D", "PRIVATE_LINK_COST"),
-)
 
-MONITOR_PROFILE = ResourceMonitorProfile(
-    monitor_arm_type="microsoft.network/privatelinkservices",
-    canonical_type=CANONICAL_TYPE,
-    display_name="Private link service",
-    doc_ref="microsoft-network-privatelinkservices-metrics",
-    metrics=(),
-)
+def __getattr__(name: str):
+    return getattr(_impl, name)

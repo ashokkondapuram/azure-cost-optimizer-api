@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -132,10 +132,11 @@ def update_budget(subscription_id: str, name: str, payload: BudgetUpdate) -> dic
     return {"message": "Budget updated", "budget": budget}
 
 
-@router.delete("/{subscription_id}/{name}", status_code=204)
-def delete_budget(subscription_id: str, name: str) -> None:
+@router.delete("/{subscription_id}/{name}", status_code=204, response_class=Response)
+def delete_budget(subscription_id: str, name: str):
     """Delete a budget."""
     key = _budget_key(subscription_id, name)
     if key not in _BUDGETS:
         raise HTTPException(status_code=404, detail=f"Budget '{name}' not found.")
     del _BUDGETS[key]
+    return Response(status_code=204)

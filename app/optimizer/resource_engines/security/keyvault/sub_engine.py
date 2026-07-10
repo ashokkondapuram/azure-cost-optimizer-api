@@ -1,22 +1,9 @@
-"""Key Vault optimization sub-engine."""
-from __future__ import annotations
+"""Compatibility shim — implementation: it_services.security_keyvault.engine.sub_engine"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.resource_engines.runtime.base import ResourceSubEngine
-from app.optimizer.resource_engines.security.keyvault.analysis import analyze_keyvaults
+_impl = import_module("it_services.security_keyvault.engine.sub_engine")
 
 
-class KeyVaultSubEngine(ResourceSubEngine):
-    component = "Key Vault"
-    bucket_keys = ('keyvaults',)
-
-    def analyze(self, buckets: dict[str, list]) -> list[Any]:
-        vaults = self.prepare_resources(buckets.get("keyvaults") or [])
-        findings = analyze_keyvaults(
-            self.engine,
-            self.ctx.subscription_id,
-            vaults,
-            self.ctx.cost_by_resource,
-        )
-        return self.enhance_findings(findings, vaults)
+def __getattr__(name: str):
+    return getattr(_impl, name)

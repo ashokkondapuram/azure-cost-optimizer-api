@@ -136,6 +136,7 @@ def test_private_dns_evidence_reflects_record_set_threshold():
 
 
 def test_monthly_cost_trend_projects_vs_last_month():
+    import calendar
     from datetime import date, timedelta
 
     today = date.today()
@@ -148,6 +149,33 @@ def test_monthly_cost_trend_projects_vs_last_month():
         {"date": f"{current_key}-15", "cost_billing": 50.0},
     ]
     trend = _monthly_cost_trend_from_points(points, mtd_amount=100.0)
+    days_in_month = calendar.monthrange(today.year, today.month)[1]
+    days_elapsed = max(1, today.day)
     assert trend["last_month"] == 200.0
-    assert trend["projected"] == 100.0
+    assert trend["projected"] == round(100.0 * (days_in_month / days_elapsed), 2)
     assert trend["delta_pct"] is not None
+
+
+def test_weekly_cost_differs_from_mtd_projection():
+    from app.dashboard.api import _monthly_cost_trend_from_points, _weekly_cost_from_daily_points
+
+    points = [
+        {"date": "2026-07-01", "cost_billing": 40.0},
+        {"date": "2026-07-02", "cost_billing": 35.0},
+        {"date": "2026-07-03", "cost_billing": 30.0},
+        {"date": "2026-07-04", "cost_billing": 25.0},
+        {"date": "2026-07-05", "cost_billing": 20.0},
+        {"date": "2026-07-06", "cost_billing": 15.0},
+        {"date": "2026-07-07", "cost_billing": 10.0},
+        {"date": "2026-06-24", "cost_billing": 12.0},
+        {"date": "2026-06-25", "cost_billing": 12.0},
+        {"date": "2026-06-26", "cost_billing": 12.0},
+        {"date": "2026-06-27", "cost_billing": 12.0},
+        {"date": "2026-06-28", "cost_billing": 12.0},
+        {"date": "2026-06-29", "cost_billing": 12.0},
+        {"date": "2026-06-30", "cost_billing": 12.0},
+    ]
+    weekly = _weekly_cost_from_daily_points(points)
+    trend = _monthly_cost_trend_from_points(points, mtd_amount=175.0)
+    assert weekly["amount"] == 175.0
+    assert trend["projected"] != weekly["amount"]

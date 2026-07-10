@@ -46,6 +46,15 @@ const IMPACT_TONES = {
   Low: 'low',
 };
 
+/** Categories shown as icon-only chips in resource table Advisor cells. */
+export const ADVISOR_TABLE_CATEGORIES = [
+  'Cost',
+  'Performance',
+  'HighAvailability',
+  'Security',
+  'OperationalExcellence',
+];
+
 export function advisorCategoryLabel(category) {
   if (!category) return 'Advisor';
   return CATEGORY_LABELS[category] || String(category).replace(/([a-z])([A-Z])/g, '$1 $2');
@@ -80,6 +89,35 @@ export function primaryAdvisorRecommendation(recommendations = []) {
     if (ia !== ib) return ia - ib;
     return (advisorMonthlySavings(b) || 0) - (advisorMonthlySavings(a) || 0);
   })[0];
+}
+
+/** One recommendation per table category (Cost, Reliability, Security), highest impact first. */
+export function advisorCategoriesForTable(recommendations = []) {
+  if (!recommendations?.length) return [];
+  const impactRank = { High: 0, Medium: 1, Low: 2 };
+  const byCategory = new Map();
+
+  for (const rec of recommendations) {
+    if (!ADVISOR_TABLE_CATEGORIES.includes(rec.category)) continue;
+    const existing = byCategory.get(rec.category);
+    if (!existing) {
+      byCategory.set(rec.category, rec);
+      continue;
+    }
+    const ia = impactRank[existing.impact] ?? 3;
+    const ib = impactRank[rec.impact] ?? 3;
+    if (ib < ia) {
+      byCategory.set(rec.category, rec);
+      continue;
+    }
+    if (ib === ia && (advisorMonthlySavings(rec) || 0) > (advisorMonthlySavings(existing) || 0)) {
+      byCategory.set(rec.category, rec);
+    }
+  }
+
+  return ADVISOR_TABLE_CATEGORIES
+    .filter((category) => byCategory.has(category))
+    .map((category) => byCategory.get(category));
 }
 
 export function indexAdvisorByResourceId(items = []) {

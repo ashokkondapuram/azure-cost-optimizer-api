@@ -8,18 +8,29 @@ export default function OptimizationGroupPanel({
   meta,
   count,
   savings = 0,
+  savingsHint = '',
   currency = 'CAD',
   defaultOpen = true,
+  open: controlledOpen,
+  onOpenChange,
+  scrollableBody = false,
   children,
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const setOpen = (next) => {
+    if (isControlled) onOpenChange?.(next);
+    else setInternalOpen(next);
+  };
 
   return (
     <section className={`opt-group-panel${open ? ' opt-group-panel--open' : ''}`}>
       <button
         type="button"
         className="opt-group-panel__header"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
         <ChevronDown size={16} className="opt-group-panel__chevron" aria-hidden />
@@ -30,14 +41,18 @@ export default function OptimizationGroupPanel({
         <div className="opt-group-panel__stats">
           <span className="opt-group-panel__count">{count}</span>
           {savings > 0 && (
-            <span className="opt-group-panel__savings">
+            <span
+              className="opt-group-panel__savings"
+              title={savingsHint ? `${savingsHint} estimated savings for resources in this group` : undefined}
+            >
               {formatCurrency(savings, { currency })}/mo
+              {savingsHint && <span className="opt-group-panel__savings-hint">{savingsHint}</span>}
             </span>
           )}
         </div>
       </button>
       {open && (
-        <div className="opt-group-panel__body">
+        <div className={`opt-group-panel__body${scrollableBody ? ' opt-group-panel__body--scrollable' : ''}`}>
           {children}
         </div>
       )}

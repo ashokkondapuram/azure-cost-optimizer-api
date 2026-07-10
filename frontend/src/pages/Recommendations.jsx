@@ -28,7 +28,7 @@ import useFilterPresets from '../hooks/useFilterPresets';
 import {
   LoadingState, SubscriptionRequired, EmptyState, QueryErrorState,
 } from '../components/QueryStates';
-import { BookmarkPlus, List, Download, X, AlertTriangle, CircleDot } from 'lucide-react';
+import { List, Download, AlertTriangle, CircleDot } from 'lucide-react';
 import { PAGE_ICONS } from '../config/assetIcons';
 import { matchFinding, isCostOptimizationFinding } from '../utils/filterUtils';
 import { dedupeOpenFindings, normalizeArmId } from '../utils/findingDedupe';

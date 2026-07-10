@@ -147,6 +147,11 @@ def _get_http_client() -> httpx.Client:
 
 _cooldown_lock = threading.Lock()
 _cooldown_until: float = 0.0  # monotonic — all threads pause ARM calls until this time
+_cooldown_logged: bool = False
+
+_budget_log_lock = threading.Lock()
+_last_budget_log_at: float = 0.0
+_BUDGET_LOG_INTERVAL_SEC = max(5.0, float(_int_env("ARM_BUDGET_LOG_INTERVAL_SEC", 60)))
 
 _patient_lock = threading.Lock()
 _patient_depth = 0
@@ -182,19 +187,24 @@ def _short_url(url: str) -> str:
 
 def _wait_for_global_cooldown() -> None:
     """Block all ARM traffic while any thread is serving a Retry-After penalty."""
+    global _cooldown_logged
     while True:
         with _cooldown_lock:
             remaining = _cooldown_until - time.monotonic()
-        if remaining <= 0:
-            return
-        log.info("arm_cooldown_wait", seconds=round(remaining, 1))
+            if remaining <= 0:
+                _cooldown_logged = False
+                return
+            if not _cooldown_logged:
+                log.warning("arm_cooldown_wait", seconds=round(remaining, 1))
+                _cooldown_logged = True
         time.sleep(min(remaining, 5.0))
 
 
 def _extend_global_cooldown(seconds: float) -> None:
-    global _cooldown_until
+    global _cooldown_until, _cooldown_logged
     with _cooldown_lock:
         _cooldown_until = max(_cooldown_until, time.monotonic() + seconds)
+        _cooldown_logged = False
 
 
 def _raise_for(resp: httpx.Response):
@@ -224,7 +234,12 @@ def _adaptive_throttle(resp: httpx.Response) -> None:
     if rem < _REMAINING_FLOOR:
         # The closer to zero, the longer we wait (capped at 10s).
         delay = min(10.0, (_REMAINING_FLOOR - rem) / _REMAINING_FLOOR * 10.0)
-        log.info("arm_budget_low", remaining=rem, delay=round(delay, 2))
+        global _last_budget_log_at
+        now = time.monotonic()
+        with _budget_log_lock:
+            if now - _last_budget_log_at >= _BUDGET_LOG_INTERVAL_SEC:
+                _last_budget_log_at = now
+                log.warning("arm_budget_low", remaining=rem, delay=round(delay, 2))
         time.sleep(delay)
 
 

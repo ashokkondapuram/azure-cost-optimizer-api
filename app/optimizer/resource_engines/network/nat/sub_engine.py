@@ -1,17 +1,9 @@
-"""NAT Gateways optimization sub-engine."""
-from __future__ import annotations
+"""Compatibility shim — implementation: it_services.network_nat.engine.sub_engine"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.resource_engines.runtime.base import ResourceSubEngine
-from app.optimizer.resource_engines.network.nat.analysis import analyze_nat_gateways
+_impl = import_module("it_services.network_nat.engine.sub_engine")
 
 
-class NatSubEngine(ResourceSubEngine):
-    component = "NAT Gateways"
-    bucket_keys = ('nat_gateways',)
-
-    def analyze(self, buckets: dict[str, list]) -> list[Any]:
-        nats = self.prepare_resources(buckets.get("nat_gateways") or [])
-        findings = analyze_nat_gateways(self.engine, self.ctx.subscription_id, nats, self.ctx.cost_by_resource)
-        return self.enhance_findings(findings, nats)
+def __getattr__(name: str):
+    return getattr(_impl, name)

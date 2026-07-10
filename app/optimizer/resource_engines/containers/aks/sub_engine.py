@@ -1,17 +1,9 @@
-"""AKS optimization sub-engine."""
-from __future__ import annotations
+"""Compatibility shim — implementation: it_services.containers_aks.engine.sub_engine"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.resource_engines.runtime.base import ResourceSubEngine
-from app.optimizer.resource_engines.containers.aks.analysis import analyze_aks
+_impl = import_module("it_services.containers_aks.engine.sub_engine")
 
 
-class AksSubEngine(ResourceSubEngine):
-    component = "AKS"
-    bucket_keys = ('aks_clusters',)
-
-    def analyze(self, buckets: dict[str, list]) -> list[Any]:
-        clusters = self.prepare_resources(buckets.get("aks_clusters") or [], metrics_kind="node")
-        findings = analyze_aks(self.engine, self.ctx.subscription_id, clusters, self.ctx.aks_node_pools, self.ctx.node_metrics, self.ctx.cost_by_resource)
-        return self.enhance_findings(findings, clusters)
+def __getattr__(name: str):
+    return getattr(_impl, name)

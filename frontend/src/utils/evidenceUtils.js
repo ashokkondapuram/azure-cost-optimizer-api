@@ -1,5 +1,7 @@
 /** Normalize API/persisted evidence payloads for safe UI rendering. */
 
+import { enrichServiceEvidenceFilter } from '../it-services/registry';
+
 function coerceText(value) {
   if (value == null || value === '') return '';
   if (typeof value === 'string') return value;
@@ -396,10 +398,9 @@ export function filterPerformanceMetricsForContext(metrics = [], inventoryContex
     if (inventoryContext.armType) hideIds.add('arm_resource_type');
     if (inventoryContext.state) {
       hideIds.add('resource_state');
-      if (inventoryContext.canonicalType === 'compute/disk') {
-        hideIds.add('disk_state');
-      }
     }
+
+    enrichServiceEvidenceFilter(hideIds, inventoryContext);
 
     if (hideIds.size) {
       filtered = filtered.filter((m) => !hideIds.has(m.id));

@@ -20,7 +20,7 @@ from app.optimizer.resource_engines.compute.vm.helpers import (
     vm_utilization,
 )
 from app.resource_utilization import merge_vm_utilization_facts, vm_sizing_metrics_ok
-from app.cost_utils import resource_cost
+from app.cost_utils import project_mtd_to_monthly_run_rate, resource_cost
 from app.vm_sizing import VmSizingRecommendation, VmUtilization, recommend_vm_sku
 
 RIGHTSIZING_RULE_IDS = frozenset({
@@ -294,29 +294,15 @@ def compute_vm_sizing_recommendation(
 
     pricing = None
     if recommendation and recommendation.suggested_sku and recommendation.action in SIZING_ACTIONS:
-        retail = estimate_vm_sku_savings(
+        run_rate = project_mtd_to_monthly_run_rate(monthly_cost) if monthly_cost else None
+        pricing = estimate_vm_sku_savings(
             location,
             sku,
             recommendation.suggested_sku,
             os_type=vm_os_type(vm),
+            actual_monthly_cost=monthly_cost,
+            monthly_run_rate_usd=run_rate,
         )
-        if retail and monthly_cost is not None and monthly_cost > 0:
-            cur_retail = float(retail.get("current_monthly_cost_usd") or 0)
-            sug_retail = float(retail.get("suggested_monthly_cost_usd") or 0)
-            if cur_retail > 0 and sug_retail >= 0:
-                savings_ratio = (cur_retail - sug_retail) / cur_retail
-                suggested = monthly_cost * (1 - savings_ratio)
-                pricing = {
-                    **retail,
-                    "current_monthly_cost_usd": round(monthly_cost, 2),
-                    "suggested_monthly_cost_usd": round(suggested, 2),
-                    "estimated_monthly_savings_usd": round(monthly_cost - suggested, 2),
-                    "pricing_source": "export_cost_with_retail_sku_ratio",
-                }
-            else:
-                pricing = retail
-        else:
-            pricing = retail
 
     return util, recommendation, pricing
 

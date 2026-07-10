@@ -1,19 +1,9 @@
-from app.resources.types import TechnicalFetchSpec, metric
+"""Compatibility shim — implementation: it_services.analytics_synapse.resource_profile"""
 
-CANONICAL_TYPE = "analytics/synapse"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Synapse/workspaces",
-    display_name="Azure Synapse",
-    sync_property_paths=("provisioningState", "settings"),
-    generic_arm_sync=True,
-    fields=(),
-)
+_impl = import_module("it_services.analytics_synapse.resource_profile")
 
-EXTRA_USAGE_METRICS = (
-    metric("cost_export", "mtd_cost", "monthly_cost_usd",
-           "Month-to-date billed cost", "P7D", "SYNAPSE_PAUSE"),
-)
 
-MONITOR_PROFILE = None
+def __getattr__(name: str):
+    return getattr(_impl, name)

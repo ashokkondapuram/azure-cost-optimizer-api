@@ -51,8 +51,10 @@ _DAILY_MTD_TTL = _int_env("COST_CACHE_DAILY_MTD_TTL_SEC", 3600)
 
 def ttl_for_query(query_type: str, timeframe: str) -> int:
     tf = (timeframe or "").strip()
-    if query_type == "forecast":
+    if query_type == "forecast" or query_type.startswith("forecast_"):
         return _FORECAST_TTL
+    if query_type.startswith("monthly_history_"):
+        return _MTD_TTL
     if query_type == "daily":
         if tf in ("MonthToDate", "BillingMonthToDate"):
             return _DAILY_MTD_TTL

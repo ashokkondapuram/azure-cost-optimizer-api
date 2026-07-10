@@ -53,8 +53,8 @@ def test_api_costs_still_requires_auth_without_token():
     assert resp.json()["detail"] == "Sign in required"
 
 
-def test_token_expire_default_is_five_minutes(monkeypatch):
+def test_token_expire_default_is_eight_hours(monkeypatch):
     monkeypatch.delenv("JWT_EXPIRE_HOURS", raising=False)
     monkeypatch.delenv("JWT_EXPIRE_MINUTES", raising=False)
     delta = token_expire_delta()
-    assert delta.total_seconds() == 300
+    assert delta.total_seconds() == 8 * 3600

@@ -1,8 +1,8 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Save, RefreshCw, Cloud, Database, Settings2, Boxes, CheckCircle2, AlertTriangle,
-  Trash2, Users, Sparkles, Activity,
+  Trash2, Users, Sparkles, Activity, LayoutGrid,
 } from 'lucide-react';
 import { AppCtx } from '../App';
 import Toggle from '../components/Toggle';
@@ -25,14 +25,19 @@ import {
 } from '../api/settings';
 import { clearDatabaseData } from '../api/azure';
 import UsersPanel from '../components/settings/UsersPanel';
+import NavAccessPanel from '../components/settings/NavAccessPanel';
 import DataFreshnessPanel from '../components/settings/DataFreshnessPanel';
 import SettingsHero from '../components/settings/SettingsHero';
+import { useAuth } from '../context/AuthContext';
 
 const TAB_SECTIONS = [
   {
     id: 'access',
     label: 'Access',
-    tabs: [{ id: 'users', label: 'Users', Icon: Users }],
+    tabs: [
+      { id: 'users', label: 'Users', Icon: Users },
+      { id: 'nav-access', label: 'Sidebar access', Icon: LayoutGrid, superuserOnly: true },
+    ],
   },
   {
     id: 'connections',
@@ -69,6 +74,10 @@ const TAB_META = {
   users: {
     title: 'Users',
     description: 'Manage accounts, roles, and access to this application.',
+  },
+  'nav-access': {
+    title: 'Sidebar access',
+    description: 'Control which sidebar panels admins and viewers can see.',
   },
   azure: {
     title: 'Azure connection',
@@ -737,6 +746,14 @@ function stripMeta(data) {
 }
 
 export default function Settings() {
+  const { isSuperuser } = useAuth();
+  const tabSections = useMemo(
+    () => TAB_SECTIONS.map((section) => ({
+      ...section,
+      tabs: section.tabs.filter((t) => !t.superuserOnly || isSuperuser),
+    })),
+    [isSuperuser],
+  );
   const qc = useQueryClient();
   const { subscription, subscriptionOptions } = useContext(AppCtx);
   const [tab, setTab] = useState('users');
@@ -833,7 +850,7 @@ export default function Settings() {
       {!isLoading && !isError && (
         <div className="settings-layout">
           <nav className="settings-sidebar card" aria-label="Settings categories">
-            {TAB_SECTIONS.map((section) => (
+            {tabSections.map((section) => (
               <div key={section.id} className="settings-sidebar__section">
                 <div className="settings-sidebar__heading">{section.label}</div>
                 {section.tabs.map(({ id, label, Icon }) => (
@@ -869,6 +886,8 @@ export default function Settings() {
                 />
               ) : tab === 'users' ? (
                 <UsersPanel />
+              ) : tab === 'nav-access' ? (
+                <NavAccessPanel />
               ) : (
                 <>
                   <ActiveForm

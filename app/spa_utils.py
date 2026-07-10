@@ -16,6 +16,7 @@ _SPA_DOCUMENT_PATHS = frozenset({
 # Protected app routes with no JSON handler on the exact path (refresh must load the SPA).
 _SPA_EXACT_ROUTES = frozenset({
     "/",
+    "/login",
     "/k8s",
     "/optimization-hub",
     "/engine",

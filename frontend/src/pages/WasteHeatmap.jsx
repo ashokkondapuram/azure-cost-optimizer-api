@@ -1,99 +1,359 @@
 /**
  * Waste Heatmap page
  *
- * Visualises idle/orphaned resource waste as a CSS-grid heat map where
- * each cell is a resource category × severity combination, coloured by
- * estimated savings magnitude.  Below the heatmap a sortable findings
- * table lets engineers drill into individual items.
+ * Visualises idle/orphaned resource waste as a category × severity heatmap,
+ * Recharts breakdowns, and a sortable findings table with a compact summary panel.
  *
- * Data source: GET /idle-resources/sweep/{subscriptionId}
- *              GET /idle-resources/summary/{subscriptionId}
+ * Data: GET /idle-resources/sweep/{subscriptionId}
+ *       GET /idle-resources/summary/{subscriptionId}
  */
 
-import React, { useState, useMemo, useCallback, useContext } from 'react';
-import { RefreshCw, Flame, DollarSign, AlertTriangle, ChevronUp, ChevronDown, Info } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import {
+  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer,
+} from 'recharts';
+import { ChevronUp, ChevronDown, X, Flame, Play } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { fetchIdleSweep, fetchIdleSummary } from '../api/wasteHeatmap';
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
+import OptimizationHubLinks from '../components/navigation/OptimizationHubLinks';
+import WasteHeatmapHero, { WasteHeatmapDataNote } from '../components/waste/WasteHeatmapHero';
+import WasteFindingDetailPanel from '../components/waste/WasteFindingDetailPanel';
+import { wasteHeatmapFiltersFromSearchParams } from '../utils/wasteHeatmapLinks';
+import FilterBar from '../components/FilterBar';
+import PaginationControls from '../components/table/PaginationControls';
+import { AdvEmptyState, AdvSkeleton } from '../components/advanced/AdvUI';
+import { formatCurrency } from '../utils/format';
 
-let SubscriptionContext;
-try { ({ SubscriptionContext } = require('../context/SubscriptionContext')); } catch { SubscriptionContext = null; }
-function useCtxSub() {
-  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line
-  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
+// ── constants & helpers ─────────────────────────────────────────────────────
+const fmtUSD = (n) => formatCurrency(n, { currency: 'USD', decimals: 0 });
+
+function fmtSavings(amount) {
+  const value = Number(amount);
+  if (!value || Number.isNaN(value) || value <= 0) return null;
+  return fmtUSD(value);
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────
-const fmtUSD = (n) =>
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+const CATEGORY_COLORS = ['#0d9488', '#0891b2', '#7c3aed', '#db2777', '#d97706', '#16a34a', '#dc2626', '#ea580c'];
 
-const SEVERITIES = ['critical', 'high', 'medium', 'low'];
-const SEVERITY_LABEL = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low' };
-
-// Heat intensity → Tailwind bg classes (warm palette: white → amber → red)
-function heatClass(savings, maxSavings) {
-  if (!savings || maxSavings === 0) return 'bg-gray-100 dark:bg-gray-800 text-gray-400';
-  const ratio = savings / maxSavings;
-  if (ratio >= 0.75) return 'bg-red-500 text-white';
-  if (ratio >= 0.5)  return 'bg-orange-400 text-white';
-  if (ratio >= 0.25) return 'bg-amber-300 text-gray-900';
-  return 'bg-yellow-100 text-gray-700 dark:bg-yellow-900/40 dark:text-yellow-200';
-}
-
-const SEVERITY_BADGE = {
-  critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  high:     'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-  medium:   'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  low:      'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+const SEVERITIES = ['critical', 'high', 'medium', 'low', 'info'];
+const SEVERITY_LABEL = { critical: 'Critical', high: 'High', medium: 'Medium', low: 'Low', info: 'Info' };
+const SEVERITY_COLOR = {
+  critical: '#ef4444',
+  high: '#f97316',
+  medium: '#f59e0b',
+  low: '#22c55e',
+  info: '#0ea5e9',
 };
+const CATEGORY_ORDER = ['Compute', 'Kubernetes', 'Storage', 'Network', 'Database', 'Security', 'Cost', 'Other'];
+
+const EMPTY_FILTERS = { severity: null, category: null, ruleId: null, search: '' };
+
+function normalizeSeverity(value) {
+  const sev = String(value || 'medium').toLowerCase();
+  return SEVERITIES.includes(sev) ? sev : 'low';
+}
+
+function sortCategories(categories) {
+  return [...categories].sort((a, b) => {
+    const ai = CATEGORY_ORDER.indexOf(a);
+    const bi = CATEGORY_ORDER.indexOf(b);
+    return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+  });
+}
+
+function applyWasteFilters(items, filters) {
+  if (!items?.length) return [];
+  const q = filters.search.trim().toLowerCase();
+  return items.filter((item) => {
+    if (filters.severity && normalizeSeverity(item.severity) !== filters.severity) return false;
+    if (filters.category && (item.category || 'Other') !== filters.category) return false;
+    if (filters.ruleId && item.rule_id !== filters.ruleId) return false;
+    if (!q) return true;
+    const hay = [
+      item.resource_name,
+      item.resource_id,
+      item.category,
+      item.title,
+      item.rule_id,
+      item.detail,
+    ].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
 
 function Skeleton({ className = '' }) {
-  return <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`} />;
+  return <AdvSkeleton className={className} />;
 }
 
-function KpiCard({ label, value, sub, icon: Icon, accent }) {
+function WasteMetaStrip({ sweep, summary }) {
+  const actionClassEntries = Object.entries(sweep?.by_action_class_savings || {});
+  const items = [
+    sweep?.total_idle_findings != null && {
+      label: 'Total findings',
+      value: sweep.total_idle_findings.toLocaleString(),
+    },
+    sweep?.total_estimated_savings_usd != null && {
+      label: 'Est. savings',
+      value: fmtUSD(sweep.total_estimated_savings_usd),
+    },
+    sweep?.double_count_avoided_usd > 0 && {
+      label: 'Overlap removed',
+      value: fmtUSD(sweep.double_count_avoided_usd),
+    },
+    actionClassEntries.length > 0 && sweep?.by_action_class_savings?.decommission > 0 && {
+      label: 'Decommission',
+      value: fmtUSD(sweep.by_action_class_savings.decommission),
+    },
+    actionClassEntries.length > 0 && sweep?.by_action_class_savings?.rightsize > 0 && {
+      label: 'Rightsize',
+      value: fmtUSD(sweep.by_action_class_savings.rightsize),
+    },
+    sweep?.findings_with_savings != null && {
+      label: 'With savings',
+      value: sweep.findings_with_savings.toLocaleString(),
+    },
+    summary?.most_common_rule?.rule_id && {
+      label: 'Top rule',
+      value: summary.most_common_rule.title ?? summary.most_common_rule.rule_id,
+    },
+    sweep?.items_truncated && {
+      label: 'Table rows',
+      value: `${(sweep.items_returned ?? 0).toLocaleString()} shown`,
+    },
+  ].filter(Boolean);
+
+  if (!items.length) return null;
+
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 shadow-sm">
-      <div className={`mt-0.5 rounded-lg p-2 ${accent}`}><Icon size={16} /></div>
-      <div>
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">{label}</p>
-        <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-50">{value}</p>
-        {sub && <p className="text-xs text-gray-400 dark:text-gray-500">{sub}</p>}
+    <div className="waste-meta-strip" aria-label="Waste heatmap summary">
+      {items.map((item) => (
+        <span key={item.label} className="waste-meta-strip__chip">
+          <span className="waste-meta-strip__label">{item.label}</span>
+          <span className="waste-meta-strip__value">{item.value}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0]?.payload;
+  return (
+    <div className="waste-chart-tooltip">
+      <p className="waste-chart-tooltip__title">{label || row?.name}</p>
+      {payload.map((p) => (
+        <p key={p.dataKey} className="waste-chart-tooltip__row">
+          {p.name}: <strong>{typeof p.value === 'number' && p.dataKey?.includes('savings') ? fmtUSD(p.value) : p.value}</strong>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function buildGridFromMatrix(heatmapMatrix) {
+  const grid = {};
+  let maxSavings = 0;
+  let maxCount = 0;
+  const categories = new Set();
+  for (const [key, cell] of Object.entries(heatmapMatrix || {})) {
+    const count = cell?.count ?? 0;
+    const savings = cell?.savings_usd ?? cell?.savings ?? 0;
+    if (!count) continue;
+    grid[key] = { count, savings };
+    categories.add(key.split('|')[0]);
+    if (savings > maxSavings) maxSavings = savings;
+    if (count > maxCount) maxCount = count;
+  }
+  return {
+    categories: sortCategories([...categories]),
+    grid,
+    maxSavings,
+    maxCount,
+  };
+}
+
+// ── Recharts: severity donut ────────────────────────────────────────────────
+function SeverityDonutChart({ bySeverity, loading, activeSeverity, onSelectSeverity }) {
+  const data = useMemo(() => (
+    SEVERITIES.map((key) => ({
+      key,
+      name: SEVERITY_LABEL[key],
+      value: bySeverity?.[key] ?? 0,
+    })).filter((d) => d.value > 0)
+  ), [bySeverity]);
+
+  if (loading) return <Skeleton className="h-56 rounded-xl" />;
+  if (!data.length) return null;
+
+  return (
+    <div className="waste-chart-card">
+      <h3 className="waste-chart-card__title">Findings by severity</h3>
+      <p className="waste-chart-card__sub">Click a slice or legend chip to filter the table</p>
+      <ResponsiveContainer width="100%" height={220}>
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={52}
+            outerRadius={82}
+            dataKey="value"
+            nameKey="name"
+            paddingAngle={2}
+            onClick={(_, index) => onSelectSeverity(data[index]?.key)}
+          >
+            {data.map((entry) => (
+              <Cell
+                key={entry.key}
+                fill={SEVERITY_COLOR[entry.key]}
+                stroke={activeSeverity === entry.key ? 'var(--text)' : 'transparent'}
+                strokeWidth={activeSeverity === entry.key ? 2 : 0}
+                opacity={activeSeverity && activeSeverity !== entry.key ? 0.45 : 1}
+                style={{ cursor: 'pointer' }}
+              />
+            ))}
+          </Pie>
+          <Tooltip content={<ChartTooltip />} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="waste-chart-legend">
+        {data.map((d) => (
+          <button
+            key={d.key}
+            type="button"
+            className={`chip${activeSeverity === d.key ? ' active' : ''}`}
+            onClick={() => onSelectSeverity(d.key)}
+          >
+            <span className="waste-chart-legend__dot" style={{ background: SEVERITY_COLOR[d.key] }} />
+            {d.name} ({d.value})
+          </button>
+        ))}
       </div>
     </div>
   );
 }
 
-// ── Heatmap grid ───────────────────────────────────────────────────────────
-function HeatmapGrid({ items, loading }) {
-  const { categories, grid, maxSavings } = useMemo(() => {
-    if (!items?.length) return { categories: [], grid: {}, maxSavings: 0 };
-    const cats = [...new Set(items.map((i) => i.category))].sort();
-    const g = {};
-    let max = 0;
-    for (const item of items) {
-      const key = `${item.category}|${item.severity}`;
-      if (!g[key]) g[key] = { count: 0, savings: 0 };
-      g[key].count += 1;
-      g[key].savings += item.estimated_savings_usd ?? 0;
-      if (g[key].savings > max) max = g[key].savings;
-    }
-    return { categories: cats, grid: g, maxSavings: max };
-  }, [items]);
+// ── Recharts: category savings bars ───────────────────────────────────────
+function CategorySavingsChart({ byCategory, byCategorySavings, loading, activeCategory, onSelectCategory }) {
+  const data = useMemo(() => {
+    if (!byCategory) return [];
+    return sortCategories(Object.keys(byCategory))
+      .map((name) => ({
+        name,
+        count: byCategory[name] ?? 0,
+        savings: byCategorySavings?.[name] ?? 0,
+      }))
+      .sort((a, b) => (b.savings || b.count) - (a.savings || a.count))
+      .slice(0, 8);
+  }, [byCategory, byCategorySavings]);
 
-  if (loading) return <Skeleton className="h-52 rounded-xl" />;
-  if (!categories.length) return (
-    <div className="flex items-center justify-center h-40 text-sm text-gray-400 dark:text-gray-500">
-      No idle resource data — enter a subscription ID and click Scan
-    </div>
-  );
+  const savingsMode = data.some((row) => row.savings > 0);
+
+  if (loading) return <Skeleton className="h-56 rounded-xl" />;
+  if (!data.length) return null;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm border-separate border-spacing-1">
+    <div className="waste-chart-card">
+      <h3 className="waste-chart-card__title">{savingsMode ? 'Savings by category' : 'Findings by category'}</h3>
+      <p className="waste-chart-card__sub">Click a bar to filter findings in that category</p>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 4, right: 12, bottom: 0, left: 4 }}
+          onClick={(state) => {
+            const name = state?.activePayload?.[0]?.payload?.name;
+            if (name) onSelectCategory(name);
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.2)" horizontal={false} />
+          <XAxis
+            type="number"
+            tickFormatter={(v) => (savingsMode ? `$${(v / 1000).toFixed(0)}k` : v.toLocaleString())}
+            tick={{ fontSize: 10 }}
+          />
+          <YAxis type="category" dataKey="name" width={88} tick={{ fontSize: 10 }} />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const row = payload[0].payload;
+              return (
+                <div className="waste-chart-tooltip">
+                  <p className="waste-chart-tooltip__title">{row.name}</p>
+                  <p className="waste-chart-tooltip__row">Findings: <strong>{row.count}</strong></p>
+                  {savingsMode && (
+                    <p className="waste-chart-tooltip__row">Est. savings: <strong>{fmtUSD(row.savings)}</strong></p>
+                  )}
+                </div>
+              );
+            }}
+          />
+          <Bar
+            dataKey={savingsMode ? 'savings' : 'count'}
+            name={savingsMode ? 'Est. savings' : 'Findings'}
+            radius={[0, 4, 4, 0]}
+            cursor="pointer"
+          >
+            {data.map((entry, index) => (
+              <Cell
+                key={entry.name}
+                fill={activeCategory === entry.name ? '#c2410c' : CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                opacity={activeCategory && activeCategory !== entry.name ? 0.45 : 0.92}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ── Interactive heatmap grid ────────────────────────────────────────────────
+function HeatmapGrid({
+  heatmapMatrix,
+  loading,
+  activeCategory,
+  activeSeverity,
+  hoveredCell,
+  onHoverCell,
+  onCellClick,
+  onCategoryClick,
+  onSeverityClick,
+}) {
+  const { categories, grid, maxSavings, maxCount } = useMemo(
+    () => buildGridFromMatrix(heatmapMatrix),
+    [heatmapMatrix],
+  );
+  const useCountIntensity = maxSavings <= 0 && maxCount > 0;
+
+  if (loading) return <Skeleton className="h-52 rounded-xl" />;
+  if (!categories.length) {
+    return (
+      <div className="heatmap-empty">
+        <strong>No heatmap data yet</strong>
+        <span>Run optimization analysis to populate idle and waste findings.</span>
+      </div>
+    );
+  }
+
+  const hoverKey = hoveredCell ? `${hoveredCell.category}|${hoveredCell.severity}` : null;
+
+  return (
+    <div className="heatmap-wrap">
+      <table className="heatmap-table">
         <thead>
           <tr>
-            <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 pb-1 pr-2 whitespace-nowrap">Category</th>
+            <th className="heatmap-th-label">Category</th>
             {SEVERITIES.map((s) => (
-              <th key={s} className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 pb-1 px-1">
+              <th
+                key={s}
+                className={`heatmap-th heatmap-th--${s} heatmap-th--clickable${activeSeverity === s ? ' heatmap-th--active' : ''}`}
+                onClick={() => onSeverityClick(s)}
+                title={`Filter by ${SEVERITY_LABEL[s]}`}
+              >
                 {SEVERITY_LABEL[s]}
               </th>
             ))}
@@ -102,25 +362,56 @@ function HeatmapGrid({ items, loading }) {
         <tbody>
           {categories.map((cat) => (
             <tr key={cat}>
-              <td className="text-xs font-medium text-gray-700 dark:text-gray-300 pr-3 py-0.5 whitespace-nowrap">{cat}</td>
+              <td
+                className={`heatmap-row-label heatmap-row-label--clickable${activeCategory === cat ? ' heatmap-row-label--active' : ''}`}
+                onClick={() => onCategoryClick(cat)}
+                title={`Filter by ${cat}`}
+              >
+                {cat}
+              </td>
               {SEVERITIES.map((sev) => {
-                const cell = grid[`${cat}|${sev}`];
-                const cls = heatClass(cell?.savings ?? 0, maxSavings);
+                const key = `${cat}|${sev}`;
+                const cell = grid[key];
+                const intensity = cell
+                  ? (useCountIntensity
+                    ? Math.max(0.12, cell.count / maxCount)
+                    : Math.max(0.12, cell.savings / maxSavings))
+                  : 0;
+                const isActive = activeCategory === cat && activeSeverity === sev;
+                const isHovered = hoverKey === key;
                 return (
-                  <td key={sev} className="p-0.5">
-                    <div
-                      title={cell ? `${cell.count} finding${cell.count !== 1 ? 's' : ''} · ${fmtUSD(cell.savings)}` : 'No findings'}
-                      className={`rounded-lg w-full min-w-[72px] py-2 px-1 text-center transition-opacity hover:opacity-90 cursor-default ${cls}`}
+                  <td key={sev}>
+                    <button
+                      type="button"
+                      title={cell
+                        ? `${cell.count} finding${cell.count !== 1 ? 's' : ''}${fmtSavings(cell.savings) ? ` · ${fmtSavings(cell.savings)}` : ''}`
+                        : 'No findings'}
+                      className={[
+                        'heatmap-cell',
+                        `heatmap-cell--${sev}`,
+                        cell ? 'heatmap-cell--has-data' : 'heatmap-cell--empty',
+                        isActive ? 'heatmap-cell--active' : '',
+                        isHovered ? 'heatmap-cell--hovered' : '',
+                      ].filter(Boolean).join(' ')}
+                      style={{ '--intensity': intensity }}
+                      onMouseEnter={() => onHoverCell({ category: cat, severity: sev, ...cell })}
+                      onMouseLeave={() => onHoverCell(null)}
+                      onClick={() => onCellClick(cat, sev)}
+                      disabled={!cell}
                     >
                       {cell ? (
                         <>
-                          <div className="font-bold tabular-nums text-sm leading-tight">{cell.count}</div>
-                          <div className="text-xs opacity-80 tabular-nums leading-tight">{fmtUSD(cell.savings)}</div>
+                          <span className="heatmap-cell__val">{cell.count}</span>
+                          {fmtSavings(cell.savings) ? (
+                            <span className="heatmap-cell__val heatmap-cell__savings">{fmtSavings(cell.savings)}</span>
+                          ) : (
+                            <span className="heatmap-cell__val heatmap-cell__savings heatmap-cell__savings--muted">No est.</span>
+                          )}
                         </>
                       ) : (
-                        <div className="text-xs opacity-40">—</div>
+                        <span className="heatmap-cell__val heatmap-cell__empty">—</span>
                       )}
-                    </div>
+                    </button>
                   </td>
                 );
               })}
@@ -128,14 +419,117 @@ function HeatmapGrid({ items, loading }) {
           ))}
         </tbody>
       </table>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-        Cell colour = estimated savings intensity. Darker = more waste. Hover for exact values.
-      </p>
+
+      {hoveredCell?.count > 0 && (
+        <div className="heatmap-tooltip" role="status">
+          <strong>{hoveredCell.category}</strong>
+          <span>·</span>
+          <span>{SEVERITY_LABEL[hoveredCell.severity]}</span>
+          <span>·</span>
+          <span>{hoveredCell.count} finding{hoveredCell.count !== 1 ? 's' : ''}</span>
+          {fmtSavings(hoveredCell.savings) && (
+            <>
+              <span>·</span>
+              <span>{fmtSavings(hoveredCell.savings)}</span>
+            </>
+          )}
+        </div>
+      )}
+
+      <div className="heatmap-legend">
+        <span className="heatmap-legend__label">{useCountIntensity ? 'Finding density' : 'Savings intensity'}</span>
+        <span className="heatmap-legend__scale" aria-hidden="true" />
+        <span>Low</span>
+        <span>High</span>
+      </div>
     </div>
   );
 }
 
-// ── Findings table ─────────────────────────────────────────────────────────
+// ── Top rules (Recharts) ────────────────────────────────────────────────────
+function TopRulesChart({ rules, loading, activeRuleId, onSelectRule }) {
+  const top = useMemo(() => (rules ?? []).slice(0, 8), [rules]);
+  const savingsMode = top.some((row) => (row.savings_usd ?? 0) > 0);
+  const chartData = useMemo(
+    () => [...top].sort((a, b) => (
+      savingsMode
+        ? (b.savings_usd ?? 0) - (a.savings_usd ?? 0)
+        : (b.count ?? 0) - (a.count ?? 0)
+    )),
+    [top, savingsMode],
+  );
+
+  if (loading) return <Skeleton className="h-48 rounded-xl" />;
+  if (!chartData.length) return null;
+
+  return (
+    <div className="waste-chart-card">
+      <h3 className="waste-chart-card__title">
+        {savingsMode ? 'Top waste rules by savings' : 'Top waste rules by volume'}
+      </h3>
+      <p className="waste-chart-card__sub">Click a bar to filter findings by rule</p>
+      <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 36)}>
+        <BarChart
+          data={chartData}
+          layout="vertical"
+          margin={{ top: 4, right: 12, bottom: 0, left: 4 }}
+          onClick={(state) => {
+            const ruleId = state?.activePayload?.[0]?.payload?.rule_id;
+            if (ruleId) onSelectRule(ruleId);
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(156,163,175,0.2)" horizontal={false} />
+          <XAxis
+            type="number"
+            tickFormatter={(v) => (savingsMode ? `$${(v / 1000).toFixed(0)}k` : v.toLocaleString())}
+            tick={{ fontSize: 10 }}
+          />
+          <YAxis
+            type="category"
+            dataKey="title"
+            width={140}
+            tick={{ fontSize: 10 }}
+            tickFormatter={(v, i) => {
+              const label = chartData[i]?.title ?? chartData[i]?.rule_id ?? v;
+              return label.length > 22 ? `${label.slice(0, 20)}…` : label;
+            }}
+          />
+          <Tooltip
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null;
+              const row = payload[0].payload;
+              return (
+                <div className="waste-chart-tooltip">
+                  <p className="waste-chart-tooltip__title">{row.title ?? row.rule_id}</p>
+                  <p className="waste-chart-tooltip__row">Findings: <strong>{row.count}</strong></p>
+                  {savingsMode && (
+                    <p className="waste-chart-tooltip__row">Est. savings: <strong>{fmtUSD(row.savings_usd)}</strong></p>
+                  )}
+                </div>
+              );
+            }}
+          />
+          <Bar
+            dataKey={savingsMode ? 'savings_usd' : 'count'}
+            name={savingsMode ? 'Est. savings' : 'Findings'}
+            radius={[0, 4, 4, 0]}
+            cursor="pointer"
+          >
+            {chartData.map((entry, index) => (
+              <Cell
+                key={entry.rule_id}
+                fill={activeRuleId === entry.rule_id ? '#c2410c' : CATEGORY_COLORS[index % CATEGORY_COLORS.length]}
+                opacity={activeRuleId && activeRuleId !== entry.rule_id ? 0.45 : 0.92}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ── Findings table ──────────────────────────────────────────────────────────
 const COLS = [
   { key: 'resource_name', label: 'Resource' },
   { key: 'category', label: 'Category' },
@@ -144,11 +538,11 @@ const COLS = [
   { key: 'estimated_savings_usd', label: 'Est. savings' },
 ];
 
-function FindingsTable({ items, loading }) {
+function FindingsTable({ items, allCount, loading, onSelectRow, selectedFindingId, tableRef }) {
   const [sortKey, setSortKey] = useState('estimated_savings_usd');
   const [sortDir, setSortDir] = useState('desc');
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 20;
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   const sorted = useMemo(() => {
     if (!items?.length) return [];
@@ -160,198 +554,411 @@ function FindingsTable({ items, loading }) {
     });
   }, [items, sortKey, sortDir]);
 
-  const page_items = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const pageItems = sorted.slice((page - 1) * pageSize, page * pageSize);
+
+  useEffect(() => {
+    setPage(1);
+  }, [items, sortKey, sortDir, pageSize]);
 
   function toggleSort(key) {
     if (key === sortKey) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('desc'); }
-    setPage(0);
+    setPage(1);
   }
 
   if (loading) return <Skeleton className="h-48 rounded-xl" />;
-  if (!items?.length) return null;
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+    <div ref={tableRef} className="anomaly-page-card waste-findings-table">
+      <div className="tag-rg-explorer__header">
         <div>
-          <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">All idle resource findings</h3>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{sorted.length} findings — click column headers to sort</p>
+          <h3 className="tag-rg-explorer__title">Idle resource findings</h3>
+          <p className="tag-rg-explorer__sub">
+            {sorted.length.toLocaleString()} showing
+            {allCount !== sorted.length ? ` of ${allCount.toLocaleString()}` : ''}
+            {' · '}Click a row for a summary
+          </p>
         </div>
-        {totalPages > 1 && (
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="disabled:opacity-40 hover:text-teal-600">← Prev</button>
-            <span>Page {page + 1} / {totalPages}</span>
-            <button disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)} className="disabled:opacity-40 hover:text-teal-600">Next →</button>
-          </div>
-        )}
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-100 dark:border-gray-700 text-left">
-              {COLS.map((c) => (
-                <th
-                  key={c.key}
-                  className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 cursor-pointer select-none hover:text-teal-600 whitespace-nowrap"
-                  onClick={() => toggleSort(c.key)}
-                >
-                  <span className="flex items-center gap-1">
-                    {c.label}
-                    {sortKey === c.key && (sortDir === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />)}
-                  </span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {page_items.map((item, i) => (
-              <tr key={item.finding_id ?? i} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                <td className="px-4 py-2.5 font-medium text-gray-800 dark:text-gray-100 max-w-[180px] truncate" title={item.resource_name}>
-                  {item.resource_name || item.resource_id || '—'}
-                </td>
-                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300 whitespace-nowrap">{item.category}</td>
-                <td className="px-4 py-2.5">
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${SEVERITY_BADGE[item.severity] ?? SEVERITY_BADGE.low}`}>
-                    {item.severity}
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-gray-600 dark:text-gray-300 max-w-[260px] truncate" title={item.title}>{item.title}</td>
-                <td className="px-4 py-2.5 tabular-nums font-semibold text-gray-800 dark:text-gray-100 whitespace-nowrap">
-                  {item.estimated_savings_usd ? fmtUSD(item.estimated_savings_usd) : '—'}
-                </td>
+
+      {!sorted.length ? (
+        <div className="heatmap-empty heatmap-empty--compact">
+          <strong>No findings match your filters</strong>
+          <span>Clear filters or broaden your search to see more rows.</span>
+        </div>
+      ) : (
+        <div className="tag-rg-explorer__scroll">
+          <table className="tag-rg-table">
+            <thead>
+              <tr>
+                {COLS.map((c) => (
+                  <th
+                    key={c.key}
+                    className={`tag-rg-table__th--sortable${sortKey === c.key ? ' tag-rg-table__th--active' : ''}`}
+                    onClick={() => toggleSort(c.key)}
+                  >
+                    <span className="tag-rg-table__sort">
+                      {c.label}
+                      {sortKey === c.key && (sortDir === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />)}
+                    </span>
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {pageItems.map((item, i) => (
+                <tr
+                  key={item.finding_id ?? i}
+                  className={[
+                    'tag-rg-table__row',
+                    'waste-findings-table__row',
+                    selectedFindingId === item.finding_id ? 'waste-findings-table__row--selected' : '',
+                  ].filter(Boolean).join(' ')}
+                  tabIndex={0}
+                  role="button"
+                  onClick={() => onSelectRow(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      onSelectRow(item);
+                    }
+                  }}
+                >
+                  <td className="tag-rg-table__name" title={item.resource_name}>
+                    {item.resource_name || item.resource_id || '—'}
+                  </td>
+                  <td className="tag-rg-table__mono">{item.category}</td>
+                  <td>
+                    <span className={`waste-severity-pill waste-severity-pill--${normalizeSeverity(item.severity)}`}>
+                      {SEVERITY_LABEL[normalizeSeverity(item.severity)] || item.severity}
+                    </span>
+                  </td>
+                  <td className="tag-rg-table__mono" title={item.title}>{item.title}</td>
+                  <td className="tag-rg-table__count text-teal-600">
+                    {fmtSavings(item.estimated_savings_usd) ?? '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {sorted.length > 0 && (
+        <PaginationControls
+          page={page}
+          pageSize={pageSize}
+          total={sorted.length}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          pageSizeOptions={[20, 50, 100]}
+        />
+      )}
     </div>
   );
 }
 
-// ── Top rules bar chart (CSS-only) ─────────────────────────────────────────
-function TopRulesChart({ rules, loading }) {
-  if (loading) return <Skeleton className="h-40 rounded-xl" />;
-  if (!rules?.length) return null;
-  const top = rules.slice(0, 8);
-  const max = top[0]?.savings_usd ?? 1;
+function ActiveFilterChips({ filters, onClearSeverity, onClearCategory, onClearRule }) {
+  const chips = [];
+  if (filters.severity) {
+    chips.push({ key: 'severity', label: SEVERITY_LABEL[filters.severity], onClear: onClearSeverity });
+  }
+  if (filters.category) {
+    chips.push({ key: 'category', label: filters.category, onClear: onClearCategory });
+  }
+  if (filters.ruleId) {
+    chips.push({ key: 'rule', label: filters.ruleId, onClear: onClearRule });
+  }
+  if (!chips.length) return null;
+
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-4">
-      <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-3">Top waste rules by savings potential</h3>
-      <div className="space-y-2">
-        {top.map((r) => (
-          <div key={r.rule_id} className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 dark:text-gray-400 w-44 shrink-0 truncate" title={r.title ?? r.rule_id}>
-              {r.title ?? r.rule_id}
-            </span>
-            <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-4 overflow-hidden">
-              <div
-                className="h-4 rounded-full bg-orange-400 transition-all"
-                style={{ width: `${(r.savings_usd / max) * 100}%` }}
-              />
-            </div>
-            <span className="text-xs tabular-nums font-semibold text-gray-700 dark:text-gray-200 w-20 text-right shrink-0">
-              {fmtUSD(r.savings_usd)}
-            </span>
-            <span className="text-xs text-gray-400 dark:text-gray-500 w-12 text-right shrink-0">
-              ×{r.count}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className="toolbar waste-filter-chips">
+      <span className="toolbar__label">Active filters</span>
+      {chips.map((chip) => (
+        <button key={chip.key} type="button" className="chip active" onClick={chip.onClear}>
+          {chip.label}
+          <X size={12} aria-hidden />
+        </button>
+      ))}
     </div>
   );
 }
 
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function WasteHeatmap() {
-  const ctxSub = useCtxSub();
-  const [subId, setSubId] = useState(ctxSub ?? '');
+  const { subscription, subscriptionLabel } = useAdvancedSubscription();
+  const [searchParams] = useSearchParams();
   const [sweep, setSweep] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [hoveredCell, setHoveredCell] = useState(null);
+  const [selectedFinding, setSelectedFinding] = useState(null);
+  const tableRef = useRef(null);
 
   const load = useCallback(async () => {
-    if (!subId.trim()) return;
-    setLoading(true); setError(null);
+    if (!subscription?.trim()) return;
+    setLoading(true);
+    setError(null);
     try {
-      const [sw, sm] = await Promise.all([fetchIdleSweep(subId), fetchIdleSummary(subId)]);
-      setSweep(sw); setSummary(sm);
+      const [sw, sm] = await Promise.all([fetchIdleSweep(subscription), fetchIdleSummary(subscription)]);
+      setSweep(sw);
+      setSummary(sm);
     } catch (e) {
-      setError(e.message);
+      setError(e);
     } finally {
       setLoading(false);
     }
-  }, [subId]);
+  }, [subscription]);
 
-  const items = sweep?.idle_resources ?? [];
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useEffect(() => {
+    setFilters(EMPTY_FILTERS);
+    setSelectedFinding(null);
+  }, [subscription]);
+
+  useEffect(() => {
+    const fromUrl = wasteHeatmapFiltersFromSearchParams(searchParams);
+    if (!fromUrl.category && !fromUrl.severity && !fromUrl.ruleId) return;
+    setFilters((current) => ({
+      ...current,
+      category: fromUrl.category || null,
+      severity: fromUrl.severity || null,
+      ruleId: fromUrl.ruleId || null,
+    }));
+  }, [searchParams, subscription]);
+
+  const allItems = sweep?.idle_resources ?? [];
+  const filteredItems = useMemo(() => applyWasteFilters(allItems, filters), [allItems, filters]);
+  const hasFilters = !!(filters.severity || filters.category || filters.ruleId || filters.search.trim());
+
+  const scrollToTable = useCallback(() => {
+    tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, []);
+
+  const toggleSeverity = useCallback((severity) => {
+    setFilters((f) => ({
+      ...f,
+      severity: f.severity === severity ? null : severity,
+      ruleId: null,
+    }));
+    scrollToTable();
+  }, [scrollToTable]);
+
+  const toggleCategory = useCallback((category) => {
+    setFilters((f) => ({
+      ...f,
+      category: f.category === category ? null : category,
+      ruleId: null,
+    }));
+    scrollToTable();
+  }, [scrollToTable]);
+
+  const toggleCell = useCallback((category, severity) => {
+    setFilters((f) => {
+      const same = f.category === category && f.severity === severity;
+      if (same) return { ...f, category: null, severity: null };
+      return { ...f, category, severity, ruleId: null };
+    });
+    scrollToTable();
+  }, [scrollToTable]);
+
+  const toggleRule = useCallback((ruleId) => {
+    setFilters((f) => ({
+      ...f,
+      ruleId: f.ruleId === ruleId ? null : ruleId,
+    }));
+    scrollToTable();
+  }, [scrollToTable]);
+
+  const clearFilters = useCallback(() => setFilters(EMPTY_FILTERS), []);
+
+  const handleSelectRow = useCallback((item) => {
+    setSelectedFinding((current) => (
+      current?.finding_id === item.finding_id ? null : item
+    ));
+  }, []);
+
+  const categoryOptions = useMemo(() => (
+    sortCategories(Object.keys(sweep?.by_category ?? {}))
+      .map((c) => ({ value: c, label: c }))
+  ), [sweep?.by_category]);
+
+  const isEmpty = !loading && !error && sweep && (sweep.total_idle_findings ?? 0) === 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
-      {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1">
-          <Flame size={20} className="text-orange-500" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Waste Heatmap</h1>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Idle, orphaned, and stale resources visualised by category × severity — sorted by estimated savings potential.
-        </p>
-      </div>
+    <AdvancedToolLayout
+      title="Waste heatmap"
+      subtitle="See where idle and orphaned resources cluster by category and severity — then drill into findings to act."
+      iconKey="wasteHeatmap"
+      iconRoute="/waste-heatmap"
+      hasHeroBand
+      metaItems={[
+        sweep?.total_idle_findings != null && `${sweep.total_idle_findings.toLocaleString()} findings`,
+        sweep?.total_estimated_savings_usd != null
+          && `${fmtUSD(sweep.total_estimated_savings_usd)} est. savings`,
+      ].filter(Boolean)}
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      errorTitle="Could not load waste heatmap"
+    >
+      <OptimizationHubLinks className="optimization-hub--page mb-4" />
 
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <input
-          type="text" value={subId} onChange={(e) => setSubId(e.target.value)}
-          placeholder="Subscription ID"
-          className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 w-80"
+      <WasteHeatmapHero
+        subscriptionLabel={subscriptionLabel}
+        sweep={sweep}
+        summary={summary}
+        loading={loading}
+        activeSeverity={filters.severity}
+        activeCategory={filters.category}
+        onSeverityClick={toggleSeverity}
+        onCategoryClick={toggleCategory}
+      />
+
+      <WasteHeatmapDataNote sweep={sweep} summary={summary} />
+
+      {isEmpty && (
+        <AdvEmptyState
+          title="No idle findings yet"
+          description="Run optimization analysis to detect idle disks, orphaned resources, Redis and PostgreSQL waste, and other patterns."
+          icon={Flame}
+          action={(
+            <div className="flex gap-2 flex-wrap">
+              <Link to="/optimization-hub" className="btn btn-primary btn-sm">
+                Open optimization hub
+              </Link>
+              <Link to="/admin/optimization" className="btn btn-secondary btn-sm">
+                <Play size={14} /> Run analysis
+              </Link>
+            </div>
+          )}
         />
-        <button
-          onClick={load} disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 disabled:opacity-50 px-4 py-1.5 text-sm font-medium text-white transition-colors"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Scanning…' : 'Scan'}
-        </button>
-      </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />{error}
-        </div>
       )}
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        {loading ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl" />) : (
-          <>
-            <KpiCard label="Total findings" value={sweep?.total_idle_findings ?? '—'} sub="open/active" icon={Flame} accent="bg-orange-100 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400" />
-            <KpiCard label="Est. savings" value={sweep ? fmtUSD(sweep.total_estimated_savings_usd) : '—'} sub="if all resolved" icon={DollarSign} accent="bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400" />
-            <KpiCard label="Critical" value={sweep?.by_severity?.critical ?? '—'} sub="findings" icon={AlertTriangle} accent="bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-400" />
-            <KpiCard label="High" value={sweep?.by_severity?.high ?? '—'} sub="findings" icon={Info} accent="bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400" />
-          </>
-        )}
+      {!isEmpty && <WasteMetaStrip sweep={sweep} summary={summary} />}
+
+      <FilterBar
+        className="waste-filter-bar"
+        search={{
+          value: filters.search,
+          onChange: (search) => setFilters((f) => ({ ...f, search })),
+          placeholder: 'Search resources, findings, or rules…',
+        }}
+        selects={[
+          {
+            id: 'severity',
+            label: 'Severity',
+            value: filters.severity || '',
+            onChange: (v) => setFilters((f) => ({ ...f, severity: v || null, ruleId: null })),
+            options: [
+              { value: '', label: 'All severities' },
+              ...SEVERITIES.map((s) => ({ value: s, label: SEVERITY_LABEL[s] })),
+            ],
+          },
+          {
+            id: 'category',
+            label: 'Category',
+            value: filters.category || '',
+            onChange: (v) => setFilters((f) => ({ ...f, category: v || null, ruleId: null })),
+            options: [
+              { value: '', label: 'All categories' },
+              ...categoryOptions,
+            ],
+          },
+        ]}
+        onClear={hasFilters ? clearFilters : undefined}
+        resultCount={{
+          shown: filteredItems.length,
+          total: allItems.length,
+          label: 'findings',
+        }}
+      />
+
+      <ActiveFilterChips
+        filters={filters}
+        onClearSeverity={() => setFilters((f) => ({ ...f, severity: null }))}
+        onClearCategory={() => setFilters((f) => ({ ...f, category: null }))}
+        onClearRule={() => setFilters((f) => ({ ...f, ruleId: null }))}
+      />
+
+      {!isEmpty && (
+        <>
+      <div className="waste-charts-grid mb-5">
+        <SeverityDonutChart
+          bySeverity={sweep?.by_severity}
+          loading={loading}
+          activeSeverity={filters.severity}
+          onSelectSeverity={toggleSeverity}
+        />
+        <CategorySavingsChart
+          byCategory={sweep?.by_category}
+          byCategorySavings={sweep?.by_category_savings}
+          loading={loading}
+          activeCategory={filters.category}
+          onSelectCategory={toggleCategory}
+        />
       </div>
 
-      {/* Heatmap */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-4 mb-5">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-1">Category × Severity heatmap</h2>
-        <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">Each cell shows finding count and estimated savings. Colour intensity = savings magnitude.</p>
-        <HeatmapGrid items={items} loading={loading} />
-      </div>
+      <section className="waste-section-card mb-5" aria-labelledby="waste-heatmap-title">
+        <div className="waste-section-card__head">
+          <div>
+            <h2 id="waste-heatmap-title" className="waste-section-card__title">Category × severity heatmap</h2>
+            <p className="waste-section-card__sub">
+              {(sweep?.total_idle_findings ?? 0).toLocaleString()} findings across the subscription.
+              Click a cell, row, or column to filter the table.
+              {(sweep?.total_estimated_savings_usd ?? 0) <= 0
+                ? ' Color reflects finding count when savings are not estimated.'
+                : ' Color reflects estimated savings intensity.'}
+            </p>
+          </div>
+        </div>
+        <HeatmapGrid
+          heatmapMatrix={sweep?.heatmap_matrix}
+          loading={loading}
+          activeCategory={filters.category}
+          activeSeverity={filters.severity}
+          hoveredCell={hoveredCell}
+          onHoverCell={setHoveredCell}
+          onCellClick={toggleCell}
+          onCategoryClick={toggleCategory}
+          onSeverityClick={toggleSeverity}
+        />
+      </section>
 
-      {/* Top rules */}
       {(summary?.top_rules?.length > 0 || loading) && (
         <div className="mb-5">
-          <TopRulesChart rules={summary?.top_rules} loading={loading} />
+          <TopRulesChart
+            rules={summary?.top_rules}
+            loading={loading}
+            activeRuleId={filters.ruleId}
+            onSelectRule={toggleRule}
+          />
         </div>
       )}
 
-      {/* Findings table */}
-      <FindingsTable items={items} loading={loading} />
-    </div>
+      <div className={`waste-findings-split${selectedFinding ? ' waste-findings-split--open' : ''}`}>
+        <FindingsTable
+          items={filteredItems}
+          allCount={sweep?.total_idle_findings ?? allItems.length}
+          loading={loading}
+          onSelectRow={handleSelectRow}
+          selectedFindingId={selectedFinding?.finding_id}
+          tableRef={tableRef}
+        />
+        <WasteFindingDetailPanel
+          finding={selectedFinding}
+          onClose={() => setSelectedFinding(null)}
+        />
+      </div>
+        </>
+      )}
+    </AdvancedToolLayout>
   );
 }
+
+// Exported for unit tests
+export { applyWasteFilters, normalizeSeverity, sortCategories };

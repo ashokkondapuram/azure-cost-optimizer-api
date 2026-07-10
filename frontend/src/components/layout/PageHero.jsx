@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { toDisplayText } from '../../utils/formatDisplay';
+import SavingsScopeNote from '../savings/SavingsScopeNote';
 
 export function HeroMetric({ label, value, tone = 'default', href, sub, featured = false }) {
   const content = (
@@ -47,11 +48,13 @@ export default function PageHero({
   eyebrow,
   title,
   subtitle,
+  scopeNote,
   metrics = [],
   actions = [],
   footer,
   isLoading = false,
   skeletonMetrics = 4,
+  embedded = false,
   children,
 }) {
   if (isLoading) {
@@ -59,13 +62,20 @@ export default function PageHero({
   }
 
   return (
-    <section className={`dashboard-hero page-hero ${variant}`.trim()}>
+    <section className={`dashboard-hero page-hero ${variant}${embedded ? ' page-hero--embedded' : ''}`.trim()}>
       <div className="dashboard-hero__glow" aria-hidden />
       <div className="dashboard-hero__content">
         <div className="dashboard-hero__main">
-          {eyebrow && <p className="dashboard-hero__eyebrow">{eyebrow}</p>}
-          <h2 className="dashboard-hero__title">{toDisplayText(title)}</h2>
-          {subtitle && <p className="dashboard-hero__sub">{subtitle}</p>}
+          {!embedded && eyebrow && <p className="dashboard-hero__eyebrow">{eyebrow}</p>}
+          {!embedded && title && <h2 className="dashboard-hero__title">{toDisplayText(title)}</h2>}
+          {!embedded && subtitle && <p className="dashboard-hero__sub">{subtitle}</p>}
+          {scopeNote && (
+            <SavingsScopeNote
+              title={scopeNote.title}
+              description={scopeNote.description}
+              className={`page-hero__scope-note${embedded ? ' page-hero__scope-note--embedded' : ''}`}
+            />
+          )}
           {(actions.length > 0 || children) && (
             <div className="dashboard-hero__actions">
               {actions.map((action) => {

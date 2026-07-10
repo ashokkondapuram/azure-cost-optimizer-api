@@ -58,6 +58,9 @@ class Rule:
     rightsizing_memory_buffer: float = 1.20  # 20% headroom when recommending SKU
     snapshot_retention_days: int = 90
     snapshot_min_size_gb: int = 0
+    min_monthly_savings_usd: float = 1.0
+    waste_score_multiplier: float = 1.0
+    evaluation_window_days: int = 7
 
 
 # ─── Built-in rule catalogue ─────────────────────────────────────────────────
@@ -274,5 +277,69 @@ DEFAULT_RULES: dict[str, Rule] = {
         id="KEYVAULT_SOFT_DELETE_OFF", category=Category.SECURITY, severity=Severity.HIGH,
         name="Key Vault Soft Delete Disabled",
         description="Key Vault without soft delete or purge protection. Accidental deletion is irrecoverable.",
+    ),
+
+    # ── DATABASE (advanced) ───────────────────────────────────────────────
+    "SQL_ELASTIC_POOL_CANDIDATE": Rule(
+        id="SQL_ELASTIC_POOL_CANDIDATE", category=Category.DATABASE, severity=Severity.MEDIUM,
+        name="SQL Elastic Pool Candidate",
+        description="Multiple databases on one server may consolidate into an elastic pool.",
+        min_monthly_savings_usd=5.0,
+    ),
+    "SQL_HYBRID_BENEFIT_CANDIDATE": Rule(
+        id="SQL_HYBRID_BENEFIT_CANDIDATE", category=Category.DATABASE, severity=Severity.LOW,
+        name="SQL Hybrid Benefit Candidate",
+        description="Provisioned SQL may qualify for Azure Hybrid Benefit licensing.",
+        min_monthly_savings_usd=5.0,
+    ),
+
+    # ── NETWORK (advanced) ────────────────────────────────────────────────
+    "NETWORK_DDOS_PLAN_REVIEW": Rule(
+        id="NETWORK_DDOS_PLAN_REVIEW", category=Category.NETWORK, severity=Severity.LOW,
+        name="DDoS protection review",
+        description="Public IP with DDoS Standard — confirm necessity.",
+        min_monthly_savings_usd=5.0,
+    ),
+    "NETWORK_TRAFFIC_MANAGER_IDLE": Rule(
+        id="NETWORK_TRAFFIC_MANAGER_IDLE", category=Category.NETWORK, severity=Severity.LOW,
+        name="Traffic Manager review",
+        description="Active Traffic Manager profile — validate usage.",
+        min_monthly_savings_usd=1.0,
+    ),
+    "NETWORK_FRONT_DOOR_REVIEW": Rule(
+        id="NETWORK_FRONT_DOOR_REVIEW", category=Category.NETWORK, severity=Severity.MEDIUM,
+        name="Front Door review",
+        description="Azure Front Door profile — review routing and WAF tier.",
+        min_monthly_savings_usd=10.0,
+    ),
+    "NETWORK_EXPRESSROUTE_REVIEW": Rule(
+        id="NETWORK_EXPRESSROUTE_REVIEW", category=Category.NETWORK, severity=Severity.MEDIUM,
+        name="ExpressRoute review",
+        description="ExpressRoute circuit — review bandwidth tier and peering utilization.",
+        min_monthly_savings_usd=50.0,
+    ),
+
+    # ── DATABASE (query performance) ──────────────────────────────────────
+    "SQL_QUERY_PERF_REVIEW": Rule(
+        id="SQL_QUERY_PERF_REVIEW", category=Category.DATABASE, severity=Severity.MEDIUM,
+        name="SQL query performance review",
+        description="Provisioned SQL database — tune queries, indexes, or tier.",
+        min_monthly_savings_usd=10.0,
+    ),
+
+    # ── GOVERNANCE ────────────────────────────────────────────────────────
+    "GOVERNANCE_TAG_ENFORCEMENT": Rule(
+        id="GOVERNANCE_TAG_ENFORCEMENT", category=Category.SECURITY, severity=Severity.INFO,
+        name="Required tags missing",
+        description="Resource is missing mandatory governance tags.",
+        min_monthly_savings_usd=0.0,
+    ),
+
+    # ── SERVERLESS ────────────────────────────────────────────────────────
+    "FUNCTIONS_PLAN_OPTIMIZATION": Rule(
+        id="FUNCTIONS_PLAN_OPTIMIZATION", category=Category.COMPUTE, severity=Severity.MEDIUM,
+        name="Functions plan optimization",
+        description="Function app on dedicated plan — consider Consumption/Flex.",
+        min_monthly_savings_usd=1.0,
     ),
 }

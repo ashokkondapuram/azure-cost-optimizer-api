@@ -13,23 +13,17 @@
  *       GET /savings/service-breakdown/{id}?base_month=&compare_month=
  */
 
-import React, { useState, useMemo, useCallback, useContext, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   Cell, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import {
-  GitCommitHorizontal, TrendingDown, TrendingUp, Minus,
-  RefreshCw, AlertTriangle, DollarSign, ArrowDown, ArrowUp,
+  TrendingDown, TrendingUp, Minus,
+  ArrowDown, ArrowUp,
 } from 'lucide-react';
 import { fetchMonthOverMonth, fetchServiceBreakdown } from '../api/optimizationTimeline';
-
-let SubscriptionContext;
-try { ({ SubscriptionContext } = require('../context/SubscriptionContext')); } catch { SubscriptionContext = null; }
-function useCtxSub() {
-  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line
-  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
-}
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const fmt = (n, cur = 'CAD') =>
@@ -250,8 +244,7 @@ function ServiceBreakdown({ subId, baseMonth, compareMonth, currency }) {
 
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function OptimizationTimeline() {
-  const ctxSub = useCtxSub();
-  const [subId, setSubId] = useState(ctxSub ?? '');
+  const { subscription } = useAdvancedSubscription();
   const [monthsBack, setMonthsBack] = useState(6);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -259,20 +252,24 @@ export default function OptimizationTimeline() {
   const [selectedPair, setSelectedPair] = useState({ base: null, compare: null });
 
   const load = useCallback(async () => {
-    if (!subId.trim()) return;
+    if (!subscription?.trim()) return;
     setLoading(true); setError(null);
     try {
-      const d = await fetchMonthOverMonth(subId, monthsBack);
+      const d = await fetchMonthOverMonth(subscription, monthsBack);
       setData(d);
       // Auto-select the last two months for service breakdown
       const c = d.comparisons ?? [];
       if (c.length >= 1) setSelectedPair({ base: c[c.length - 1].from_month, compare: c[c.length - 1].to_month });
     } catch (e) {
-      setError(e.message);
+      setError(e);
     } finally {
       setLoading(false);
     }
-  }, [subId, monthsBack]);
+  }, [subscription, monthsBack]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const currency = data?.billing_currency ?? 'CAD';
   const netDelta = data?.net_delta_vs_oldest;
@@ -287,25 +284,17 @@ export default function OptimizationTimeline() {
   }, [data]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
-      {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1">
-          <GitCommitHorizontal size={20} className="text-teal-600" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Optimization Timeline</h1>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Month-over-month spend trends — see whether cost optimisation actions are translating into real savings.
-        </p>
-      </div>
-
-      {/* Controls */}
+    <AdvancedToolLayout
+      title="Optimization timeline"
+      subtitle="Month-over-month spend trends — see whether cost optimisation actions are translating into real savings."
+      iconKey="optimizationTimeline"
+      iconRoute="/timeline"
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      errorTitle="Could not load optimization timeline"
+    >
       <div className="flex flex-wrap items-center gap-3 mb-5">
-        <input
-          type="text" value={subId} onChange={(e) => setSubId(e.target.value)}
-          placeholder="Subscription ID"
-          className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 w-80"
-        />
         <div className="flex items-center gap-2">
           <label className="text-xs text-gray-600 dark:text-gray-400">Months:</label>
           {[3, 6, 9, 12].map((n) => (
@@ -322,21 +311,7 @@ export default function OptimizationTimeline() {
             </button>
           ))}
         </div>
-        <button
-          onClick={load} disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 px-4 py-1.5 text-sm font-medium text-white transition-colors"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Loading…' : 'Load'}
-        </button>
       </div>
-
-      {/* Error */}
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />{error}
-        </div>
-      )}
 
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
@@ -396,20 +371,12 @@ export default function OptimizationTimeline() {
       {/* Service breakdown */}
       {selectedPair.base && selectedPair.compare && (
         <ServiceBreakdown
-          subId={subId}
+          subId={subscription}
           baseMonth={selectedPair.base}
           compareMonth={selectedPair.compare}
           currency={currency}
         />
       )}
-
-      {/* Empty state */}
-      {!loading && !data && !error && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500 gap-3">
-          <GitCommitHorizontal size={40} strokeWidth={1.5} />
-          <p className="text-sm font-medium">Enter a subscription ID and click Load</p>
-        </div>
-      )}
-    </div>
+    </AdvancedToolLayout>
   );
 }

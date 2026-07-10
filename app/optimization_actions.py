@@ -12,7 +12,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import OptimizationAction
-from app.utils import utc_now
+from app.optimization_savings import distinct_action_savings
+from app.utils import norm_arm_id, utc_now
 
 VALID_WORKFLOW_STATUSES = frozenset({"proposed", "approved", "executed", "rejected", "deferred"})
 
@@ -123,6 +124,19 @@ def serialize_action(row: OptimizationAction) -> dict[str, Any]:
     }
 
 
+def _distinct_action_savings(rows: list[Any]) -> float:
+    """Sum savings once per resource (max value when duplicates exist)."""
+    return distinct_action_savings(rows)
+
+
+def _distinct_savings_for_query(q) -> float:
+    rows = q.with_entities(
+        OptimizationAction.resource_id,
+        OptimizationAction.estimated_monthly_savings,
+    ).all()
+    return _distinct_action_savings(rows)
+
+
 def list_optimization_actions(
     db: Session,
     subscription_id: str,
@@ -144,12 +158,10 @@ def list_optimization_actions(
     if confidence:
         q = q.filter(OptimizationAction.confidence == confidence)
     if resource_type:
-        q = q.filter(OptimizationAction.resource_type == resource_type)
+        q = q.filter(func.lower(OptimizationAction.resource_type) == resource_type.strip().lower())
 
     total = q.count()
-    total_savings = float(
-        q.with_entities(func.coalesce(func.sum(OptimizationAction.estimated_monthly_savings), 0.0)).scalar() or 0.0
-    )
+    total_savings = _distinct_savings_for_query(q)
     rows = (
         q.order_by(
             OptimizationAction.estimated_monthly_savings.desc(),
@@ -162,7 +174,7 @@ def list_optimization_actions(
 
     items = [serialize_action(r) for r in rows]
     summary = _action_summary(db, sub)
-    page_savings = round(sum(r.estimated_monthly_savings or 0.0 for r in rows), 2)
+    page_savings = _distinct_action_savings(rows)
 
     return {
         "subscription_id": sub,
@@ -170,9 +182,12 @@ def list_optimization_actions(
         "total": total,
         "offset": offset,
         "limit": limit,
+        "has_more": offset + len(items) < total,
         "summary": summary,
-        "total_estimated_monthly_savings": round(total_savings, 2),
+        "total_estimated_monthly_savings": total_savings,
+        "distinct_estimated_monthly_savings": total_savings,
         "page_estimated_monthly_savings": page_savings,
+        "distinct_page_estimated_monthly_savings": page_savings,
         "items": items,
     }
 

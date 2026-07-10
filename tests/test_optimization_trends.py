@@ -53,5 +53,9 @@ def test_trends_summary(db_session):
     assert result["scoring"]["average_score"] == 80.0
     assert result["tier_counts"]["tier1_safe"] == 1
     assert result["total_estimated_monthly_savings"] == 100.0
+    assert result["unified_estimated_monthly_savings"] == 0.0
+    assert result["distinct_scoreboard_savings"] == 100.0
+    assert result["distinct_estimated_monthly_savings"] == 0.0
+    assert result["action_pipeline_savings"] == 0.0
     assert result["rollout"]["completed"] == 1
     assert result["rollout"]["success_rate_pct"] == 100.0

@@ -13,19 +13,13 @@
  *
  * UI: dataset selector → params → Preview table → Download CSV / JSON
  */
-import React, { useState, useCallback, useContext } from 'react';
-import { Download, Eye, RefreshCw, AlertTriangle, FileText } from 'lucide-react';
+import React, { useState, useCallback } from 'react';
+import { Download, Eye, FileText } from 'lucide-react';
 import { fetchCostByService, fetchCostByResourceType, fetchCostSummary } from '../api/costAllocation';
 import { fetchMonthOverMonth, fetchServiceBreakdown } from '../api/optimizationTimeline';
 import { fetchReservationRecommendations } from '../api/reservationAdvisor';
 import { toCsv, downloadCsv, downloadJson } from '../api/exportCenter';
-
-let SubscriptionContext;
-try { ({ SubscriptionContext } = require('../context/SubscriptionContext')); } catch { SubscriptionContext = null; }
-function useCtxSub() {
-  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line
-  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
-}
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
 
 const DATASETS = [
   { id: 'by-service',       label: 'Cost by service',           params: ['timeframe'] },
@@ -96,8 +90,7 @@ function normaliseRows(dataset, raw) {
 }
 
 export default function ExportCenter() {
-  const ctxSub = useCtxSub();
-  const [subId, setSubId] = useState(ctxSub ?? '');
+  const { subscription } = useAdvancedSubscription();
   const [dataset, setDataset] = useState('by-service');
   const [timeframe, setTimeframe] = useState('MonthToDate');
   const [monthsBack, setMonthsBack] = useState(6);
@@ -112,46 +105,38 @@ export default function ExportCenter() {
   const dsConfig = DATASETS.find((d) => d.id === dataset);
 
   const preview = useCallback(async () => {
-    if (!subId.trim()) return;
+    if (!subscription?.trim()) return;
     setLoading(true); setError(null); setRaw(null); setRows([]);
     try {
       let data;
-      if (dataset === 'by-service')        data = await fetchCostByService(subId, { timeframe });
-      else if (dataset === 'by-type')      data = await fetchCostByResourceType(subId, timeframe);
-      else if (dataset === 'summary')      data = await fetchCostSummary(subId, { timeframe });
-      else if (dataset === 'mom')          data = await fetchMonthOverMonth(subId, monthsBack);
-      else if (dataset === 'service-breakdown') data = await fetchServiceBreakdown(subId, baseMonth, compareMonth);
-      else if (dataset === 'ri-recs')      data = await fetchReservationRecommendations(subId, commitmentType);
+      if (dataset === 'by-service')        data = await fetchCostByService(subscription, { timeframe });
+      else if (dataset === 'by-type')      data = await fetchCostByResourceType(subscription, timeframe);
+      else if (dataset === 'summary')      data = await fetchCostSummary(subscription, { timeframe });
+      else if (dataset === 'mom')          data = await fetchMonthOverMonth(subscription, monthsBack);
+      else if (dataset === 'service-breakdown') data = await fetchServiceBreakdown(subscription, baseMonth, compareMonth);
+      else if (dataset === 'ri-recs')      data = await fetchReservationRecommendations(subscription, commitmentType);
       setRaw(data);
       setRows(normaliseRows(dataset, data));
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setLoading(false); }
-  }, [subId, dataset, timeframe, monthsBack, baseMonth, compareMonth, commitmentType]);
+  }, [subscription, dataset, timeframe, monthsBack, baseMonth, compareMonth, commitmentType]);
 
-  const filename = `${dataset}-${subId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}`;
+  const filename = `${dataset}-${subscription?.slice(0, 8) ?? 'export'}-${new Date().toISOString().slice(0, 10)}`;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1">
-          <Download size={20} className="text-teal-600" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Export Center</h1>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Preview any cost dataset and download as CSV or JSON.
-        </p>
-      </div>
-
+    <AdvancedToolLayout
+      title="Export center"
+      subtitle="Preview any cost dataset and download as CSV or JSON."
+      iconKey="exportCenter"
+      iconRoute="/export-center"
+      onRefresh={preview}
+      loading={loading}
+      error={error}
+      errorTitle="Could not load export preview"
+    >
       {/* Controls */}
       <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-4 mb-5 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Subscription ID</label>
-            <input type="text" value={subId} onChange={(e) => setSubId(e.target.value)}
-              placeholder="00000000-0000-0000-0000-000000000000"
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Dataset</label>
             <select value={dataset} onChange={(e) => setDataset(e.target.value)}
@@ -234,12 +219,6 @@ export default function ExportCenter() {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />{error}
-        </div>
-      )}
-
       {loading && <Skeleton className="h-64 rounded-xl" />}
       {!loading && rows.length > 0 && <PreviewTable rows={rows} />}
 
@@ -249,6 +228,6 @@ export default function ExportCenter() {
           <p className="text-sm font-medium">Select a dataset and click Preview</p>
         </div>
       )}
-    </div>
+    </AdvancedToolLayout>
   );
 }

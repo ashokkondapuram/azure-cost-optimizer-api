@@ -57,6 +57,13 @@ def list_cost_sync_subscription_ids(db) -> list[str]:
     return sorted(subs)
 
 
+def is_cost_sync_pending(subscription_id: str) -> bool:
+    """True while a background cost sync thread is running for this subscription."""
+    sub = (subscription_id or "").strip().lower()
+    with _pending_lock:
+        return sub in _pending_syncs
+
+
 def request_cost_sync(subscription_id: str, *, reason: str = "on_demand") -> bool:
     """Enqueue a background Azure → DB cost sync (deduplicated per subscription)."""
     sub = (subscription_id or "").strip().lower()

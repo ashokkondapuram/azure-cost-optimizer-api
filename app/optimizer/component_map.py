@@ -34,7 +34,11 @@ COMPONENT_RESOURCE_TYPES: dict[str, list[str]] = {
 }
 
 # Batched analysis order — one component per batch to limit memory/CPU spikes
-ANALYSIS_BATCHES: list[dict] = [
+from app.optimizer.platform.analysis_batches import AUTO_GENERATED_ANALYSIS_BATCHES
+
+ANALYSIS_BATCHES: list[dict] = AUTO_GENERATED_ANALYSIS_BATCHES
+
+_LEGACY_ANALYSIS_BATCHES: list[dict] = [
     {"component": "Virtual Machines", "buckets": ["vms"]},
     {"component": "Virtual Machine Scale Sets", "buckets": ["vmss"]},
     {"component": "Managed Disks", "buckets": ["disks"]},

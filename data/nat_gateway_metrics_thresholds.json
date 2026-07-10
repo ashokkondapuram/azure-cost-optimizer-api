@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "service": "Azure NAT Gateway",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/nat-gateway/nat-overview",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-natgateways-metrics"
+  },
+  "skus": {
+    "Standard": {
+      "max_throughput_gbps": 50,
+      "max_public_ips": 16,
+      "snat_ports_per_ip": 64512
+    },
+    "StandardV2": {
+      "max_throughput_gbps": 100,
+      "max_public_ips": 16,
+      "snat_ports_per_ip": 64512,
+      "zone_redundant": true,
+      "ipv6": true
+    }
+  },
+  "pricing": {
+    "gateway_hourly_usd": 0.045,
+    "public_ip_hourly_usd": 0.004
+  },
+  "optimization_thresholds": {
+    "snat_exhaustion_pct": 80.0,
+    "snat_low_connection_threshold": 10.0,
+    "throughput_v2_upgrade_gbps": 40.0,
+    "idle_byte_threshold": 1000000.0,
+    "min_monthly_savings_usd": 5.0
+  }
+}

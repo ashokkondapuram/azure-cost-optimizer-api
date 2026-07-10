@@ -55,3 +55,26 @@ def test_auth_me_rejects_token_when_user_missing_from_database():
     client = TestClient(app)
     resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 401
+
+
+def test_refresh_token_returns_new_access_token():
+    init_db()
+    db = SessionLocal()
+    try:
+        _seed_admin(db)
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    login = client.post("/api/auth/login", json={"username": "admin", "password": "password123"})
+    assert login.status_code == 200, login.text
+    token = login.json()["access_token"]
+
+    refreshed = client.post("/api/auth/refresh", headers={"Authorization": f"Bearer {token}"})
+    assert refreshed.status_code == 200, refreshed.text
+    body = refreshed.json()
+    assert body["access_token"]
+    assert body["token_type"] == "bearer"
+
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {body['access_token']}"})
+    assert me.status_code == 200, me.text

@@ -12,7 +12,8 @@ from app.analysis_summary import merge_analysis_results, summarize_findings
 from app.optimizer.component_map import ANALYSIS_BATCHES, resolve_batches, resource_types_for_components
 from app.analysis.resource_graph import assign_action_chains, build_disk_snapshot_links, build_resource_graph
 from app.cost_db import daily_rate_by_service, resource_cost_map_from_db, resource_daily_cost_histories
-from app.optimizer.engine_config import get_effective_config
+from app.optimizer.engine_config import get_effective_config, get_global_engine_config
+from app.optimizer.engine_runtime import filter_bucket_dict, split_rule_overrides
 from app.optimizer.unified_engine import append_cost_export_findings
 from app.models import BudgetSnapshot
 from app.ai_analysis import enrich_analysis_with_ai
@@ -29,7 +30,12 @@ from app.utilization_history import (
     collect_resource_ids_from_buckets,
     persist_utilization_snapshot,
 )
-from app.resource_store import list_all_resources_db, list_resources_by_types_db
+from app.resource_store import (
+    apply_costs_to_resources,
+    list_all_resources_db,
+    list_resources_by_types_db,
+    list_resources_by_types_parallel,
+)
 from app.resource_type_map import arm_provider_type
 
 log = structlog.get_logger()
@@ -115,6 +121,9 @@ TYPE_TO_BUCKET: dict[str, str] = {
     "search/cognitivesearch": "cognitive_search_services",
     "network/firewall": "firewalls",
     "network/cdn": "cdn_profiles",
+    "network/expressroute": "expressroute_circuits",
+    "network/trafficmanager": "traffic_managers",
+    "network/frontdoor": "front_doors",
     "network/privateendpoint": "private_endpoints",
     "network/privatelinkservice": "private_link_services",
     "network/privatedns": "private_dns_zones",
@@ -148,6 +157,9 @@ def _enrich_properties(canonical_type: str, state: str | None, props: dict) -> d
             "instanceView",
             {"statuses": [{"code": f"PowerState/{power}"}]},
         )
+    if canonical_type == "compute/vmss" and state_text:
+        power = state_text.split("/")[-1] if "/" in state_text else state_text
+        out.setdefault("powerState", power)
     if canonical_type == "appservice/webapp" and state_text:
         out.setdefault("state", state_text)
     if canonical_type == "database/postgresql" and state_text:
@@ -197,10 +209,26 @@ def row_to_arm_resource(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def load_inventory_from_db(db: Session, subscription_id: str) -> tuple[dict[str, list], dict[str, int], dict[str, list]]:
+def load_inventory_from_db(
+    db: Session,
+    subscription_id: str,
+    *,
+    global_config: dict | None = None,
+    parallel: bool = True,
+) -> tuple[dict[str, list], dict[str, int], dict[str, list]]:
     """Load all active resources and group them for the optimization engine."""
     subscription_id = subscription_id.lower()
-    rows = list_all_resources_db(db, subscription_id)
+    if parallel:
+        rows = list_resources_by_types_parallel(
+            subscription_id,
+            list(TYPE_TO_BUCKET.keys()),
+            global_config=global_config,
+        )
+        cost_map = resource_cost_map_from_db(db, subscription_id)
+        rows = apply_costs_to_resources(rows, cost_map)
+    else:
+        rows = list_all_resources_db(db, subscription_id, global_config=global_config)
+
     buckets = empty_buckets()
     counts: dict[str, int] = {}
 
@@ -228,6 +256,9 @@ def load_buckets_for_keys(
     db: Session,
     subscription_id: str,
     bucket_keys: list[str],
+    *,
+    global_config: dict | None = None,
+    parallel: bool = True,
 ) -> tuple[dict[str, list], dict[str, list]]:
     """Load only the inventory rows needed for one analysis batch."""
     sub = subscription_id.lower()
@@ -240,7 +271,15 @@ def load_buckets_for_keys(
     if not types:
         return buckets, {}
 
-    for row in list_resources_by_types_db(db, sub, types):
+    unique_types = sorted({t.strip().lower() for t in types if t})
+    if parallel and len(unique_types) > 1:
+        rows = list_resources_by_types_parallel(sub, unique_types, global_config=global_config)
+        cost_map = resource_cost_map_from_db(db, sub)
+        rows = apply_costs_to_resources(rows, cost_map)
+    else:
+        rows = list_resources_by_types_db(db, sub, unique_types, global_config=global_config)
+
+    for row in rows:
         canonical = row.get("type") or ""
         bucket = _resolve_inventory_bucket(canonical, row.get("id") or "")
         if bucket:
@@ -305,7 +344,8 @@ def empty_buckets() -> dict[str, list]:
         "event_hubs": [], "service_bus_namespaces": [],
         "databricks_workspaces": [], "synapse_workspaces": [], "adx_clusters": [],
         "ml_workspaces": [], "recovery_vaults": [], "cognitive_search_services": [],
-        "firewalls": [], "cdn_profiles": [], "vnets": [],
+        "firewalls": [], "cdn_profiles": [], "expressroute_circuits": [], "traffic_managers": [],
+        "front_doors": [], "vnets": [],
         "private_endpoints": [], "private_link_services": [], "private_dns_zones": [],
         "cost_anomalies": [],
     }
@@ -337,6 +377,11 @@ def run_engine_on_buckets(
     )
     db_overrides = get_effective_config(db, profile)
     merged_overrides = {**db_overrides, **(rule_overrides or {})}
+    from app.optimizer.engine_config import get_global_engine_config
+    from app.optimizer.engine_runtime import split_rule_overrides
+
+    rule_only_overrides, inline_global = split_rule_overrides(merged_overrides)
+    global_config = {**get_global_engine_config(db, profile), **inline_global}
     engine_version = engine_version.lower()
     if engine_version != "extended":
         log.warning(
@@ -345,9 +390,9 @@ def run_engine_on_buckets(
             message="Standard engine uses heuristic savings; extended engine is recommended for production.",
         )
     eng = (
-        ExtendedOptimizationEngine(rule_overrides=merged_overrides)
+        ExtendedOptimizationEngine(rule_overrides=rule_only_overrides, global_config=global_config)
         if engine_version == "extended"
-        else OptimizationEngine(rule_overrides=merged_overrides)
+        else OptimizationEngine(rule_overrides=rule_only_overrides, global_config=global_config)
     )
 
     if vm_metrics is None or node_metrics is None or resource_metrics is None:
@@ -356,6 +401,7 @@ def run_engine_on_buckets(
                 db,
                 buckets=buckets,
                 cost_by_resource=cost_by_resource,
+                rule_overrides=rule_only_overrides,
             )
             vm_metrics = loaded_vm if vm_metrics is None else vm_metrics
             node_metrics = loaded_node if node_metrics is None else node_metrics
@@ -392,6 +438,11 @@ def run_engine_on_buckets(
         classify_workloads_for_buckets(buckets, resource_facts)
         if engine_version == "extended" else {}
     )
+    advisor_vm_targets = {}
+    if engine_version == "extended":
+        from app.advisor_vm_targets import load_advisor_vm_targets
+
+        advisor_vm_targets = load_advisor_vm_targets(db, sub)
     if engine_version == "extended":
         from app.demand_forecaster import batch_forecasts
 
@@ -449,6 +500,9 @@ def run_engine_on_buckets(
             cognitive_search_services=buckets.get("cognitive_search_services", []),
             firewalls=buckets.get("firewalls", []),
             cdn_profiles=buckets.get("cdn_profiles", []),
+            expressroute_circuits=buckets.get("expressroute_circuits", []),
+            traffic_managers=buckets.get("traffic_managers", []),
+            front_doors=buckets.get("front_doors", []),
             vnets=buckets.get("vnets", []),
             private_endpoints=buckets.get("private_endpoints", []),
             private_link_services=buckets.get("private_link_services", []),
@@ -465,6 +519,7 @@ def run_engine_on_buckets(
             resource_cost_histories=resource_cost_histories,
             utilization_trends=utilization_trends,
             workload_classes=workload_classes,
+            advisor_vm_targets=advisor_vm_targets,
         )
         result["metrics_context"] = analysis_metrics_summary(
             vm_metrics, node_metrics, resource_metrics, resource_facts, monitor_stats,
@@ -501,6 +556,10 @@ def run_engine_on_buckets(
         sql_databases=buckets.get("sql_databases", []),
         cosmosdb=buckets.get("cosmosdb", []),
         keyvaults=buckets.get("keyvaults", []),
+        expressroute_circuits=buckets.get("expressroute_circuits", []),
+        traffic_managers=buckets.get("traffic_managers", []),
+        front_doors=buckets.get("front_doors", []),
+        cdn_profiles=buckets.get("cdn_profiles", []),
         vm_metrics=vm_metrics,
         cost_by_resource=cost_by_resource,
         budgets=budgets,
@@ -565,23 +624,65 @@ def run_db_analysis(
             progress_callback(pct, component)
 
     _progress(5, "Loading inventory")
-    if scoped_types:
-        bucket_keys = bucket_keys_for_canonical_types(scoped_types)
-        buckets, aks_node_pools = load_buckets_for_keys(db, sub, bucket_keys)
-        inventory_counts = {k: len(v) for k, v in buckets.items() if v}
-    elif scoped:
-        bucket_keys: list[str] = []
-        for batch in resolve_batches(scope_components):
-            for key in batch.get("buckets") or []:
-                if key != "budgets" and key not in bucket_keys:
-                    bucket_keys.append(key)
-        buckets, aks_node_pools = load_buckets_for_keys(db, sub, bucket_keys)
-        inventory_counts = {k: len(v) for k, v in buckets.items() if v}
-    else:
-        buckets, inventory_counts, aks_node_pools = load_inventory_from_db(db, sub)
+    db_overrides = get_effective_config(db, profile)
+    merged_overrides = {**db_overrides, **(rule_overrides or {})}
+    rule_only_overrides, inline_global = split_rule_overrides(merged_overrides)
+    global_config = {**get_global_engine_config(db, profile), **inline_global}
+
+    from concurrent.futures import ThreadPoolExecutor
+    from app.database import SessionLocal
+
+    def _load_inventory_bundle() -> tuple[dict[str, list], dict[str, int], dict[str, list]]:
+        session = SessionLocal()
+        try:
+            if scoped_types:
+                bucket_keys = bucket_keys_for_canonical_types(scoped_types)
+                loaded_buckets, aks_pools = load_buckets_for_keys(
+                    session, sub, bucket_keys, global_config=global_config, parallel=True,
+                )
+                counts = {k: len(v) for k, v in loaded_buckets.items() if v}
+                return loaded_buckets, counts, aks_pools
+            if scoped:
+                bucket_keys: list[str] = []
+                for batch in resolve_batches(scope_components):
+                    for key in batch.get("buckets") or []:
+                        if key != "budgets" and key not in bucket_keys:
+                            bucket_keys.append(key)
+                loaded_buckets, aks_pools = load_buckets_for_keys(
+                    session, sub, bucket_keys, global_config=global_config, parallel=True,
+                )
+                counts = {k: len(v) for k, v in loaded_buckets.items() if v}
+                return loaded_buckets, counts, aks_pools
+            return load_inventory_from_db(session, sub, global_config=global_config, parallel=True)
+        finally:
+            session.close()
+
+    def _load_budgets() -> list[dict]:
+        session = SessionLocal()
+        try:
+            return load_budgets_from_db(session, sub)
+        finally:
+            session.close()
+
+    def _load_costs() -> dict[str, float]:
+        session = SessionLocal()
+        try:
+            return load_cost_by_resource_from_db(session, sub)
+        finally:
+            session.close()
+
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        inv_future = pool.submit(_load_inventory_bundle)
+        budget_future = pool.submit(_load_budgets)
+        cost_future = pool.submit(_load_costs)
+        buckets, inventory_counts, aks_node_pools = inv_future.result()
+        budgets = budget_future.result()
+        cost_by_resource = cost_future.result()
+
+    buckets = filter_bucket_dict(buckets, global_config)
+    inventory_counts = {k: len(v) for k, v in buckets.items() if v}
 
     total_resources = sum(len(v) for v in buckets.values())
-    budgets = load_budgets_from_db(db, sub)
 
     if total_resources == 0 and not budgets:
         raise ValueError(
@@ -589,7 +690,6 @@ def run_db_analysis(
             "Run Sync from Azure first, then run analysis again."
         )
 
-    cost_by_resource = load_cost_by_resource_from_db(db, sub)
     _progress(20, "Loading costs")
 
     monitor_stats: dict[str, Any] = {}
@@ -599,6 +699,7 @@ def run_db_analysis(
             buckets=buckets,
             cost_by_resource=cost_by_resource,
             fetch_monitor_metrics=True,
+            rule_overrides=rule_only_overrides,
         )
     else:
         vm_metrics, node_metrics, resource_metrics, resource_facts, monitor_stats = load_analysis_metrics(
@@ -606,6 +707,7 @@ def run_db_analysis(
             buckets=buckets,
             cost_by_resource=cost_by_resource,
             fetch_monitor_metrics=False,
+            rule_overrides=rule_only_overrides,
         )
         cached_facts = load_cached_resource_facts(db, sub)
         for rid, facts in cached_facts.items():

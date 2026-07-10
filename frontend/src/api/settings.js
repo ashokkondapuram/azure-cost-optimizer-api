@@ -37,3 +37,12 @@ export const fetchSettingsStatus = () =>
 
 export const applyDatabaseSettings = () =>
   api.post('/settings/database/apply').then((r) => r.data);
+
+export const fetchNavAccessMe = () =>
+  api.get('/settings/nav-access/me').then((r) => r.data);
+
+export const fetchNavAccessPolicy = () =>
+  api.get('/settings/nav-access/policy').then((r) => r.data);
+
+export const saveNavAccessPolicy = (roles) =>
+  api.put('/settings/nav-access/policy', { roles }).then((r) => r.data);

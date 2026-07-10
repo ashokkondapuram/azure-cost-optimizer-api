@@ -1,0 +1,670 @@
+/* ============================================================
+   InfinityOps — Visual polish layer
+   Richer backgrounds, glass surfaces, login hero, page chrome.
+   Import AFTER index.css and hub-ui-improvements.css.
+   ============================================================ */
+
+/* ── Enhanced theme tokens ─────────────────────────────────── */
+
+:root,
+[data-theme="light"] {
+  --bg: #d4eaf6;
+  --bg2: #edf7fd;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --surface-glass-border: rgba(14, 165, 233, 0.18);
+  --glow-primary: rgba(14, 165, 233, 0.35);
+  --page-accent-line: linear-gradient(90deg, var(--primary), var(--primary-light), transparent);
+  --login-aurora-1: rgba(56, 189, 248, 0.45);
+  --login-aurora-2: rgba(99, 102, 241, 0.28);
+  --login-aurora-3: rgba(14, 165, 233, 0.38);
+  --login-card-border-glow: linear-gradient(135deg, rgba(56, 189, 248, 0.55), rgba(99, 102, 241, 0.35), rgba(14, 165, 233, 0.45));
+}
+
+[data-theme="dark"] {
+  --bg: #070a10;
+  --bg2: #0e141c;
+  --surface-glass: rgba(18, 24, 32, 0.82);
+  --surface-glass-border: rgba(56, 189, 248, 0.14);
+  --glow-primary: rgba(56, 189, 248, 0.22);
+  --page-accent-line: linear-gradient(90deg, var(--primary), rgba(56, 189, 248, 0.4), transparent);
+  --login-aurora-1: rgba(56, 189, 248, 0.22);
+  --login-aurora-2: rgba(99, 102, 241, 0.16);
+  --login-aurora-3: rgba(14, 165, 233, 0.18);
+  --login-card-border-glow: linear-gradient(135deg, rgba(56, 189, 248, 0.35), rgba(99, 102, 241, 0.2), rgba(14, 165, 233, 0.3));
+}
+
+@keyframes polish-aurora-shift {
+  0%, 100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 0.85; }
+  33% { transform: translate(3%, -2%) scale(1.05) rotate(2deg); opacity: 1; }
+  66% { transform: translate(-2%, 3%) scale(0.98) rotate(-1deg); opacity: 0.9; }
+}
+
+@keyframes polish-border-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes polish-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes polish-shine-sweep {
+  0% { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(220%) skewX(-12deg); }
+}
+
+/* ── App shell & main content ──────────────────────────────── */
+
+.main-column {
+  position: relative;
+  isolation: isolate;
+}
+
+.main-column::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  left: var(--sidebar-w);
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 90% 55% at 12% -8%, color-mix(in srgb, var(--primary) 14%, transparent), transparent 58%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 52%),
+    radial-gradient(ellipse 60% 45% at 50% 110%, color-mix(in srgb, var(--primary-light) 8%, transparent), transparent 55%);
+  transition: left 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-shell--sidebar-collapsed .main-column::before {
+  left: var(--sidebar-w-collapsed);
+}
+
+.main-content {
+  position: relative;
+  z-index: 1;
+  animation: polish-fade-up 0.45s ease both;
+}
+
+/* ── Page headers ──────────────────────────────────────────── */
+
+.page-header {
+  position: relative;
+  padding-bottom: 1.1rem;
+  margin-bottom: 1.85rem;
+}
+
+.page-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--page-accent-line);
+  opacity: 0.85;
+}
+
+.page-title {
+  background: linear-gradient(135deg, var(--text) 0%, color-mix(in srgb, var(--primary) 35%, var(--text)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+[data-theme="dark"] .page-title {
+  background: linear-gradient(135deg, #f8fafc 0%, var(--primary-light) 120%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-sub {
+  color: var(--text2);
+  line-height: 1.55;
+}
+
+/* ── Cards & surfaces ──────────────────────────────────────── */
+
+.card {
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg2));
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: color-mix(in srgb, var(--primary) 10%, var(--border));
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--primary) 22%, var(--border-light));
+  box-shadow: var(--shadow-hover), 0 0 0 1px color-mix(in srgb, var(--primary) 8%, transparent), var(--card-shine);
+}
+
+.stat-card {
+  background: color-mix(in srgb, var(--surface) 90%, var(--bg2));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.stat-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 60% at 100% 0%, color-mix(in srgb, var(--primary) 6%, transparent), transparent 55%);
+  pointer-events: none;
+}
+
+.stat-value {
+  letter-spacing: -0.02em;
+}
+
+/* ── Tables & filters ──────────────────────────────────────── */
+
+.table-wrap,
+.resource-table-wrap,
+.responsive-table-wrapper {
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--primary) 8%, var(--border));
+  background: color-mix(in srgb, var(--surface) 92%, var(--bg2));
+  box-shadow: var(--shadow-sm), var(--card-shine);
+  overflow: hidden;
+}
+
+.filter-bar,
+.toolbar {
+  background: color-mix(in srgb, var(--surface) 85%, var(--bg2));
+  border: 1px solid color-mix(in srgb, var(--primary) 10%, var(--border));
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.resource-table__row:hover td,
+.tag-rg-table__row:hover td,
+.table tbody tr:hover td {
+  background: color-mix(in srgb, var(--primary) 7%, var(--surface));
+}
+
+.pagination-controls {
+  margin-top: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 90%, var(--bg2));
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #38bdf8 0%, var(--primary) 48%, var(--primary-h) 100%);
+  border: 1px solid color-mix(in srgb, var(--primary-h) 40%, transparent);
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.22) 50%, transparent 60%);
+  transform: translateX(-120%) skewX(-12deg);
+  pointer-events: none;
+}
+
+.btn-primary:hover:not(:disabled)::after {
+  animation: polish-shine-sweep 0.65s ease;
+}
+
+.btn-secondary {
+  background: color-mix(in srgb, var(--surface2) 90%, var(--bg2));
+}
+
+/* ── Sidebar polish ────────────────────────────────────────── */
+
+.sidebar {
+  box-shadow:
+    4px 0 28px rgba(14, 165, 233, 0.08),
+    inset -1px 0 0 color-mix(in srgb, var(--primary) 6%, var(--border));
+}
+
+.nav-item.active {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--primary) 16%, transparent), color-mix(in srgb, var(--primary) 6%, transparent));
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.mobile-header {
+  background: color-mix(in srgb, var(--surface) 88%, var(--bg2));
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 12%, var(--border));
+  box-shadow: 0 4px 20px rgba(14, 165, 233, 0.06);
+}
+
+/* ── Login page — immersive hero ───────────────────────────── */
+
+.login-page {
+  background:
+    radial-gradient(ellipse 120% 80% at 20% -20%, var(--login-aurora-1), transparent 55%),
+    radial-gradient(ellipse 90% 70% at 90% 10%, var(--login-aurora-2), transparent 50%),
+    radial-gradient(ellipse 80% 60% at 50% 110%, var(--login-aurora-3), transparent 55%),
+    var(--bg);
+}
+
+.login-page__aurora {
+  position: absolute;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    conic-gradient(from 200deg at 30% 40%, var(--login-aurora-1), transparent 35%, var(--login-aurora-2), transparent 65%, var(--login-aurora-3));
+  filter: blur(60px);
+  opacity: 0.55;
+  animation: polish-aurora-shift 22s ease-in-out infinite;
+}
+
+.login-page__noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+[data-theme="dark"] .login-page__noise {
+  opacity: 0.06;
+}
+
+.login-layout {
+  max-width: 1180px;
+  gap: 3.5rem;
+}
+
+.login-hero__title-accent {
+  background: linear-gradient(135deg, var(--primary) 0%, #6366f1 52%, var(--primary-light) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  cursor: help;
+  text-decoration: underline dotted transparent;
+  text-underline-offset: 0.2em;
+  transition: text-decoration-color 0.15s ease;
+  outline: none;
+}
+
+.login-hero__title-accent:hover,
+.login-hero__title-accent:focus-visible {
+  text-decoration-color: var(--primary-light);
+}
+
+.login-hero__title-accent-wrap {
+  position: relative;
+  display: inline;
+  white-space: nowrap;
+}
+
+.login-hero__title-block {
+  margin-bottom: 0.85rem;
+}
+
+.login-hero__title-block .login-hero__title {
+  margin-bottom: 0;
+}
+
+.login-hero__optimization-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-top: 0;
+  transition:
+    grid-template-rows 0.38s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease,
+    margin-top 0.28s ease;
+}
+
+.login-hero__optimization-reveal--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-top: 0.8rem;
+}
+
+.login-hero__optimization-reveal-inner {
+  overflow: hidden;
+  min-height: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 24%, var(--border));
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--primary) 7%, var(--surface)) 0%,
+      color-mix(in srgb, var(--surface) 92%, transparent) 100%
+    );
+  box-shadow:
+    0 14px 32px rgba(14, 165, 233, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.login-hero__optimization-reveal-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.45rem;
+}
+
+.login-hero__optimization-reveal-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.login-hero__optimization-reveal-eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.login-hero__optimization-reveal-headline {
+  margin: 0 0 0.55rem;
+  font-size: 1.02rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  min-height: 1.35em;
+}
+
+.login-hero__optimization-reveal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.login-hero__optimization-reveal-list--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.login-hero__optimization-reveal-list li {
+  position: relative;
+  padding-left: 0.95rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--text2);
+}
+
+.login-hero__optimization-reveal-list li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--primary);
+  transform: translateY(-50%);
+}
+
+.login-hero__optimization-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--primary);
+  animation: login-optimization-cursor 0.75s step-end infinite;
+}
+
+@keyframes login-optimization-cursor {
+  0%, 45% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-hero__optimization-reveal,
+  .login-hero__optimization-reveal--open {
+    transition: opacity 0.15s ease;
+    margin-top: 0.8rem;
+  }
+
+  .login-hero__optimization-reveal-list {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .login-hero__optimization-cursor {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+.login-hero__title {
+  overflow: visible;
+  font-size: clamp(2rem, 4.5vw, 2.75rem);
+  max-width: 24ch;
+  line-height: 1.1;
+}
+
+.login-hero__highlights {
+  display: none;
+}
+
+.login-showcase__preview {
+  perspective: 900px;
+  min-height: 300px;
+}
+
+#login-feature-preview {
+  min-width: 300px;
+}
+
+.login-preview {
+  min-height: 300px;
+  transform: rotateY(-3deg) rotateX(1deg);
+  box-shadow:
+    0 24px 48px rgba(14, 165, 233, 0.18),
+    0 8px 16px rgba(15, 41, 66, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border: 1px solid color-mix(in srgb, var(--primary) 18%, var(--border));
+}
+
+.login-card-wrap {
+  position: relative;
+  border-radius: calc(var(--radius-lg) + 2px);
+  padding: 1px;
+  background: var(--login-card-border-glow);
+  box-shadow: 0 0 40px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+
+.login-card-wrap::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(from var(--login-border-angle, 0deg), transparent, rgba(56, 189, 248, 0.5), transparent, rgba(99, 102, 241, 0.4), transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.45;
+  animation: polish-border-spin 12s linear infinite;
+  pointer-events: none;
+}
+
+.login-card-wrap .login-card {
+  border: none;
+  box-shadow: none;
+  margin: 0;
+}
+
+.login-card-wrap .login-card:hover {
+  transform: none;
+}
+
+.login-card {
+  background: var(--login-card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--login-card-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.login-card__divider {
+  height: 1px;
+  margin: 0 0 1.5rem;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 30%, var(--border)), transparent);
+}
+
+.login-form__input-wrap input {
+  background: color-mix(in srgb, var(--bg3) 85%, var(--surface));
+  border-color: color-mix(in srgb, var(--primary) 12%, var(--border));
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+}
+
+.login-form__input-wrap input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+  background: var(--bg3);
+}
+
+.login-form__submit {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.login-preview__metric-value {
+  background: linear-gradient(135deg, var(--text), var(--primary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Insight drawer & modals ───────────────────────────────── */
+
+.insight-drawer__panel {
+  box-shadow:
+    -8px 0 40px rgba(0, 0, 0, 0.12),
+    0 0 0 1px color-mix(in srgb, var(--primary) 8%, var(--border));
+}
+
+/* ── Advanced tool pages ───────────────────────────────────── */
+
+.anomaly-page-card,
+.tag-rg-explorer,
+.waste-findings-table {
+  background: color-mix(in srgb, var(--surface) 90%, var(--bg2));
+  border-color: color-mix(in srgb, var(--primary) 10%, var(--border));
+  box-shadow: var(--shadow-sm), var(--card-shine);
+}
+
+/* ── Alerts & empty states ──────────────────────────────────── */
+
+.alert {
+  border-radius: var(--radius);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.alert--danger {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+.alert--warning {
+  border-color: color-mix(in srgb, var(--warning) 35%, var(--border));
+}
+
+.heatmap-empty,
+.tag-rg-explorer__empty,
+.empty-state {
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface2) 80%, var(--bg2));
+  border: 1px dashed color-mix(in srgb, var(--primary) 18%, var(--border));
+}
+
+/* ── Global progress ───────────────────────────────────────── */
+
+.global-progress {
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+}
+
+.global-progress__bar {
+  background: linear-gradient(90deg, var(--primary-h), var(--primary), var(--primary-light), var(--primary));
+  background-size: 200% 100%;
+  box-shadow: 0 0 12px var(--glow-primary);
+}
+
+/* ── Resource table footer ───────────────────────────────────── */
+
+.resource-table-footer {
+  background: color-mix(in srgb, var(--surface2) 75%, var(--bg2));
+  border-top: 1px solid color-mix(in srgb, var(--primary) 10%, var(--border));
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* ── Reduced motion ────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .login-page__aurora,
+  .login-card-wrap::before,
+  .main-content,
+  .btn-primary::after {
+    animation: none !important;
+  }
+
+  .login-preview {
+    transform: none;
+  }
+}
+
+/* ── Responsive login ──────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .login-layout {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    gap: 2rem;
+  }
+
+  .login-hero {
+    text-align: center;
+  }
+
+  .login-hero__title,
+  .login-hero__desc {
+    max-width: none;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .login-hero__highlights {
+    justify-content: center;
+  }
+
+  .login-showcase {
+    grid-template-columns: 1fr;
+  }
+
+  .login-showcase__preview {
+    order: -1;
+  }
+
+  .login-preview {
+    transform: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-column::before {
+    left: 0;
+  }
+}

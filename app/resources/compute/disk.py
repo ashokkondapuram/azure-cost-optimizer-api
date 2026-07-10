@@ -1,54 +1,9 @@
-from app.resources.types import ResourceMonitorProfile, TechnicalFetchSpec, field, utilization_metric as um
+"""Compatibility shim — implementation: it_services.compute_disk.resource_profile"""
 
-CANONICAL_TYPE = "compute/disk"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Compute/disks",
-    display_name="Managed disk",
-    sync_property_paths=(
-        "diskSizeGB", "diskState", "diskIOPSReadWrite", "diskMBpsReadWrite",
-        "managedBy", "encryption", "provisioningState",
-        "timeCreated", "lastOwnershipUpdateTime", "creationData",
-    ),
-    fields=(
-        field("disk_state", "props:diskState", "Disk state", "association",
-              "DISK_UNATTACHED", "DISK_OVERSIZE", "DISK_UNUSED_EXTENDED", "DISK_UNDERPROVISIONED"),
-        field("size_gb", "props:diskSizeGB", "Disk size (GB)", "capacity",
-              "DISK_UNATTACHED", "DISK_OVERSIZE", "DISK_UNDERPROVISIONED"),
-        field("provisioned_iops", "props:diskIOPSReadWrite", "Provisioned IOPS", "capacity",
-              "DISK_OVERSIZE_EXTENDED", "DISK_UNDERPROVISIONED"),
-        field("provisioned_mbps", "props:diskMBpsReadWrite", "Provisioned throughput (MB/s)", "capacity",
-              "DISK_OVERSIZE_EXTENDED", "DISK_UNDERPROVISIONED"),
-        field("sku", "row:sku", "SKU", "configuration",
-              "DISK_UNATTACHED", "DISK_OVERSIZE", "DISK_OVERSIZE_EXTENDED", "DISK_UNDERPROVISIONED"),
-        field("managed_by", "props:managedBy", "Attached to", "association", "DISK_UNATTACHED"),
-        field("last_managed_by", "props:lastManagedBy", "Last attached to", "association",
-              "DISK_UNUSED_EXTENDED"),
-        field("time_created", "props:timeCreated", "Created", "configuration",
-              "DISK_UNUSED_EXTENDED"),
-        field("last_ownership_update", "props:lastOwnershipUpdateTime", "Last ownership update time",
-              "utilization", "DISK_UNUSED_EXTENDED"),
-    ),
-)
+_impl = import_module("it_services.compute_disk.resource_profile")
 
-MONITOR_PROFILE = ResourceMonitorProfile(
-    monitor_arm_type="microsoft.compute/disks",
-    canonical_type=CANONICAL_TYPE,
-    display_name="Managed disk",
-    doc_ref="microsoft-compute-disks-metrics",
-    metrics=(
-        um("Composite Disk Read Bytes/sec", "disk_read_bps", "Disk read throughput",
-           aggregation="Average",
-           rules=("DISK_OVERSIZE", "DISK_UNUSED_EXTENDED", "DISK_OVERSIZE_EXTENDED")),
-        um("Composite Disk Write Bytes/sec", "disk_write_bps", "Disk write throughput",
-           aggregation="Average",
-           rules=("DISK_OVERSIZE", "DISK_UNUSED_EXTENDED", "DISK_OVERSIZE_EXTENDED")),
-        um("Composite Disk Read Operations/sec", "disk_read_iops", "Disk read IOPS",
-           aggregation="Average",
-           rules=("DISK_OVERSIZE_EXTENDED", "DISK_UNDERPROVISIONED")),
-        um("Composite Disk Write Operations/sec", "disk_write_iops", "Disk write IOPS",
-           aggregation="Average",
-           rules=("DISK_OVERSIZE_EXTENDED", "DISK_UNDERPROVISIONED")),
-    ),
-)
+
+def __getattr__(name: str):
+    return getattr(_impl, name)

@@ -103,77 +103,84 @@ def filter_stats_for_display(
 def infer_metric_metadata(fact_key: str, aggregation: str = "Average") -> dict[str, str | tuple[str, ...]]:
     """Infer unit, primary stat, display columns, and cost/performance impact from fact_key."""
     key = (fact_key or "").lower()
-
-    if key.endswith("_pct") or key.endswith("_percent") or "cpu" in key or key.endswith("_mem_pct"):
-        stats = display_stats_for_aggregation(aggregation)
-        return {
-            "unit": "percent",
-            "primary_stat": primary_stat_for_aggregation(aggregation),
-            "display_stats": stats,
-            "impact": "both",
-        }
-    if key.endswith("_bytes") or key.endswith("_bps") or "throughput" in key or "capacity" in key:
-        stats = display_stats_for_aggregation(aggregation)
-        return {
-            "unit": "bytes_per_sec" if key.endswith("_bps") or "throughput" in key else "bytes",
-            "primary_stat": primary_stat_for_aggregation(aggregation),
-            "display_stats": stats,
-            "impact": "cost",
-        }
-    if key.endswith("_iops") or "queue_depth" in key:
-        stats = display_stats_for_aggregation(aggregation)
-        return {
-            "unit": "count",
-            "primary_stat": primary_stat_for_aggregation(aggregation),
-            "display_stats": stats,
-            "impact": "performance",
-        }
-    if key.endswith("_sec") or "duration" in key or "query_duration" in key:
-        stats = display_stats_for_aggregation(aggregation)
-        return {
-            "unit": "seconds",
-            "primary_stat": primary_stat_for_aggregation(aggregation),
-            "display_stats": stats,
-            "impact": "performance",
-        }
-    if key.endswith("_gb") or key == "ingestion_gb":
-        stats = display_stats_for_aggregation(aggregation)
-        return {
-            "unit": "gb",
-            "primary_stat": primary_stat_for_aggregation(aggregation),
-            "display_stats": stats,
-            "impact": "cost",
-        }
-    if "count" in key or "hits" in key or "requests" in key or "messages" in key or "runs" in key or "pull" in key or key.endswith("_ru"):
-        return {
-            "unit": "count",
-            "primary_stat": "total",
-            "display_stats": COUNT_DISPLAY_STATS,
-            "impact": "cost",
-        }
-    if "ops_per_sec" in key or key.endswith("_qps"):
-        stats = display_stats_for_aggregation("Maximum")
-        return {
-            "unit": "count",
-            "primary_stat": "maximum",
-            "display_stats": stats,
-            "impact": "performance",
-        }
-    if "availability" in key:
-        stats = display_stats_for_aggregation(aggregation)
-        return {
-            "unit": "percent",
-            "primary_stat": primary_stat_for_aggregation(aggregation),
-            "display_stats": stats,
-            "impact": "performance",
-        }
     stats = display_stats_for_aggregation(aggregation)
-    return {
-        "unit": "number",
-        "primary_stat": primary_stat_for_aggregation(aggregation),
-        "display_stats": stats,
-        "impact": "both",
-    }
+    primary = primary_stat_for_aggregation(aggregation)
+
+    def meta(
+        unit: str,
+        impact: str,
+        *,
+        primary_stat: str | None = None,
+        display_stats_override: tuple[str, ...] | None = None,
+    ) -> dict[str, str | tuple[str, ...]]:
+        return {
+            "unit": unit,
+            "primary_stat": primary_stat or primary,
+            "display_stats": display_stats_override or stats,
+            "impact": impact,
+        }
+
+    # Misleading fact keys — explicit overrides before pattern rules.
+    if key == "ingestion_bytes":
+        return meta("mb", "cost", primary_stat="total")
+    if key in {"byte_count", "byte_count_peak"}:
+        return meta("bytes", "cost", primary_stat=primary_stat_for_aggregation(aggregation))
+    if key == "provisioned_throughput":
+        return meta("number", "cost", primary_stat="maximum")
+
+    # Time
+    if key.endswith("_ms"):
+        return meta("milliseconds", "performance")
+    if "ops_per_sec" in key or key.endswith("_qps"):
+        return meta("count", "performance", primary_stat="maximum")
+    if key.endswith("_sec") or key.endswith("_lag_sec"):
+        return meta("seconds", "performance")
+
+    # Percent utilization
+    if key.endswith("_pct") or key.endswith("_percent") or key.endswith("_mem_pct"):
+        return meta("percent", "both")
+    if "cpu" in key:
+        return meta("percent", "both")
+
+    # Throughput rates
+    if key.endswith("_bps") or (key.endswith("_rate") and "bytes" in key):
+        return meta("bytes_per_sec", "cost")
+    if "throughput" in key and "bytes" in key:
+        return meta("bytes_per_sec", "cost")
+
+    # Byte volumes (including pe_bytes_in / ddos_bytes_dropped style keys)
+    if (
+        key.endswith("_bytes")
+        or "_bytes_" in key
+        or key.endswith("_bytes_in")
+        or key.endswith("_bytes_out")
+        or "bytes_dropped" in key
+    ):
+        return meta("bytes", "cost")
+
+    if key.endswith("_iops") or "queue_depth" in key:
+        return meta("count", "performance")
+
+    if key.endswith("_gb") or key == "ingestion_gb":
+        return meta("gb", "cost")
+
+    # Count-style metrics — use suffix match so byte_count stays bytes.
+    if (
+        key.endswith("_count")
+        or key.endswith("_ru")
+        or key.endswith("_hits")
+        or key.endswith("_messages")
+        or "requests" in key
+        or "runs_" in key
+        or key.endswith("_pull")
+        or key.endswith("_push")
+    ):
+        return meta("count", "cost", primary_stat="total", display_stats_override=COUNT_DISPLAY_STATS)
+
+    if "availability" in key:
+        return meta("percent", "performance")
+
+    return meta("number", "both")
 
 
 @dataclass(frozen=True)

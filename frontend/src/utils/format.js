@@ -67,6 +67,21 @@ export function formatDateTime(value) {
   return `${formatDate(date)} at ${hour12}:${minutes} ${period}`;
 }
 
+/** Format ISO timestamp in UTC (Azure maintenance windows are UTC). */
+export function formatDateTimeUtc(value) {
+  if (!value) return '—';
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  const hours = date.getUTCHours();
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  const month = MONTHS[date.getUTCMonth()];
+  const day = date.getUTCDate();
+  const year = date.getUTCFullYear();
+  return `${month} ${day}, ${year} at ${hour12}:${minutes} ${period} UTC`;
+}
+
 const URL_RE = /^https?:\/\//i;
 
 /** Human-readable property value for inventory tables — avoids [object Object]. */

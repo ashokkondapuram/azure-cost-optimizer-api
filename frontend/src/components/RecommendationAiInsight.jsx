@@ -2,6 +2,7 @@ import React from 'react';
 import { Sparkles } from 'lucide-react';
 import { toDisplayText } from '../utils/formatDisplay';
 import { formatAiRiskLabel } from '../utils/evidenceUtils';
+import AiImplementationSteps from './AiImplementationSteps';
 
 /**
  * Surfaces Azure OpenAI enrichment from analysis — summary, steps, risk, and data gaps.
@@ -57,14 +58,7 @@ export default function RecommendationAiInsight({
       )}
 
       {hasSteps && (
-        <div className="rec-ai-insight__steps-wrap">
-          <span className="rec-ai-insight__steps-label">Implementation steps</span>
-          <ol className="rec-ai-insight__steps">
-            {steps.map((step, idx) => (
-              <li key={`ai-step-${idx}`}>{toDisplayText(step)}</li>
-            ))}
-          </ol>
-        </div>
+        <AiImplementationSteps steps={steps} className="rec-ai-insight__steps-wrap" />
       )}
 
       {hasMeta && (

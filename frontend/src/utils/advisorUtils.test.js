@@ -1,4 +1,5 @@
 import {
+  advisorCategoriesForTable,
   advisorCategoryLabel,
   indexAdvisorByResourceId,
   primaryAdvisorRecommendation,
@@ -24,5 +25,24 @@ describe('advisorUtils', () => {
       { impact: 'High', potential_savings_monthly: 50 },
     ]);
     expect(primary.impact).toBe('High');
+  });
+
+  it('returns icon categories for table cells in fixed order', () => {
+    const categories = advisorCategoriesForTable([
+      { category: 'Security', impact: 'Low', summary: 'Enable encryption' },
+      { category: 'Performance', impact: 'High', summary: 'Scale up' },
+      { category: 'Cost', impact: 'Medium', summary: 'Reserved instance' },
+      { category: 'Cost', impact: 'High', summary: 'Right-size VM' },
+      { category: 'HighAvailability', impact: 'High', summary: 'Use zone redundancy' },
+      { category: 'OperationalExcellence', impact: 'Medium', summary: 'Use tags' },
+    ]);
+    expect(categories.map((item) => item.category)).toEqual([
+      'Cost',
+      'Performance',
+      'HighAvailability',
+      'Security',
+      'OperationalExcellence',
+    ]);
+    expect(categories[0].impact).toBe('High');
   });
 });

@@ -17,16 +17,19 @@ from app.cost_db import (
     empty_cost_summary_response,
     empty_daily_cost_response,
     get_latest_cost_changes,
-    list_cost_records,
     mtd_period_for_timeframe,
 )
+from app.models import CostRecord
 from app.cost_live_query import (
     query_cost_by_resource_live,
     query_cost_by_service_live,
     query_cost_summary_live,
     query_daily_costs_live,
+    query_demand_forecast_live,
+    query_forecast_daily_live,
+    query_forecast_summary_live,
 )
-from app.cost_resolve import live_range_kw, resolve_cost_db_then_live
+from app.cost_resolve import live_range_kw, resolve_cost_for_timeframe
 from app.cost_timeframes import list_timeframe_catalog
 from app.database import get_db
 from app.db_sync import sync_costs
@@ -126,7 +129,10 @@ def get_costs(
     live_kw = live_range_kw(range_kw)
     token = _live_cost_token(db)
     scope = f"/subscriptions/{subscription_id}"
-    db_data, source = resolve_cost_db_then_live(
+    has_type_filter = bool(range_kw.get("resource_types"))
+    db_data, source = resolve_cost_for_timeframe(
+        timeframe,
+        has_resource_type_filter=has_type_filter,
         db_call=lambda: daily_cost_response_from_db(db, subscription_id, **range_kw),
         live_call=lambda: query_daily_costs_live(db, subscription_id, token=token, **live_kw),
     )
@@ -149,7 +155,6 @@ def get_rg_costs(
     timeframe:       str = Query("MonthToDate"),
     from_date:       Optional[str] = Query(None),
     to_date:         Optional[str] = Query(None),
-    granularity:     str = Query("Daily"),
     db: Session = Depends(get_db),
 ):
     subscription_id = _scoped_subscription(db, subscription_id)
@@ -179,7 +184,10 @@ def get_costs_by_resource(
             return None
         return query_cost_by_resource_live(db, subscription_id, token=token, **live_kw)
 
-    db_data, source = resolve_cost_db_then_live(
+    has_type_filter = bool(range_kw.get("resource_types"))
+    db_data, source = resolve_cost_for_timeframe(
+        timeframe,
+        has_resource_type_filter=has_type_filter,
         db_call=lambda: cost_by_resource_from_db(db, subscription_id, **range_kw),
         live_call=_live_by_resource,
     )
@@ -230,7 +238,10 @@ def get_costs_by_service(
     range_kw = _cost_range_kwargs(timeframe, from_date, to_date, resource_types=resource_types)
     live_kw = live_range_kw(range_kw)
     token = _live_cost_token(db)
-    db_data, source = resolve_cost_db_then_live(
+    has_type_filter = bool(range_kw.get("resource_types"))
+    db_data, source = resolve_cost_for_timeframe(
+        timeframe,
+        has_resource_type_filter=has_type_filter,
         db_call=lambda: cost_by_service_from_db(db, subscription_id, **range_kw),
         live_call=lambda: query_cost_by_service_live(db, subscription_id, token=token, **live_kw),
     )
@@ -255,7 +266,10 @@ def get_costs_summary(
     range_kw = _cost_range_kwargs(timeframe, from_date, to_date, resource_types=resource_types)
     live_kw = live_range_kw(range_kw)
     token = _live_cost_token(db)
-    db_summary, source = resolve_cost_db_then_live(
+    has_type_filter = bool(range_kw.get("resource_types"))
+    db_summary, source = resolve_cost_for_timeframe(
+        timeframe,
+        has_resource_type_filter=has_type_filter,
         db_call=lambda: cost_summary_from_db(db, subscription_id, **range_kw),
         live_call=lambda: query_cost_summary_live(db, subscription_id, token=token, **live_kw),
     )
@@ -285,16 +299,34 @@ def get_costs_changes(
     return {"subscription_id": subscription_id, **data}
 
 
-@router.get("/forecast", summary="Forecast costs for the current billing period (admin, live Azure)")
+@router.get("/forecast", summary="Forecast costs for the current billing period (live Azure)")
 def get_cost_forecast(
-    request: Request,
     subscription_id: str = Query(...),
     timeframe:       str = Query("MonthToDate"),
     db: Session = Depends(get_db),
 ):
-    require_admin_user(request)
     sub = _scoped_subscription(db, subscription_id)
-    return cost_client.query_forecast(sub, timeframe)
+    token = _live_cost_token(db)
+    payload = query_forecast_summary_live(db, sub, timeframe, token=token)
+    if payload:
+        return payload
+    try:
+        return cost_client.query_forecast(sub, timeframe)
+    except Exception as exc:
+        raise _cost_api_http_error(exc) from exc
+
+
+@router.get("/demand-forecast", summary="Monthly history and Azure forecast for demand forecaster")
+def get_demand_forecast(
+    subscription_id: str = Query(...),
+    months_back: int = Query(6, ge=3, le=12),
+    db: Session = Depends(get_db),
+):
+    sub = _scoped_subscription(db, subscription_id)
+    token = _live_cost_token(db)
+    if not token:
+        raise HTTPException(503, "Azure credentials unavailable for live cost forecast.")
+    return query_demand_forecast_live(db, sub, months_back=months_back, token=token)
 
 
 @router.get("/budgets", summary="List all budgets configured on a subscription")
@@ -330,7 +362,13 @@ def cost_history(
 ):
     """Returns the 100 most recent synced cost data rows for the subscription."""
     sub = _scoped_subscription(db, subscription_id)
-    records = list_cost_records(db, sub, limit=100)
+    records = (
+        db.query(CostRecord)
+        .filter(CostRecord.subscription_id == sub)
+        .order_by(CostRecord.created_at.desc())
+        .limit(100)
+        .all()
+    )
     return [
         {
             "id": r.id,
@@ -344,22 +382,60 @@ def cost_history(
     ]
 
 
-@router.post("/sync", summary="Refresh Dashboard and Cost explorer costs")
+@router.post(
+    "/sync",
+    summary="Refresh Dashboard and Cost explorer costs",
+    status_code=202,
+    responses={
+        200: {"description": "Sync completed (wait=true only)"},
+        202: {"description": "Sync accepted and running in the background"},
+    },
+)
 def trigger_cost_sync(
     request: Request,
     subscription_id: str = Query(...),
+    wait: bool = Query(
+        False,
+        description="Block until sync completes. May time out behind gateways; default is async.",
+    ),
     db: Session = Depends(get_db),
     token: str = Depends(arm_bearer_token),
 ):
     require_admin_user(request)
-    try:
-        subscription_id = subscription_id.strip().lower()
-        log.info("cost_api.sync_start", subscription_id=subscription_id)
-        synced = sync_costs(subscription_id, db, token)
-        log.info("cost_api.sync_done", subscription_id=subscription_id, synced=synced)
-        return {"status": "ok", "synced": synced, "source": "azure_cost_management"}
-    except CostExportReadError as exc:
-        raise _cost_api_http_error(exc) from exc
-    except Exception as exc:
-        log.exception("cost_sync_failed", subscription_id=subscription_id)
-        raise HTTPException(500, str(exc)) from exc
+    subscription_id = subscription_id.strip().lower()
+
+    if wait:
+        try:
+            log.info("cost_api.sync_start", subscription_id=subscription_id, wait=True)
+            synced = sync_costs(subscription_id, db, token)
+            log.info("cost_api.sync_done", subscription_id=subscription_id, synced=synced)
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(
+                status_code=200,
+                content={"status": "ok", "synced": synced, "source": "azure_cost_management", "async": False},
+            )
+        except CostExportReadError as exc:
+            raise _cost_api_http_error(exc) from exc
+        except Exception as exc:
+            log.exception("cost_sync_failed", subscription_id=subscription_id)
+            raise HTTPException(500, str(exc)) from exc
+
+    from app.cost_explorer_worker import is_cost_sync_pending, request_cost_sync
+
+    already_pending = is_cost_sync_pending(subscription_id)
+    enqueued = request_cost_sync(subscription_id, reason="manual_api")
+    log.info(
+        "cost_api.sync_enqueued",
+        subscription_id=subscription_id,
+        already_pending=already_pending,
+        enqueued=enqueued,
+    )
+    return {
+        "status": "accepted",
+        "async": True,
+        "already_queued": already_pending or not enqueued,
+        "pending": is_cost_sync_pending(subscription_id),
+        "subscription_id": subscription_id,
+        "source": "azure_cost_management",
+    }

@@ -8,21 +8,39 @@ function defaultResourceId(resource) {
   return (resource?.id || resource?.resource_id || '').toLowerCase();
 }
 
+function findingsFromSummary(resource) {
+  const summary = resource?.analysisSummary;
+  if (!Array.isArray(summary) || !summary.length) return null;
+
+  const count = Number(resource?.analysisFindingsCount ?? 0);
+  const normalized = summary.map((item, index) => normalizeSummaryItem(item, index, resource));
+  if (count > normalized.length) {
+    const padded = [...normalized];
+    for (let i = normalized.length; i < count; i += 1) {
+      padded.push({
+        id: `analysis-count-${i}`,
+        severity: resource?.analysisTopSeverity || 'MEDIUM',
+        estimated_savings_usd: 0,
+      });
+    }
+    return padded;
+  }
+  return normalized;
+}
+
 function findingsFromCountFallback(resource) {
   const count = Number(resource?.analysisFindingsCount ?? 0);
   if (count <= 0) return [];
 
-  const summary = resource?.analysisSummary;
-  if (Array.isArray(summary) && summary.length) {
-    return summary.map((item, index) => normalizeSummaryItem(item, index, resource));
-  }
+  const fromSummary = findingsFromSummary(resource);
+  if (fromSummary) return fromSummary;
 
   const severity = resource?.analysisTopSeverity || 'MEDIUM';
-  return [{
-    id: 'analysis-count-0',
+  return Array.from({ length: count }, (_, index) => ({
+    id: `analysis-count-${index}`,
     severity,
-    estimated_savings_usd: resource?.analysisSavingsUsd ?? 0,
-  }];
+    estimated_savings_usd: index === 0 ? (resource?.analysisSavingsUsd ?? 0) : 0,
+  }));
 }
 
 function normalizeSummaryItem(item, index, resource) {
@@ -47,10 +65,8 @@ export function resolveResourceFindings(resource, indexFindings = [], options = 
 
   if (indexFindings?.length) return indexFindings;
 
-  const summary = resource?.analysisSummary;
-  if (Array.isArray(summary) && summary.length) {
-    return summary.map((item, index) => normalizeSummaryItem(item, index, resource));
-  }
+  const fromSummary = findingsFromSummary(resource);
+  if (fromSummary) return fromSummary;
 
   return findingsFromCountFallback(resource);
 }

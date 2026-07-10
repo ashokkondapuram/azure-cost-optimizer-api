@@ -1,5 +1,6 @@
 import api from './client';
 import { setStoredToken } from './tokenStorage';
+import { notifyTokenRefreshed } from '../config/session';
 
 export { getStoredToken, setStoredToken, getTokenExpiryMs, isTokenExpired, hasActiveSession, getTokenClaims, userFromStoredToken } from './tokenStorage';
 
@@ -9,6 +10,16 @@ export function login(credentials) {
 
 export function fetchCurrentUser() {
   return api.get('/auth/me').then((r) => r.data);
+}
+
+export function refreshSession() {
+  return api.post('/auth/refresh').then((r) => {
+    if (r.data?.access_token) {
+      setStoredToken(r.data.access_token);
+      notifyTokenRefreshed();
+    }
+    return r.data;
+  });
 }
 
 export function fetchUsers() {

@@ -1,16 +1,9 @@
-from app.resources.types import ResourceMonitorProfile, utilization_metric as um
+"""Compatibility shim — implementation: it_services.database_sql.sql_database_profile"""
 
-CANONICAL_TYPE = "database/sql"
+from importlib import import_module
 
-MONITOR_PROFILE = ResourceMonitorProfile(
-    monitor_arm_type="microsoft.sql/servers/databases",
-    canonical_type=CANONICAL_TYPE,
-    display_name="SQL database",
-    doc_ref="microsoft-sql-servers-databases-metrics",
-    metrics=(
-        um("cpu_percent", "cpu_pct", "Database CPU utilization",
-           rules=("SQL_IDLE", "SQL_SERVERLESS_EXTENDED")),
-        um("storage_percent", "storage_pct", "Database storage utilization",
-           rules=("SQL_IDLE",)),
-    ),
-)
+_impl = import_module("it_services.database_sql.sql_database_profile")
+
+
+def __getattr__(name: str):
+    return getattr(_impl, name)

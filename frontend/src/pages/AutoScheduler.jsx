@@ -60,7 +60,12 @@ export default function AutoScheduler() {
 
   return (
     <div className="page-shell auto-scheduler-page">
-      <PageHeader title="Auto Scheduler" subtitle="Schedule safe optimization actions to run automatically in maintenance windows">
+      <PageHeader
+        title="Auto scheduler"
+        subtitle="Schedule safe optimization actions to run automatically in maintenance windows"
+        iconKey="autoScheduler"
+        iconRoute="/auto-scheduler"
+      >
         <button className="btn btn-primary btn-sm" onClick={() => setShowForm(s => !s)}><Plus size={13} /> New Schedule</button>
       </PageHeader>
 

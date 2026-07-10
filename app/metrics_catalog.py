@@ -160,6 +160,16 @@ def build_derived_metric_rows(
             "impact": "both",
             "status": _metric_def_status("disk_iops_utilization_pct", facts["disk_iops_utilization_pct"]),
         })
+    if ctype == "compute/disk" and facts.get("disk_throughput_utilization_pct") is not None:
+        derived.append({
+            "fact_key": "disk_throughput_utilization_pct",
+            "label": "Disk throughput utilization",
+            "value": facts["disk_throughput_utilization_pct"],
+            "unit": "percent",
+            "source": "computed_from_observed_and_provisioned_mbps",
+            "impact": "both",
+            "status": _metric_def_status("disk_throughput_utilization_pct", facts["disk_throughput_utilization_pct"]),
+        })
     return derived
 
 

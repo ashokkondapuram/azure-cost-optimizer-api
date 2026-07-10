@@ -3,10 +3,67 @@ import { X } from 'lucide-react';
 import OptimizationActionChip from './OptimizationActionChip';
 import ConfidenceScore from './ConfidenceScore';
 import ActionCombinedEvidence from './ActionCombinedEvidence';
+import ActionDetailResourcePanel from './ActionDetailResourcePanel';
+import ActionEvidenceSignals from './ActionEvidenceSignals';
 import { formatCurrency } from '../../utils/format';
-import { workflowStatusLabel } from '../../utils/actionUtils';
-import { resourceGroupLabelForAction } from '../../utils/optimizationGrouping';
+import {
+  workflowStatusLabel,
+  actionResourceDisplayName,
+  actionResourceMetaLine,
+} from '../../utils/actionUtils';
 import { tierLabel, tierTone } from '../../utils/actionAnalysisUtils';
+
+function ActionDetailKpis({ action, currency }) {
+  const savings = Number(action.estimated_monthly_savings) || 0;
+
+  return (
+    <div className="action-detail-kpis" role="list" aria-label="Action summary">
+      <div className="action-detail-kpis__item" role="listitem">
+        <span className="action-detail-kpis__label">Action</span>
+        <OptimizationActionChip actionType={action.action_type} />
+      </div>
+      <div className="action-detail-kpis__item" role="listitem">
+        <span className="action-detail-kpis__label">Confidence</span>
+        <ConfidenceScore confidence={action.confidence} compact />
+      </div>
+      <div className="action-detail-kpis__item" role="listitem">
+        <span className="action-detail-kpis__label">Status</span>
+        <span className={`workflow-pill workflow-pill--${action.workflow_status || 'proposed'}`}>
+          {workflowStatusLabel(action.workflow_status)}
+        </span>
+      </div>
+      {savings > 0 && (
+        <div className="action-detail-kpis__item action-detail-kpis__item--savings" role="listitem">
+          <span className="action-detail-kpis__label">Est. savings</span>
+          <strong className="action-detail-kpis__savings">
+            {formatCurrency(savings, { currency })}
+            <span className="action-detail-kpis__savings-unit">/mo</span>
+          </strong>
+        </div>
+      )}
+      {action.performance_risk && (
+        <div className="action-detail-kpis__item" role="listitem">
+          <span className="action-detail-kpis__label">Risk</span>
+          <span className="action-detail-kpis__value">{action.performance_risk}</span>
+        </div>
+      )}
+      {action.recommendation_tier && (
+        <div className="action-detail-kpis__item" role="listitem">
+          <span className="action-detail-kpis__label">Tier</span>
+          <span className={`tier-pill tier-pill--${tierTone(action.recommendation_tier)}`}>
+            {tierLabel(action.recommendation_tier)}
+          </span>
+        </div>
+      )}
+      {action.overall_score != null && (
+        <div className="action-detail-kpis__item" role="listitem">
+          <span className="action-detail-kpis__label">Score</span>
+          <span className="action-detail-kpis__value">{Math.round(action.overall_score)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ActionDetailContent({
   action,
@@ -19,17 +76,18 @@ function ActionDetailContent({
   return (
     <>
       <header className="action-detail-drawer__header">
-        <div>
+        <div className="action-detail-drawer__header-main">
+          <p className="action-detail-drawer__eyebrow">Optimization action</p>
           <h2 id="action-detail-title" className="action-detail-drawer__title">
-            {action.resource_name}
+            {actionResourceDisplayName(action)}
           </h2>
           <p className="action-detail-drawer__subtitle">
-            {action.resource_type} • {action.resource_group || resourceGroupLabelForAction(action)}
+            {actionResourceMetaLine(action)}
           </p>
         </div>
         <button
           type="button"
-          className="btn-icon"
+          className="btn-icon action-detail-drawer__close"
           onClick={onClose}
           aria-label="Close"
         >
@@ -38,81 +96,34 @@ function ActionDetailContent({
       </header>
 
       <div className="action-detail-drawer__body">
-        <section className="drawer-section">
-          <h3 className="drawer-section__title">Action summary</h3>
-          <div className="drawer-summary-grid">
-            <div className="drawer-summary-item">
-              <span className="drawer-summary-label">Type</span>
-              <div className="drawer-summary-value">
-                <OptimizationActionChip actionType={action.action_type} />
-              </div>
-            </div>
-            <div className="drawer-summary-item">
-              <span className="drawer-summary-label">Confidence</span>
-              <div className="drawer-summary-value">
-                <ConfidenceScore confidence={action.confidence} compact />
-              </div>
-            </div>
-            <div className="drawer-summary-item">
-              <span className="drawer-summary-label">Status</span>
-              <div className="drawer-summary-value">
-                <span className="workflow-pill">
-                  {workflowStatusLabel(action.workflow_status)}
-                </span>
-              </div>
-            </div>
-            {action.recommendation_tier && (
-              <div className="drawer-summary-item">
-                <span className="drawer-summary-label">Tier</span>
-                <div className="drawer-summary-value">
-                  <span className={`tier-pill tier-pill--${tierTone(action.recommendation_tier)}`}>
-                    {tierLabel(action.recommendation_tier)}
-                  </span>
-                </div>
-              </div>
-            )}
-            {action.overall_score != null && (
-              <div className="drawer-summary-item">
-                <span className="drawer-summary-label">Overall score</span>
-                <div className="drawer-summary-value">{Math.round(action.overall_score)}</div>
-              </div>
-            )}
-            {action.estimated_monthly_savings > 0 && (
-              <div className="drawer-summary-item">
-                <span className="drawer-summary-label">Est. savings/mo</span>
-                <div className="drawer-summary-value text-highlight">
-                  {formatCurrency(action.estimated_monthly_savings, { currency })}
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
+        <ActionDetailResourcePanel action={action} />
 
-        {action.action_reason && (
-          <section className="drawer-section">
-            <h3 className="drawer-section__title">Recommendation</h3>
-            <p className="drawer-section-text">{action.action_reason}</p>
+        <ActionDetailKpis action={action} currency={currency} />
+
+        {action.evidence_summary && (
+          <section className="action-detail-drawer__section action-detail-drawer__section--signals">
+            <h3 className="action-detail-drawer__section-title">Signals</h3>
+            <ActionEvidenceSignals summary={action.evidence_summary} />
           </section>
         )}
 
-        <ActionCombinedEvidence action={action} currency={currency} />
+        {action.action_reason && (
+          <section className="action-detail-drawer__section">
+            <h3 className="action-detail-drawer__section-title">Why this action</h3>
+            <p className="action-detail-drawer__reason">{action.action_reason}</p>
+          </section>
+        )}
+
+        <ActionCombinedEvidence action={action} currency={currency} showSignals={false} compact />
       </div>
 
       <footer className="action-detail-drawer__footer">
-        <button
-          type="button"
-          className="btn btn--ghost"
-          onClick={onClose}
-        >
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onClose}>
           Close
         </button>
         {isAdmin && (
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={onApproveClick}
-          >
-            Approve/Update
+          <button type="button" className="btn btn-primary btn-sm" onClick={onApproveClick}>
+            Review action
           </button>
         )}
       </footer>

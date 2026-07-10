@@ -17,7 +17,9 @@ export function normalizePagedResponse(data) {
       total: data.total,
       limit: data.limit,
       offset: data.offset,
+      page_count: data.page_count,
       has_more: Boolean(data.has_more),
+      next_cursor: data.next_cursor || null,
     };
   }
   const items = normalizeListResponse(data);
@@ -59,6 +61,7 @@ export const syncSubscriptions = () =>
 
 // Costs
 export const fetchCosts = (p) => api.get('/costs', { params: p }).then((r) => r.data);
+export const fetchCostTimeframes = () => api.get('/costs/timeframes').then((r) => r.data);
 export const fetchCostSummary = (p) => api.get('/costs/summary', { params: p }).then((r) => r.data);
 export const fetchCostChanges = (p) => api.get('/costs/changes', { params: p }).then((r) => r.data);
 export const fetchCostByResource = (p) => api.get('/costs/by-resource', { params: p }).then((r) => r.data);
@@ -91,8 +94,9 @@ export const fetchResourceCostMapping = (p) =>
 export const syncCosts = (p) =>
   api.post('/costs/sync', null, {
     params: p,
-    timeout: 300_000,
-  }).then((r) => r.data);
+    timeout: 30_000,
+    validateStatus: (status) => status === 200 || status === 202,
+  }).then((r) => ({ ...r.data, httpStatus: r.status }));
 
 // Resources
 export const DEFAULT_SYNC_PAGE_SIZE = 50;
@@ -171,6 +175,12 @@ export const fetchRules = () => api.get('/optimize/rules').then((r) => r.data);
 export const fetchRulesByComponent = () => api.get('/optimize/rules/by-component').then((r) => r.data);
 export const fetchProfiles = () => api.get('/optimize/config').then((r) => r.data);
 export const fetchProfileConfig = (prof) => api.get(`/optimize/config/${prof}`).then((r) => r.data);
+export const fetchCompareProfiles = (profiles = 'default,aggressive,conservative') =>
+  api.get('/optimize/config/compare', { params: { profiles } }).then((r) => r.data);
+export const fetchGlobalConfigDefaults = () =>
+  api.get('/optimize/config/global/defaults').then((r) => r.data);
+export const validateProfileConfig = (profile, draftOverrides = {}) =>
+  api.post(`/optimize/config/${profile}/validate`, { draft_overrides: draftOverrides }).then((r) => r.data);
 export const upsertProfileConfig = (prof, b) => api.post(`/optimize/config/${prof}`, b).then((r) => r.data);
 export const deleteProfileConfig = (prof, id) => api.delete(`/optimize/config/${prof}/${id}`).then((r) => r.data);
 export const reanalyzeAfterRuleConfig = (prof, engineVersion = 'extended') =>

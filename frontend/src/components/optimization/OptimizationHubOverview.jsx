@@ -5,18 +5,24 @@ import {
   Target, Layers,
 } from 'lucide-react';
 import { AppCtx } from '../../App';
-import { fetchFindingsSummary, fetchOptimizationTrends } from '../../api/azure';
+import { fetchFindingsSummary } from '../../api/azure';
+import { fetchIdleSummary, fetchIdleSweep } from '../../api/wasteHeatmap';
 import useAdvisorIndex from '../../hooks/useAdvisorIndex';
 import useOptimizationActions from '../../hooks/useOptimizationActions';
 import useOptimizationScoreboard from '../../hooks/useOptimizationScoreboard';
-import useQueryWithTimeout from '../../hooks/useQueryWithTimeout';
-import { formatCurrency } from '../../utils/format';
-import { formatScore, tierLabel, tierTone } from '../../utils/scoreboardUtils';
 import { useOptimizationHub } from '../../context/OptimizationHubContext';
+import useQueryWithTimeout from '../../hooks/useQueryWithTimeout';
+import OptimizationHubTabShell from './OptimizationHubTabShell';
 import PageHero from '../layout/PageHero';
 import ActionLifecycle from './ActionLifecycle';
 import HubMetricDrawer, { HubMetricRow, HubSeverityBars } from './HubMetricDrawer';
+import HubWastePreview from './HubWastePreview';
 import { SubscriptionRequired } from '../QueryStates';
+import { formatCurrency } from '../../utils/format';
+import { formatScore, tierLabel, tierTone } from '../../utils/scoreboardUtils';
+import { actionResourceDisplayName, actionResourceTypeLabel } from '../../utils/actionUtils';
+import { SAVINGS_SCOPE, SAVINGS_METRIC_SUB } from '../../config/savingsScope';
+import { wasteHeatmapLink, heatmapCategoryFromEngine } from '../../utils/wasteHeatmapLinks';
 
 function NextStepsCard({ proposedCount, onReview }) {
   return (
@@ -135,8 +141,8 @@ function HubScoreboardPreview({
               {topItems.map((row) => (
                 <li key={row.id} className="hub-scoreboard-preview__row">
                   <div className="hub-scoreboard-preview__resource">
-                    <strong>{row.resource_name || 'Unnamed resource'}</strong>
-                    <span className="text-muted text-sm">{row.resource_type}</span>
+                    <strong>{actionResourceDisplayName(row)}</strong>
+                    <span className="text-muted text-sm">{actionResourceTypeLabel(row)}</span>
                   </div>
                   <span className={`tier-pill tier-pill--${tierTone(row.recommendation_tier)}`}>
                     {tierLabel(row.recommendation_tier)}
@@ -185,7 +191,7 @@ function SignalMixBar({ engineCount, advisorCount }) {
 export default function OptimizationHubOverview() {
   const { subscription, billingCurrency } = useContext(AppCtx);
   const currency = billingCurrency || 'CAD';
-  const { setTab, setActionsStatus } = useOptimizationHub();
+  const { setTab, setActionsStatus, estimatedMonthlySavings: hubSavings, trends } = useOptimizationHub();
   const [drawer, setDrawer] = useState(null);
 
   const { data: findingsSummary } = useQueryWithTimeout({
@@ -194,6 +200,24 @@ export default function OptimizationHubOverview() {
     enabled: !!subscription,
     staleTime: 60_000,
     timeout: 3000,
+    allowEmpty: true,
+  });
+
+  const { data: idleSummary, isLoading: idleSummaryLoading } = useQueryWithTimeout({
+    queryKey: ['idle-summary', subscription],
+    queryFn: () => fetchIdleSummary(subscription),
+    enabled: !!subscription,
+    staleTime: 60_000,
+    timeout: 5000,
+    allowEmpty: true,
+  });
+
+  const { data: idleSweep, isLoading: idleSweepLoading } = useQueryWithTimeout({
+    queryKey: ['idle-sweep', subscription],
+    queryFn: () => fetchIdleSweep(subscription, { limit: 500 }),
+    enabled: !!subscription,
+    staleTime: 60_000,
+    timeout: 8000,
     allowEmpty: true,
   });
 
@@ -206,31 +230,27 @@ export default function OptimizationHubOverview() {
   const {
     summary: actionsSummary,
     total: actionsTotal,
-    totalSavings: actionsSavings,
     isLoading: actionsLoading,
-  } = useOptimizationActions(subscription, {});
-
-  const { data: trends } = useQueryWithTimeout({
-    queryKey: ['optimization-trends', subscription],
-    queryFn: () => fetchOptimizationTrends({ subscription_id: subscription }),
-    enabled: !!subscription,
-    staleTime: 120_000,
-    timeout: 3000,
-    allowEmpty: true,
-  });
+  } = useOptimizationActions(subscription, {}, { infinite: false, limit: 1 });
 
   const {
     items: scoreboardItems,
     tierSummary,
     total: scoreboardTotal,
-    totalSavings: scoreboardSavings,
     evaluationDate,
     indexReady: scoreboardReady,
-  } = useOptimizationScoreboard(subscription, {});
+  } = useOptimizationScoreboard(subscription, {}, { infinite: false, limit: 5 });
 
   const openFindings = findingsSummary?.open_findings ?? 0;
   const advisorCount = advisorReady ? advisorItems.length : 0;
-  const mergedSignalCount = openFindings + advisorCount;
+  const unifiedSavings = findingsSummary?.unified_savings || {};
+  const mergedSignalCount = unifiedSavings.merged_signal_count
+    ?? unifiedSavings.resources_with_signals
+    ?? openFindings;
+  const unifiedMonthlySavings = unifiedSavings.unified_estimated_monthly_savings ?? 0;
+  const savingsByActionClass = unifiedSavings.by_action_class || {};
+  const overlapResources = unifiedSavings.resources_with_overlap ?? 0;
+  const doubleCountAvoided = unifiedSavings.double_count_avoided_monthly ?? 0;
   const bySeverity = findingsSummary?.by_severity || {};
   const byCategory = findingsSummary?.by_category || {};
 
@@ -275,18 +295,21 @@ export default function OptimizationHubOverview() {
   };
 
   return (
-    <div className="optimization-hub-panel__content hub-overview hub-overview--rich">
+    <OptimizationHubTabShell
+      className="hub-overview hub-overview--rich"
+      hero={(
       <PageHero
         variant="hub-overview-hero"
         eyebrow="Optimization hub"
         title="Turn signals into savings"
         subtitle="Engine findings and Azure Advisor merge into actions — review confidence, approve changes, and track impact from one workspace."
+        scopeNote={SAVINGS_SCOPE.hubOverview}
         metrics={[
           {
             label: 'Est. savings',
-            value: formatCurrency(actionsSavings, { currency, decimals: 0 }),
+            value: formatCurrency(hubSavings, { currency, decimals: 0 }),
             tone: 'success',
-            sub: 'From actions',
+            sub: SAVINGS_METRIC_SUB.unified,
             featured: true,
           },
           {
@@ -294,7 +317,7 @@ export default function OptimizationHubOverview() {
             value: openFindings.toLocaleString(),
             tone: openFindings > 0 ? 'warning' : 'default',
             sub: 'Engine recommendations',
-            href: '/recommendations',
+            href: '/optimization-hub?tab=actions',
           },
           {
             label: 'Actions',
@@ -321,12 +344,12 @@ export default function OptimizationHubOverview() {
           {
             id: 'recommendations',
             label: 'Recommendations',
-            href: '/recommendations',
+            href: '/optimization-hub?tab=actions',
           },
           {
-            id: 'scoreboard',
-            label: 'Scoreboard',
-            href: '/optimization-hub?tab=scoreboard',
+            id: 'waste-heatmap',
+            label: 'Waste heatmap',
+            href: '/waste-heatmap',
           },
         ]}
         footer={(
@@ -334,19 +357,21 @@ export default function OptimizationHubOverview() {
             counts={actionsSummary}
             inObservation={approved}
             currency={currency}
-            savings={actionsSavings}
+            savings={hubSavings}
             onStepClick={handleWorkflowClick}
             compact
             className="hub-overview-lifecycle"
           />
         )}
       />
+      )}
+    >
 
       <div className="hub-overview-grid">
         <HubStatCard
           label="Optimization actions"
           value={(actionsTotal || 0).toLocaleString()}
-          sub={`${proposed} proposed · ${formatCurrency(actionsSavings, { currency, decimals: 0 })}/mo`}
+          sub={`${proposed} proposed · ${formatCurrency(hubSavings, { currency, decimals: 0 })}/mo`}
           tone="actions"
           icon={Zap}
           onClick={() => setTab('actions')}
@@ -354,7 +379,7 @@ export default function OptimizationHubOverview() {
         <HubStatCard
           label="Open findings"
           value={openFindings.toLocaleString()}
-          sub={`${mergedSignalCount.toLocaleString()} total signals`}
+          sub={`${mergedSignalCount.toLocaleString()} resources with signals`}
           tone="findings"
           icon={Lightbulb}
           onClick={() => setDrawer('findings')}
@@ -372,7 +397,9 @@ export default function OptimizationHubOverview() {
         <HubStatCard
           label="Signal mix"
           value={mergedSignalCount.toLocaleString()}
-          sub="Engine + Advisor"
+          sub={unifiedMonthlySavings > 0
+            ? `${formatCurrency(unifiedMonthlySavings, { currency, decimals: 0 })}/mo unified`
+            : 'Engine + Advisor'}
           tone="advisor"
           icon={Layers}
           onClick={() => setDrawer('signals')}
@@ -389,21 +416,32 @@ export default function OptimizationHubOverview() {
         {topCategories.length > 0 && (
           <div className="hub-category-chips">
             {topCategories.map(([cat, count]) => (
-              <span key={cat} className="hub-category-chip">
+              <Link
+                key={cat}
+                to={wasteHeatmapLink({ category: heatmapCategoryFromEngine(cat) || cat })}
+                className="hub-category-chip hub-category-chip--link"
+              >
                 {cat.charAt(0) + cat.slice(1).toLowerCase()}
                 <strong>{count}</strong>
-              </span>
+              </Link>
             ))}
           </div>
         )}
       </section>
+
+      <HubWastePreview
+        idleSummary={idleSummary}
+        idleSweep={idleSweep}
+        loading={idleSummaryLoading || idleSweepLoading}
+        currency={currency}
+      />
 
       <HubScoreboardPreview
         scoredTotal={scoredTotal}
         avgScore={avgScore}
         tierSummary={tierSummary}
         topItems={topScoreboardItems}
-        scoreboardSavings={scoreboardSavings || trends?.total_estimated_monthly_savings || 0}
+        scoreboardSavings={hubSavings}
         evaluationDate={evaluationDate || trends?.evaluation_date}
         currency={currency}
         onOpenScoreboard={() => setTab('scoreboard')}
@@ -435,11 +473,22 @@ export default function OptimizationHubOverview() {
         <HubMetricRow label="Open total" value={openFindings.toLocaleString()} />
         <HubMetricRow
           label="Est. savings"
-          value={formatCurrency(findingsSummary?.total_estimated_savings_usd ?? 0, { currency, decimals: 0 })}
+          value={formatCurrency(unifiedMonthlySavings || (findingsSummary?.total_estimated_savings_usd ?? 0), { currency, decimals: 0 })}
           tone="success"
         />
+        {doubleCountAvoided > 0 && (
+          <HubMetricRow
+            label="Overlap removed"
+            value={formatCurrency(doubleCountAvoided, { currency, decimals: 0 })}
+            sub="Advisor + engine deduped"
+          />
+        )}
         <HubSeverityBars bySeverity={bySeverity} currency={currency} />
-        <Link to="/recommendations" className="btn btn-secondary btn-sm hub-metric-drawer__link">
+        <Link to="/waste-heatmap" className="btn btn-secondary btn-sm hub-metric-drawer__link">
+          Open waste heatmap
+          <ArrowRight size={14} />
+        </Link>
+        <Link to="/optimization-hub?tab=actions" className="btn btn-secondary btn-sm hub-metric-drawer__link">
           Open recommendations
           <ArrowRight size={14} />
         </Link>
@@ -448,18 +497,40 @@ export default function OptimizationHubOverview() {
       <HubMetricDrawer
         open={drawer === 'signals'}
         title="Merged signals"
-        subtitle="How engine findings and Advisor recommendations combine"
+        subtitle="Engine findings and Advisor recommendations deduped per resource"
         onClose={() => setDrawer(null)}
       >
+        <HubMetricRow label="Resources with signals" value={mergedSignalCount.toLocaleString()} />
         <HubMetricRow label="Engine findings" value={openFindings.toLocaleString()} />
         <HubMetricRow label="Advisor recommendations" value={advisorCount.toLocaleString()} />
-        <HubMetricRow label="Combined signals" value={mergedSignalCount.toLocaleString()} tone="warning" />
+        <HubMetricRow
+          label="Unified est. savings"
+          value={formatCurrency(unifiedMonthlySavings, { currency, decimals: 0 })}
+          tone="success"
+        />
+        {overlapResources > 0 && (
+          <HubMetricRow
+            label="Resources in both sources"
+            value={overlapResources.toLocaleString()}
+            sub={doubleCountAvoided > 0 ? `${formatCurrency(doubleCountAvoided, { currency, decimals: 0 })} overlap removed` : undefined}
+          />
+        )}
+        {Object.keys(savingsByActionClass).length > 0 && (
+          <div className="hub-category-chips" style={{ marginTop: '0.75rem' }}>
+            {Object.entries(savingsByActionClass).map(([actionClass, amount]) => (
+              <span key={actionClass} className="hub-category-chip">
+                {actionClass.replace(/_/g, ' ')}
+                <strong>{formatCurrency(amount, { currency, decimals: 0 })}</strong>
+              </span>
+            ))}
+          </div>
+        )}
         <SignalMixBar engineCount={openFindings} advisorCount={advisorCount} />
         <button type="button" className="btn btn-secondary btn-sm hub-metric-drawer__link" onClick={() => { setDrawer(null); setTab('actions'); }}>
           Review merged actions
           <ArrowRight size={14} />
         </button>
       </HubMetricDrawer>
-    </div>
+    </OptimizationHubTabShell>
   );
 }

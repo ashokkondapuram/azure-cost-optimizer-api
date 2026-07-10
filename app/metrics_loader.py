@@ -20,6 +20,7 @@ from app.focus_mapping import normalize_arm_id
 
 log = structlog.get_logger(__name__)
 
+_CACHED_FINDINGS_LIMIT = max(100, int(os.getenv("ANALYSIS_CACHED_FINDINGS_LIMIT", "500")))
 _FETCH_MONITOR_DEFAULT = os.getenv("ANALYSIS_FETCH_MONITOR_METRICS", os.getenv("ANALYSIS_FETCH_VM_METRICS", "true")).lower() not in {"0", "false", "no"}
 _K8S_METRICS_ROW_LIMIT = max(50, int(os.getenv("ANALYSIS_K8S_METRICS_LIMIT", "500")))
 
@@ -34,6 +35,24 @@ _CACHED_FACT_KEYS = MONITOR_FACT_KEYS | frozenset({
     "max_disk_read_iops",
     "max_disk_write_iops",
     "max_disk_iops_utilization_pct",
+    "disk_iops_pct",
+    "active_connections",
+    "max_connections",
+    "failed_connections",
+    "replication_lag_sec",
+    "backup_storage_bytes",
+    "connection_utilization_pct",
+    "normalized_ru_pct",
+    "normalized_ru_peak_pct",
+    "provisioned_throughput",
+    "data_usage_bytes",
+    "index_usage_bytes",
+    "document_count",
+    "replication_latency_ms",
+    "server_latency_ms",
+    "ru_skew_ratio",
+    "index_to_data_ratio",
+    "avg_item_bytes",
 })
 
 
@@ -148,6 +167,8 @@ def load_k8s_node_metrics(db: Session, aks_clusters: list[dict] | None = None) -
         seen_nodes.add(node_key)
         payload = _monitor_payload(cpu, mem)
         out[node_key] = payload
+        if cluster:
+            out[f"{cluster}/{node_key}"] = payload
         short = re.sub(r"[^a-z0-9-]", "", node_key)
         if short != node_key:
             out[short] = payload
@@ -157,12 +178,37 @@ def load_k8s_node_metrics(db: Session, aks_clusters: list[dict] | None = None) -
     return out
 
 
+def resolve_analysis_timespan(rule_overrides: dict[str, dict] | None = None) -> str:
+    """Pick the widest monitor lookback from rule evaluation_window_days overrides."""
+    from app.optimizer.rules import DEFAULT_RULES
+
+    max_days = 7
+    merged = rule_overrides or {}
+    for rid, overrides in merged.items():
+        if rid == "__global__":
+            continue
+        try:
+            days = int((overrides or {}).get("evaluation_window_days") or 0)
+        except (TypeError, ValueError):
+            days = 0
+        if days > max_days:
+            max_days = days
+    for rule in DEFAULT_RULES.values():
+        try:
+            max_days = max(max_days, int(getattr(rule, "evaluation_window_days", 7) or 7))
+        except (TypeError, ValueError):
+            continue
+    return f"P{max_days}D"
+
+
 def load_analysis_metrics(
     db: Session,
     *,
     buckets: dict[str, list],
     cost_by_resource: dict[str, Any],
     fetch_monitor_metrics: bool = _FETCH_MONITOR_DEFAULT,
+    rule_overrides: dict[str, dict] | None = None,
+    timespan: str | None = None,
 ) -> tuple[dict[str, dict], dict[str, dict], dict[str, dict], dict[str, dict[str, float]], dict[str, Any]]:
     """
     Return (vm_metrics, node_metrics, resource_metrics, resource_facts).
@@ -176,6 +222,7 @@ def load_analysis_metrics(
     resource_metrics: dict[str, dict] = {}
     resource_facts: dict[str, dict[str, float]] = {}
     monitor_stats: dict[str, Any] = {}
+    resolved_timespan = timespan or resolve_analysis_timespan(rule_overrides)
 
     def _load_k8s() -> dict[str, dict]:
         try:
@@ -193,7 +240,10 @@ def load_analysis_metrics(
                 grouped,
                 cost_by_resource,
                 db=db,
+                timespan=resolved_timespan,
             )
+            stats = dict(stats or {})
+            stats["timespan"] = resolved_timespan
             return metrics, facts, stats
         except Exception as exc:
             log.warning("metrics_loader.monitor_failed", error=str(exc))
@@ -243,12 +293,12 @@ def load_cached_resource_facts(db: Session, subscription_id: str) -> dict[str, d
     out: dict[str, dict[str, float]] = {}
 
     open_rows = (
-        db.query(OptimizationFinding)
+        db.query(OptimizationFinding.resource_id, OptimizationFinding.evidence_json)
         .filter(
             func.lower(OptimizationFinding.subscription_id) == sub,
             OptimizationFinding.status == "open",
         )
-        .all()
+        .yield_per(500)
     )
     for row in open_rows:
         try:
@@ -268,16 +318,17 @@ def load_cached_resource_facts(db: Session, subscription_id: str) -> dict[str, d
             findings = json.loads(last_run.findings_json or "[]")
         except Exception:
             findings = []
-        for finding in findings:
-            if not isinstance(finding, dict):
-                continue
-            evidence = finding.get("evidence") or {}
-            if isinstance(evidence, str):
-                try:
-                    evidence = json.loads(evidence)
-                except Exception:
-                    evidence = {}
-            _merge_cached_facts_from_evidence(out, finding.get("resource_id") or "", evidence)
+        if isinstance(findings, list):
+            for finding in findings[:_CACHED_FINDINGS_LIMIT]:
+                if not isinstance(finding, dict):
+                    continue
+                evidence = finding.get("evidence") or {}
+                if isinstance(evidence, str):
+                    try:
+                        evidence = json.loads(evidence)
+                    except Exception:
+                        evidence = {}
+                _merge_cached_facts_from_evidence(out, finding.get("resource_id") or "", evidence)
 
     if out:
         log.info("metrics_loader.cached_facts_loaded", subscription_id=sub, resources=len(out))

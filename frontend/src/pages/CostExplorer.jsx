@@ -12,13 +12,13 @@ import ResourceTypeFilter from '../components/ResourceTypeFilter';
 import CostExplorerHero from '../components/cost/CostExplorerHero';
 import { CostDailyTrendChart, CostServiceBarChart } from '../components/cost/CostTrendChart';
 import useCostSync from '../hooks/useCostSync';
+import useCostTimeframes from '../hooks/useCostTimeframes';
 import { PAGE_ICONS } from '../config/assetIcons';
 import { formatCurrency, formatDateRange, formatIsoDate } from '../utils/format';
 import { billingAmount, azureFieldLabel, DISPLAY_CURRENCY } from '../utils/costCurrency';
 import { textIncludes } from '../utils/filterUtils';
 import { SubscriptionRequired, QueryErrorState } from '../components/QueryStates';
 import {
-  COST_TIMEFRAME_OPTIONS,
   costTimeframeLabel,
   buildCostQueryParams,
   defaultCompareTimeframe,
@@ -35,14 +35,13 @@ function ChartLoading({ message = 'Loading…' }) {
   );
 }
 
-const TIMEFRAME_OPTIONS = COST_TIMEFRAME_OPTIONS;
-const VALID_TIMEFRAMES = new Set(COST_TIMEFRAME_OPTIONS.map((opt) => opt.value));
-
 const PERIOD_PRESETS = [
   { key: '7d', label: '7d', value: 'Last7Days' },
+  { key: '14d', label: '14d', value: 'Last14Days' },
   { key: '30d', label: '30d', value: 'Last30Days' },
+  { key: '60d', label: '60d', value: 'Last60Days' },
   { key: 'MTD', label: 'MTD', value: 'MonthToDate' },
-  { key: '90d', label: '90d', value: 'Last3Months' },
+  { key: '90d', label: '90d', value: 'Last90Days' },
   { key: 'YTD', label: 'YTD', value: 'ThisYear' },
 ];
 
@@ -82,10 +81,15 @@ function CostPanel({ title, subtitle, children, empty, emptyAction }) {
 export default function CostExplorer() {
   const { subscription, billingCurrency, subscriptionOptions } = useContext(AppCtx);
   const { isAdmin } = useAuth();
+  const timeframeOptions = useCostTimeframes();
+  const validTimeframes = useMemo(
+    () => new Set(timeframeOptions.map((opt) => opt.value)),
+    [timeframeOptions],
+  );
   const [searchParams] = useSearchParams();
   const urlTimeframe = searchParams.get('timeframe');
   const [timeframe, setTimeframe] = useState(() => (
-    urlTimeframe && VALID_TIMEFRAMES.has(urlTimeframe) ? urlTimeframe : 'MonthToDate'
+    urlTimeframe && validTimeframes.has(urlTimeframe) ? urlTimeframe : 'MonthToDate'
   ));
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -322,7 +326,7 @@ export default function CostExplorer() {
     : null;
   const comparePeriodLabel = compareUsesCustom
     ? (compareCustomFrom && compareCustomTo ? formatDateRange(compareCustomFrom, compareCustomTo) : null)
-    : costTimeframeLabel(compareTimeframe);
+    : costTimeframeLabel(compareTimeframe, timeframeOptions);
 
   const daysElapsed = useMemo(() => {
     if (!mtdStart || !mtdEnd) return new Date().getDate();
@@ -360,7 +364,7 @@ export default function CostExplorer() {
         aria-label="More timeframes"
         className="cost-explorer-timeframe cost-explorer-timeframe--more"
       >
-        {TIMEFRAME_OPTIONS.map((opt) => (
+        {timeframeOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
         ))}
       </select>
@@ -396,7 +400,7 @@ export default function CostExplorer() {
           aria-label="Comparison period"
           className="cost-explorer-timeframe cost-explorer-timeframe--compare"
         >
-          {TIMEFRAME_OPTIONS.filter((opt) => opt.value !== 'Custom').map((opt) => (
+          {timeframeOptions.filter((opt) => opt.value !== 'Custom').map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
@@ -487,8 +491,8 @@ export default function CostExplorer() {
               <CostPanel
                 title={`Daily cost (${currency})`}
                 subtitle={compareEnabled
-                  ? `${costTimeframeLabel(timeframe)} vs ${comparePeriodLabel || 'previous period'}`
-                  : costTimeframeLabel(timeframe)}
+                  ? `${costTimeframeLabel(timeframe, timeframeOptions)} vs ${comparePeriodLabel || 'previous period'}`
+                  : costTimeframeLabel(timeframe, timeframeOptions)}
                 empty={!loadCost && dailyChart.length === 0 ? 'No daily cost data available.' : null}
               >
                 <CostDailyTrendChart

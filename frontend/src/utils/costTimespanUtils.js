@@ -1,19 +1,51 @@
 /** Dashboard cost period presets mapped to backend timeframe IDs. */
 
+import { COST_TIMEFRAME_OPTIONS, mapTimeframeCatalog } from '../config/costTimeframes';
+
 export const DEFAULT_DASHBOARD_COST_PERIOD = 'Last30Days';
 
-export const DASHBOARD_COST_PERIOD_OPTIONS = [
-  { value: 'Last7Days', label: 'Last 7 days', compareDays: 7 },
-  { value: 'Last30Days', label: 'Last 30 days', compareDays: 7 },
-  { value: 'MonthToDate', label: 'This month', compareDays: 7 },
-  { value: 'TheLastMonth', label: 'Last month', compareDays: 7 },
+const DASHBOARD_PERIOD_IDS = [
+  'Last7Days',
+  'Last14Days',
+  'Last30Days',
+  'Last60Days',
+  'Last90Days',
+  'WeekToDate',
+  'MonthToDate',
+  'TheLastMonth',
+  'ThisQuarter',
+  'Last3Months',
+  'Last6Months',
+  'Last12Months',
+  'ThisYear',
 ];
 
-export function dashboardCostPeriodLabel(value) {
-  const match = DASHBOARD_COST_PERIOD_OPTIONS.find((option) => option.value === value);
+export const DASHBOARD_COST_PERIOD_OPTIONS = DASHBOARD_PERIOD_IDS.map((value) => {
+  const match = COST_TIMEFRAME_OPTIONS.find((opt) => opt.value === value);
+  return {
+    value,
+    label: match?.label || value,
+    compareDays: 7,
+  };
+});
+
+export function dashboardCostPeriodOptionsFromCatalog(catalog = []) {
+  const mapped = mapTimeframeCatalog(catalog);
+  const byId = Object.fromEntries(mapped.map((opt) => [opt.value, opt]));
+  return DASHBOARD_PERIOD_IDS
+    .filter((id) => byId[id])
+    .map((id) => ({
+      value: id,
+      label: byId[id].label,
+      compareDays: 7,
+    }));
+}
+
+export function dashboardCostPeriodLabel(value, options = DASHBOARD_COST_PERIOD_OPTIONS) {
+  const match = options.find((option) => option.value === value);
   return match?.label || value || DEFAULT_DASHBOARD_COST_PERIOD;
 }
 
-export function isValidDashboardCostPeriod(value) {
-  return DASHBOARD_COST_PERIOD_OPTIONS.some((option) => option.value === value);
+export function isValidDashboardCostPeriod(value, options = DASHBOARD_COST_PERIOD_OPTIONS) {
+  return options.some((option) => option.value === value);
 }

@@ -69,7 +69,12 @@ export default function NotificationChannels() {
 
   return (
     <div className="page-shell notif-channels-page">
-      <PageHeader title="Notification Channels" subtitle="Configure Slack, Teams, and email webhooks for alerts and digests">
+      <PageHeader
+        title="Notification channels"
+        subtitle="Configure Slack, Teams, and email webhooks for alerts and digests"
+        iconKey="notificationsNav"
+        iconRoute="/notifications"
+      >
         <button className="btn btn-primary btn-sm" onClick={() => setShowForm(s => !s)}><Plus size={13} /> Add Channel</button>
       </PageHeader>
 

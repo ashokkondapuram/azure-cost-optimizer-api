@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
+import sqlalchemy.exc
 
 from app.database import SessionLocal
 from app.analysis import run_db_analysis
@@ -81,7 +82,7 @@ def _fail_job(db: Session, job: AnalysisJob, message: str) -> None:
     job.current_component = None
     try:
         components = json.loads(job.components_json or "[]")
-    except Exception:
+    except json.JSONDecodeError:
         components = []
     for comp in components:
         if comp.get("status") in {None, "pending", "running"}:
@@ -177,7 +178,7 @@ def _execution_scope_from_job(job: AnalysisJob) -> tuple[list[str] | None, list[
     """Resolve analysis scope from persisted job metadata (not UI labels)."""
     try:
         components_meta = json.loads(job.components_json or "[]")
-    except Exception:
+    except json.JSONDecodeError:
         components_meta = []
 
     scope_resource_types: list[str] = []
@@ -325,7 +326,7 @@ def queue_post_sync_analysis(
 def serialize_job(job: AnalysisJob) -> dict:
     try:
         components = json.loads(job.components_json or "[]")
-    except Exception:
+    except json.JSONDecodeError:
         components = []
     scope_label = "Full analysis"
     if components:
@@ -435,7 +436,7 @@ def job_for_run(db: Session, subscription_id: str, run_id: str) -> AnalysisJob |
 def _mark_job_components_completed(job: AnalysisJob, findings_count: int, savings_usd: float) -> None:
     try:
         components = json.loads(job.components_json or "[]")
-    except Exception:
+    except json.JSONDecodeError:
         components = []
     for comp in components:
         comp["status"] = "completed"
@@ -498,7 +499,7 @@ def execute_batch_job(job_id: str) -> None:
 
         try:
             job_rule_overrides = json.loads(job.rule_overrides_json or "{}")
-        except Exception:
+        except json.JSONDecodeError:
             job_rule_overrides = {}
 
         scope_components, scope_resource_types, skip_monitor_fetch = _execution_scope_from_job(job)
@@ -570,7 +571,8 @@ def execute_batch_job(job_id: str) -> None:
                 job.completed_at = _now()
                 db.commit()
                 _emit_job_event(db, job, "failed")
-        except Exception:
+        except (sqlalchemy.exc.SQLAlchemyError, Exception) as db_exc:
+            log.warning("analysis.failed_to_mark_failed", job_id=job_id, error=str(db_exc))
             db.rollback()
     except Exception as exc:
         log.exception("analysis.failed", job_id=job_id, error=str(exc))
@@ -583,7 +585,8 @@ def execute_batch_job(job_id: str) -> None:
                 job.completed_at = _now()
                 db.commit()
                 _emit_job_event(db, job, "failed")
-        except Exception:
+        except (sqlalchemy.exc.SQLAlchemyError, Exception) as db_exc:
+            log.warning("analysis.failed_to_mark_failed", job_id=job_id, error=str(db_exc))
             db.rollback()
     finally:
         db.close()

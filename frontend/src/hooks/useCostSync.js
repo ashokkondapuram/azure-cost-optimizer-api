@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { syncCosts } from '../api/azure';
+import { fetchCostChanges, fetchDashboardSyncStatus, syncCosts } from '../api/azure';
 import { getErrorMessage } from '../api/errors';
 import { useToast } from '../context/ToastContext';
 
@@ -25,7 +25,45 @@ export default function useCostSync({ subscription, invalidateKeys = [] }) {
     setMessage('');
     setError(false);
     try {
+      const baseline = await fetchDashboardSyncStatus({ subscription_id: subscription });
+      const baselineSyncedAt = baseline?.cost?.last_synced_at || null;
+
       const result = await syncCosts({ subscription_id: subscription });
+      let counts = result?.synced || {};
+      let changes = counts.changes || null;
+
+      if (result?.async || result?.httpStatus === 202) {
+        setMessage('Fetching costs from Azure…');
+        const deadline = Date.now() + 300_000;
+        let completed = false;
+        while (Date.now() < deadline) {
+          await new Promise((resolve) => { setTimeout(resolve, 2500); });
+          const status = await fetchDashboardSyncStatus({ subscription_id: subscription });
+          const pending = Boolean(status?.cost?.pending);
+          const lastSyncedAt = status?.cost?.last_synced_at || null;
+          if (!pending && lastSyncedAt && lastSyncedAt !== baselineSyncedAt) {
+            completed = true;
+            break;
+          }
+        }
+        if (!completed) {
+          throw new Error(
+            'Cost sync is still running. Refresh in a minute to see updated totals.',
+          );
+        }
+        const latestStatus = await fetchDashboardSyncStatus({ subscription_id: subscription });
+        try {
+          changes = await fetchCostChanges({ subscription_id: subscription });
+        } catch {
+          changes = null;
+        }
+        counts = {
+          subscription_total_billing: latestStatus?.cost?.total_billing,
+          mtd_month: latestStatus?.cost?.month,
+          changes,
+        };
+      }
+
       await Promise.all(
         invalidateKeys.map((key) =>
           queryClient.invalidateQueries({ queryKey: key }),
@@ -35,8 +73,6 @@ export default function useCostSync({ subscription, invalidateKeys = [] }) {
       queryClient.invalidateQueries({ queryKey: ['dashboard-overview', subscription] });
       queryClient.invalidateQueries({ queryKey: ['resources-from-cost', subscription] });
 
-      const counts = result?.synced || {};
-      const changes = counts.changes || null;
       setLastChanges(changes);
 
       const apiRows = counts.api_rows ?? counts.blob_rows ?? 0;
@@ -45,14 +81,25 @@ export default function useCostSync({ subscription, invalidateKeys = [] }) {
       const services = counts.cost_by_service ?? 0;
       const resourceTypes = counts.cost_by_resource_type ?? 0;
       const resources = counts.cost_by_resource ?? 0;
+      const hasDetailedCounts = apiRows > 0 || services > 0 || resourceTypes > 0 || resources > 0 || mtdRows > 0;
 
-      if (apiRows === 0 && services === 0 && resourceTypes === 0 && resources === 0) {
+      if (!hasDetailedCounts && (counts.subscription_total_billing ?? 0) === 0) {
         showToast(
           'Fetch finished but Azure Cost Management returned no cost data for this subscription. '
           + 'Confirm Cost Management Reader access and that usage exists for the current period.',
           { variant: 'error' },
         );
         setError(true);
+      } else if (!hasDetailedCounts) {
+        const billing = counts.subscription_total_billing ?? baseline?.cost?.total_billing;
+        const currency = baseline?.cost?.billing_currency || 'CAD';
+        let msg = `Costs updated · ${currency} ${Number(billing || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} month-to-date`;
+        if (changes?.has_previous) {
+          const delta = changes.total_delta_billing ?? 0;
+          const sign = delta >= 0 ? '+' : '';
+          msg += ` · MTD ${sign}${delta.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} since last fetch`;
+        }
+        showToast(msg, { variant: 'success' });
       } else if (services === 0 && resourceTypes === 0 && resources === 0 && mtdRows === 0) {
         showToast(
           'Cost Management returned data but no month-to-date rows were saved. '

@@ -126,15 +126,17 @@ describe('evidenceUtils', () => {
         { id: 'resource_state', label: 'Resource state', formatted: 'Unattached' },
         { id: 'sku', label: 'SKU', formatted: 'Premium_LRS' },
         { id: 'size_gb', label: 'Size', formatted: '128' },
+        { id: 'provisioned_iops', label: 'Provisioned IOPS', formatted: '500' },
       ],
       {
         sku: 'Premium_LRS',
         resourceGroup: 'rg-1',
         state: 'Unattached',
         canonicalType: 'compute/disk',
+        diskPropertiesShown: true,
       },
     );
-    expect(filtered.map((m) => m.id)).toEqual(['size_gb']);
+    expect(filtered.map((m) => m.id)).toEqual([]);
   });
 
   test('dedupeChecksAgainstMetrics removes checks already shown as metrics', () => {

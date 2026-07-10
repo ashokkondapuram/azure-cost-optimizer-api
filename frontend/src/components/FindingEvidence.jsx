@@ -25,6 +25,7 @@ import {
   parseOptimizationPercentValue,
 } from '../utils/evidenceUtils';
 import { Sparkles } from 'lucide-react';
+import AiImplementationSteps from './AiImplementationSteps';
 import ArmResourceLink from './ArmResourceLink';
 import { isArmResourceId } from '../utils/armResourceLinks';
 import { metricTimespanLabel } from '../utils/metricsTimespanUtils';
@@ -213,7 +214,7 @@ function AiInsightPanel({ insight, hidePrimary = false }) {
     <div className="finding-evidence__ai ai-insight-callout">
       <div className="finding-evidence__ai-header">
         <Sparkles size={14} aria-hidden />
-        <span>{hidePrimary ? 'AI implementation' : 'AI recommendation'}</span>
+        <span>AI analysis</span>
         {riskLabel && (
           <span className={`finding-evidence__ai-risk finding-evidence__ai-risk--${riskLevel}`}>
             {riskLabel}
@@ -227,11 +228,10 @@ function AiInsightPanel({ insight, hidePrimary = false }) {
         <p className="finding-evidence__ai-rec">{toDisplayText(recommendation)}</p>
       )}
       {implementationSteps.length > 0 && (
-        <ol className="finding-evidence__ai-steps">
-          {implementationSteps.map((step, idx) => (
-            <li key={`ai-step-${idx}`}>{toDisplayText(step)}</li>
-          ))}
-        </ol>
+        <AiImplementationSteps
+          steps={implementationSteps}
+          className="finding-evidence__ai-steps-wrap"
+        />
       )}
       {(staleLikelihood || dataGaps.length > 0) && (
         <p className="finding-evidence__ai-meta">

@@ -1,17 +1,9 @@
-"""Container Registry optimization sub-engine."""
-from __future__ import annotations
+"""Compatibility shim — implementation: it_services.containers_acr.engine.sub_engine"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.resource_engines.runtime.base import ResourceSubEngine
-from app.optimizer.resource_engines.containers.acr.analysis import analyze_acr
+_impl = import_module("it_services.containers_acr.engine.sub_engine")
 
 
-class AcrSubEngine(ResourceSubEngine):
-    component = "Container Registry"
-    bucket_keys = ('container_registries',)
-
-    def analyze(self, buckets: dict[str, list]) -> list[Any]:
-        registries = self.prepare_resources(buckets.get("container_registries") or [])
-        findings = analyze_acr(self.engine, self.ctx.subscription_id, registries, self.ctx.cost_by_resource)
-        return self.enhance_findings(findings, registries)
+def __getattr__(name: str):
+    return getattr(_impl, name)

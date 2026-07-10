@@ -32,7 +32,8 @@ def engine():
     return eng
 
 
-def test_vm_sizing_skipped_without_memory_metrics(engine):
+@patch("app.optimizer.resource_engines.compute.vm.analysis.vm_catalog", return_value=[])
+def test_vm_sizing_skipped_without_memory_metrics(_catalog, engine):
     from app.optimizer.resource_engines.compute.vm.analysis import analyze_vms
 
     vm = {
@@ -52,16 +53,17 @@ def test_vm_sizing_skipped_without_memory_metrics(engine):
     assert not sizing
 
 
-@patch("app.optimizer.resource_engines.compute.vm.helpers.estimate_vm_sku_savings")
-def test_vm_sizing_emits_without_retail_when_downsize(mock_retail, engine):
+@patch("app.optimizer.resource_engines.compute.vm.analysis.vm_catalog", return_value=[])
+@patch("app.vm_cost_decision.compute_vm_resize_pricing")
+def test_vm_sizing_emits_without_retail_when_downsize(mock_pricing, _catalog, engine):
     from app.optimizer.resource_engines.compute.vm.analysis import analyze_vms
 
-    mock_retail.return_value = {
+    mock_pricing.return_value = (0.0, {
         "current_sku_monthly_usd": None,
         "suggested_sku_monthly_usd": None,
         "estimated_monthly_savings_usd": 0,
         "pricing_status": "unavailable",
-    }
+    })
     vm = _vm(4.0, 10.0)
     rid = vm["id"].lower()
     metrics = {
@@ -79,9 +81,10 @@ def test_vm_sizing_emits_without_retail_when_downsize(mock_retail, engine):
     assert "Downsize" in (sizing[0].recommendation or "")
 
 
-@patch("app.optimizer.resource_engines.compute.vm.helpers.estimate_vm_sku_savings")
+@patch("app.optimizer.resource_engines.compute.vm.analysis.vm_catalog", return_value=[])
+@patch("app.vm_cost_decision.compute_vm_resize_pricing")
 @patch("app.optimizer.resource_engines.compute.vm.analysis.recommend_vm_sku")
-def test_vm_sizing_emits_cross_family_without_retail(mock_recommend, mock_retail, engine):
+def test_vm_sizing_emits_cross_family_without_retail(mock_recommend, mock_pricing, _catalog, engine):
     from app.optimizer.resource_engines.compute.vm.analysis import analyze_vms
     from app.vm_sizing import VmSizingRecommendation
 
@@ -98,12 +101,12 @@ def test_vm_sizing_emits_cross_family_without_retail(mock_recommend, mock_retail
         confidence=66,
         reasons=["Workload shape may fit the Burstable family better."],
     )
-    mock_retail.return_value = {
+    mock_pricing.return_value = (0.0, {
         "current_sku_monthly_usd": None,
         "suggested_sku_monthly_usd": None,
         "estimated_monthly_savings_usd": 0,
         "pricing_status": "unavailable",
-    }
+    })
     vm = _vm(4.0, 10.0)
     rid = vm["id"].lower()
     metrics = {
@@ -122,17 +125,18 @@ def test_vm_sizing_emits_cross_family_without_retail(mock_recommend, mock_retail
     assert sizing[0].evidence.get("sizing_action") == "cross_family"
 
 
-@patch("app.optimizer.resource_engines.compute.vm.helpers.estimate_vm_sku_savings")
-def test_vm_sizing_emits_retail_savings(mock_retail, engine):
+@patch("app.optimizer.resource_engines.compute.vm.analysis.vm_catalog", return_value=[])
+@patch("app.vm_cost_decision.compute_vm_resize_pricing")
+def test_vm_sizing_emits_retail_savings(mock_pricing, _catalog, engine):
     from app.optimizer.resource_engines.compute.vm.analysis import analyze_vms
 
-    mock_retail.return_value = {
+    mock_pricing.return_value = (70.08, {
         "current_sku_monthly_usd": 140.16,
         "suggested_sku_monthly_usd": 70.08,
         "estimated_monthly_savings_usd": 70.08,
         "pricing_status": "available",
         "pricing_source": "azure_retail_prices",
-    }
+    })
     vm = _vm(5.0, 8.0)
     rid = vm["id"].lower()
     metrics = {
@@ -147,3 +151,60 @@ def test_vm_sizing_emits_retail_savings(mock_retail, engine):
     sizing = [f for f in findings if f.rule_id == "VM_SKU_SIZING_EXTENDED"]
     if sizing:
         assert sizing[0].estimated_savings_usd == pytest.approx(70.08)
+
+
+@patch("app.optimizer.resource_engines.compute.vm.analysis.vm_catalog", return_value=[])
+@patch("app.vm_cost_decision.compute_vm_resize_pricing")
+def test_vm_sizing_prefers_advisor_target_sku(mock_pricing, _catalog, engine):
+    from app.advisor_vm_targets import AdvisorVmTarget
+    from app.optimizer.resource_engines.compute.vm.analysis import analyze_vms
+
+    mock_pricing.return_value = (
+        122.0,
+        {
+            "current_sku_monthly_usd": 329.96,
+            "suggested_sku_monthly_usd": 164.98,
+            "estimated_monthly_savings_usd": 122.0,
+            "retail_monthly_savings_usd": 164.98,
+            "monthly_run_rate_usd": 244.0,
+            "savings_basis": "monthly_run_rate",
+            "pricing_status": "available",
+            "pricing_source": "azure_retail_prices",
+        },
+    )
+    vm = _vm(5.0, 8.0, sku="Standard_D8s_v3")
+    rid = vm["id"].lower()
+    metrics = {
+        rid: {
+            "value": [
+                {"name": {"value": "Percentage CPU"}, "timeseries": [{"data": [{"average": 5.0}]}]},
+                {"name": {"value": "Available Memory Bytes"}, "timeseries": [{"data": [{"average": 8e9}]}]},
+            ],
+        },
+    }
+    advisor_targets = {
+        rid: AdvisorVmTarget(
+            resource_id=rid,
+            recommendation_id="rec-1",
+            current_sku="Standard_D8s_v3",
+            target_sku="Standard_D4s_v3",
+            recommendation_type_id="39a8510b-812c-4530-ab2a-c8491f9bf666",
+            potential_savings_monthly=244.0,
+            summary="Resize VM",
+        ),
+    }
+    findings = analyze_vms(
+        engine,
+        "sub",
+        [vm],
+        metrics,
+        {rid: 63.0},
+        advisor_vm_targets=advisor_targets,
+    )
+    sizing = [f for f in findings if f.rule_id == "VM_SKU_SIZING_EXTENDED"]
+    assert len(sizing) == 1
+    assert sizing[0].evidence.get("suggested_sku") == "Standard_D4s_v3"
+    assert sizing[0].evidence.get("sku_source") == "azure_advisor"
+    assert sizing[0].estimated_savings_usd == pytest.approx(122.0)
+    mock_pricing.assert_called()
+    assert mock_pricing.call_args.args[2] == "Standard_D4s_v3"

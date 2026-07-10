@@ -19,6 +19,7 @@ import {
   anomalyDays,
   CHART_RANK_COLORS,
   KPI_CARD_TYPE,
+  mergeForecastSeries,
 } from '../../utils/visualPolish';
 
 const HEALTH_COLORS = {
@@ -75,13 +76,8 @@ function KpiIcon({ kpiId, iconKey }) {
   return <AssetIcon iconKey={iconKey} size={22} className="stat-card__icon" alt="" />;
 }
 
-function buildForecastSeries(dailyChart, projectedTotal) {
-  if (!dailyChart?.length || projectedTotal == null) return dailyChart;
-  const avg = projectedTotal / 30;
-  return dailyChart.map((d, i) => ({
-    ...d,
-    forecast: i >= dailyChart.length - 2 ? avg : null,
-  }));
+function buildForecastSeries(dailyChart, forecastDailyPoints = []) {
+  return mergeForecastSeries(dailyChart, forecastDailyPoints);
 }
 
 function PortalPanel({ title, href, hrefLabel = 'View more', children, empty, emptyAction }) {
@@ -319,6 +315,18 @@ function PortalSkeleton() {
   );
 }
 
+function buildDashboardDailyChartData(daily, forecastDaily) {
+  const dailyChart = daily.map((p) => ({
+    date: p.date ? formatIsoDate(String(p.date).slice(0, 10)) : '',
+    cost: p.cost_billing ?? p.cost_usd ?? 0,
+  }));
+
+  return {
+    dailyChart,
+    chartData: buildForecastSeries(dailyChart, forecastDaily),
+  };
+}
+
 export default function DashboardPortal({
   portal,
   currency,
@@ -343,20 +351,15 @@ export default function DashboardPortal({
 
   const panels = portal.panels || {};
   const daily = panels.daily_cost_trend?.points || [];
+  const forecastDaily = panels.daily_cost_trend?.forecast_points || [];
   const utilItems = panels.utilization_by_resource?.items || [];
   const costUtil = panels.cost_vs_utilization?.items || [];
   const healthSegs = (panels.resource_health_status?.segments || []).filter((s) => s.value > 0);
   const chartCurrency = panels.daily_cost_trend?.currency || currency;
 
   const kpisById = Object.fromEntries((portal.kpis || []).map((k) => [k.id, k]));
-  const projectedMonthly = kpisById.monthly_trend?.value;
 
-  const dailyChart = daily.map((p) => ({
-    date: p.date ? formatIsoDate(String(p.date).slice(0, 10)) : '',
-    cost: p.cost_billing ?? p.cost_usd ?? 0,
-  }));
-
-  const chartData = buildForecastSeries(dailyChart, projectedMonthly);
+  const { dailyChart, chartData } = buildDashboardDailyChartData(daily, forecastDaily);
   const anomalies = anomalyDays(dailyPoints || daily, 1.5).map((a) => ({
     ...a,
     date: a.date ? formatIsoDate(a.date) : '',

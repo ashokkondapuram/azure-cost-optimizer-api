@@ -67,6 +67,7 @@ export default function ActionCombinedEvidence({
   action,
   currency = 'USD',
   showSignals = true,
+  compact = false,
 }) {
   const [timespan, onTimespanChange] = usePersistedMetricTimespan(ACTION_METRICS_TIMESPAN_KEY);
   const resourceId = action?.resource_id || '';
@@ -116,9 +117,9 @@ export default function ActionCombinedEvidence({
   );
 
   return (
-    <section className="drawer-section">
+    <section className={`drawer-section${compact ? ' drawer-section--compact' : ''}`}>
       <div className="drawer-section__head">
-        <h3 className="drawer-section__title">Combined analysis</h3>
+        <h3 className="drawer-section__title">{compact ? 'Analysis' : 'Combined analysis'}</h3>
         {canFetchLiveMetrics && (
           <ResourceMetricsTimespanFilter
             value={timespan}
@@ -139,20 +140,37 @@ export default function ActionCombinedEvidence({
         <div className="drawer-investigation drawer-investigation--signals">
           <h4 className="drawer-investigation__title">Merged signals</h4>
           <ActionEvidenceSignals summary={summary} />
-          {(combined.advisor_monthly_savings > 0 || combined.finding_monthly_savings > 0) && (
+          {(combined.unified_monthly_savings > 0
+            || combined.finding_monthly_savings > 0
+            || combined.advisor_monthly_savings > 0) && (
             <div className="action-combined-savings">
+              {combined.unified_monthly_savings > 0 ? (
+                <span>
+                  Unified savings {formatCurrency(combined.unified_monthly_savings, { currency })}/mo
+                </span>
+              ) : combined.finding_monthly_savings > 0 ? (
+                <span>
+                  Engine savings {formatCurrency(combined.finding_monthly_savings, { currency })}/mo
+                </span>
+              ) : null}
               {combined.advisor_monthly_savings > 0 && (
-                <span>Advisor savings {formatCurrency(combined.advisor_monthly_savings, { currency })}/mo</span>
+                <span>Advisor reference {formatCurrency(combined.advisor_monthly_savings, { currency })}/mo</span>
               )}
-              {combined.finding_monthly_savings > 0 && (
-                <span>Engine savings {formatCurrency(combined.finding_monthly_savings, { currency })}/mo</span>
+              {combined.finding_monthly_savings > 0 && combined.unified_monthly_savings > 0
+                && combined.finding_monthly_savings !== combined.unified_monthly_savings && (
+                <span>Engine computed {formatCurrency(combined.finding_monthly_savings, { currency })}/mo</span>
               )}
+              {combined.savings_by_action_class && Object.entries(combined.savings_by_action_class).map(([cls, amount]) => (
+                <span key={cls}>
+                  {cls.replace(/_/g, ' ')} {formatCurrency(amount, { currency })}/mo
+                </span>
+              ))}
             </div>
           )}
         </div>
       )}
 
-      {tier && (
+      {tier && !compact && (
         <div className="drawer-investigation-field">
           <span className="drawer-investigation-label">Tier:</span>
           <span className={`tier-pill tier-pill--${tierTone(tier)}`}>{tierLabel(tier)}</span>

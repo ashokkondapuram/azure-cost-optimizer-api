@@ -1,16 +1,9 @@
-"""Budgets optimization sub-engine."""
-from __future__ import annotations
+"""Compatibility shim — implementation: app.optimizer.platform.cost.budget.sub_engine"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.resource_engines.runtime.base import ResourceSubEngine
-from app.optimizer.resource_engines.cost.budget.analysis import analyze_budgets
+_impl = import_module("app.optimizer.platform.cost.budget.sub_engine")
 
 
-class BudgetSubEngine(ResourceSubEngine):
-    component = "Budgets"
-    bucket_keys = ('budgets',)
-
-    def analyze(self, buckets: dict[str, list]) -> list[Any]:
-        budgets = buckets.get("budgets") or []
-        return analyze_budgets(self.engine, self.ctx.subscription_id, budgets, self.ctx.subscription_spend_usd)
+def __getattr__(name: str):
+    return getattr(_impl, name)

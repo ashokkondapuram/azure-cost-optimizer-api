@@ -17,7 +17,7 @@ from app.resources.database import cosmosdb, postgresql, redis, sql, sql_databas
 from app.resources.integration import apim, datafactory, logicapp
 from app.resources.messaging import eventhub, servicebus
 from app.resources.monitoring import appinsights, loganalytics
-from app.resources.network import appgateway, cdn, firewall, loadbalancer, nat, nic, nsg, privatedns, privateendpoint, privatelinkservice, publicip, vnet
+from app.resources.network import appgateway, cdn, expressroute, firewall, frontdoor, loadbalancer, nat, nic, nsg, privatedns, privateendpoint, privatelinkservice, publicip, trafficmanager, vnet
 from app.resources.search import cognitivesearch
 from app.resources.security import keyvault
 from app.resources.storage import account
@@ -40,6 +40,9 @@ ALL_RESOURCE_MODULES: list[Any] = [
     nsg,
     firewall,
     cdn,
+    expressroute,
+    trafficmanager,
+    frontdoor,
     privateendpoint,
     privatelinkservice,
     privatedns,

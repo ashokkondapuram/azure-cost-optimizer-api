@@ -8,21 +8,15 @@
  * └─ Quota near-limit warnings                                       ┘
  *
  * Data: /tag-compliance/score, /tag-compliance/groups,
- *       /costs/budgets, /security-posture/summary, /quota/summary
+ *       /budgets, /security-posture/{id}, /quota/{id}/all
  */
-import React, { useState, useCallback, useContext } from 'react';
-import { Shield, Tag, DollarSign, AlertTriangle, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Tag, AlertTriangle, CheckCircle } from 'lucide-react';
 import {
   fetchTagComplianceScore, fetchTagComplianceGroups,
-  fetchBudgets, fetchSecurityPosture, fetchQuotaSummary,
+  fetchBudgets, fetchQuotaSummary,
 } from '../api/governanceDashboard';
-
-let SubscriptionContext;
-try { ({ SubscriptionContext } = require('../context/SubscriptionContext')); } catch { SubscriptionContext = null; }
-function useCtxSub() {
-  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line
-  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
-}
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
 
 function Skeleton({ className = '' }) {
   return <div className={`animate-pulse rounded bg-gray-200 dark:bg-gray-700 ${className}`} />;
@@ -99,7 +93,7 @@ function RGHeatTable({ groups, loading }) {
 
 function BudgetCards({ budgets, loading }) {
   if (loading) return <Skeleton className="h-32 rounded-xl" />;
-  const items = budgets?.value ?? budgets?.budgets ?? [];
+  const items = Array.isArray(budgets) ? budgets : (budgets?.value ?? budgets?.budgets ?? []);
   if (!items.length) return null;
   return (
     <div className="mb-5">
@@ -108,7 +102,7 @@ function BudgetCards({ budgets, loading }) {
         {items.map((b, i) => {
           const name = b.name ?? b.budget_name ?? `Budget ${i + 1}`;
           const amount = b.properties?.amount ?? b.amount ?? 0;
-          const currentSpend = b.properties?.currentSpend?.amount ?? b.current_spend ?? 0;
+          const currentSpend = b.properties?.currentSpend?.amount ?? b.currentSpend ?? b.current_spend ?? 0;
           const pct = amount > 0 ? Math.round((currentSpend / amount) * 100) : null;
           const colour = pct == null ? 'text-gray-400' : pct >= 100 ? 'text-red-600' : pct >= 80 ? 'text-amber-500' : 'text-teal-600';
           return (
@@ -134,7 +128,7 @@ function BudgetCards({ budgets, loading }) {
 
 function QuotaWarnings({ quota, loading }) {
   if (loading) return <Skeleton className="h-24 rounded-xl" />;
-  const nearLimit = (quota?.by_resource_type ?? []).filter((q) => q.usage_pct >= 70);
+  const nearLimit = (quota?.near_limit ?? quota?.by_resource_type ?? []).filter((q) => (q.usage_pct ?? 0) >= 70);
   if (!nearLimit.length) return (
     <div className="flex items-center gap-2 rounded-xl border border-teal-200 dark:border-teal-800 bg-teal-50 dark:bg-teal-900/10 px-4 py-3 mb-5">
       <CheckCircle size={15} className="text-teal-500" />
@@ -151,9 +145,9 @@ function QuotaWarnings({ quota, loading }) {
       <div className="divide-y divide-amber-50 dark:divide-amber-900/30">
         {nearLimit.map((q, i) => (
           <div key={i} className="flex items-center justify-between px-4 py-2.5 gap-4">
-            <p className="text-sm text-gray-800 dark:text-gray-100">{q.resource_type ?? q.resource_type_display ?? 'Unknown'}</p>
+            <p className="text-sm text-gray-800 dark:text-gray-100">{q.localized_name ?? q.name ?? q.resource_type ?? q.resource_type_display ?? 'Unknown'}</p>
             <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500">{q.current_usage} / {q.limit}</span>
+              <span className="text-xs text-gray-500">{q.current ?? q.current_usage} / {q.limit}</span>
               <span className={`text-sm font-bold tabular-nums ${q.usage_pct >= 90 ? 'text-red-500' : 'text-amber-500'}`}>{q.usage_pct}%</span>
             </div>
           </div>
@@ -164,8 +158,7 @@ function QuotaWarnings({ quota, loading }) {
 }
 
 export default function GovernanceDashboard() {
-  const ctxSub = useCtxSub();
-  const [subId, setSubId] = useState(ctxSub ?? '');
+  const { subscription } = useAdvancedSubscription();
   const [tagScore, setTagScore] = useState(null);
   const [tagGroups, setTagGroups] = useState(null);
   const [budgets, setBudgets] = useState(null);
@@ -174,57 +167,40 @@ export default function GovernanceDashboard() {
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!subId.trim()) return;
+    if (!subscription?.trim()) return;
     setLoading(true); setError(null);
     try {
       const results = await Promise.allSettled([
-        fetchTagComplianceScore(subId),
-        fetchTagComplianceGroups(subId),
-        fetchBudgets(subId),
-        fetchQuotaSummary(subId),
+        fetchTagComplianceScore(subscription),
+        fetchTagComplianceGroups(subscription),
+        fetchBudgets(subscription),
+        fetchQuotaSummary(subscription),
       ]);
       if (results[0].status === 'fulfilled') setTagScore(results[0].value);
       if (results[1].status === 'fulfilled') setTagGroups(results[1].value);
       if (results[2].status === 'fulfilled') setBudgets(results[2].value);
       if (results[3].status === 'fulfilled') setQuota(results[3].value);
       const failed = results.filter((r) => r.status === 'rejected');
-      if (failed.length === results.length) throw new Error(failed[0].reason?.message ?? 'All requests failed');
-    } catch (e) { setError(e.message); }
+      if (failed.length === results.length) throw failed[0].reason ?? new Error('All requests failed');
+    } catch (e) { setError(e); }
     finally { setLoading(false); }
-  }, [subId]);
+  }, [subscription]);
 
-  const hasData = tagScore || tagGroups || budgets || quota;
+  useEffect(() => {
+    load();
+  }, [load]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1">
-          <Shield size={20} className="text-teal-600" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Governance Dashboard</h1>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Tag compliance, budget utilisation, quota health, and security posture — in one view.
-        </p>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3 mb-5">
-        <input type="text" value={subId} onChange={(e) => setSubId(e.target.value)}
-          placeholder="Subscription ID"
-          className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 w-80"
-        />
-        <button onClick={load} disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 px-4 py-1.5 text-sm font-medium text-white transition-colors">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Loading…' : 'Load'}
-        </button>
-      </div>
-
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />{error}
-        </div>
-      )}
-
+    <AdvancedToolLayout
+      title="Governance dashboard"
+      subtitle="Tag compliance, budget utilisation, quota health, and security posture — in one view."
+      iconKey="governanceDashboard"
+      iconRoute="/governance"
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      errorTitle="Could not load governance dashboard"
+    >
       {/* Tag compliance gauge + tag bars */}
       {(loading || tagScore) && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-4 mb-5">
@@ -249,13 +225,6 @@ export default function GovernanceDashboard() {
       <RGHeatTable groups={tagGroups?.groups} loading={loading} />
       <BudgetCards budgets={budgets} loading={loading} />
       <QuotaWarnings quota={quota} loading={loading} />
-
-      {!loading && !hasData && !error && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500 gap-3">
-          <Shield size={40} strokeWidth={1.5} />
-          <p className="text-sm font-medium">Enter a subscription ID and click Load</p>
-        </div>
-      )}
-    </div>
+    </AdvancedToolLayout>
   );
 }

@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import {
   OVERVIEW_NAV,
+  ADVANCED_NAV_GROUPS,
   OPTIMIZATION_NAV_ITEMS,
   RESOURCE_PAGES,
   SYSTEM_NAV,
@@ -25,6 +26,16 @@ function buildStaticItems(isAdmin) {
   const items = [];
   for (const nav of OVERVIEW_NAV) {
     items.push({ id: `page:${nav.path}`, label: nav.title, group: 'Pages', path: nav.path });
+  }
+  for (const group of ADVANCED_NAV_GROUPS) {
+    for (const nav of group.items) {
+      items.push({
+        id: `page:${nav.path}`,
+        label: nav.title,
+        group: group.label,
+        path: nav.path,
+      });
+    }
   }
   if (isAdmin) {
     for (const nav of OPTIMIZATION_NAV_ITEMS) {

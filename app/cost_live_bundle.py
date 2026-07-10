@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import calendar
+from datetime import date
 from typing import Any
 
 import structlog
@@ -27,10 +29,18 @@ def monthly_cost_trend_from_summaries(
         float(last_month.get("pretax_total") or last_month.get("cost_usd_total") or 0),
         2,
     )
-    projected = round(
-        float(forecast.get("pretax_total") or forecast.get("cost_usd_total") or mtd_amount),
-        2,
+    forecast_total = float(
+        forecast.get("pretax_total") or forecast.get("cost_usd_total") or 0,
     )
+    if forecast_total > 0:
+        projected = round(forecast_total, 2)
+    elif mtd_amount > 0:
+        today = date.today()
+        days_in_month = calendar.monthrange(today.year, today.month)[1]
+        days_elapsed = max(1, today.day)
+        projected = round(mtd_amount * (days_in_month / days_elapsed), 2)
+    else:
+        projected = 0.0
 
     delta_pct = None
     delta_usd = None
@@ -44,6 +54,9 @@ def monthly_cost_trend_from_summaries(
         "delta_pct": delta_pct,
         "delta_usd": delta_usd,
         "mtd_delta_usd": None,
+        "forecast_source": "azure_forecast" if forecast_total > 0 else (
+            "prorated_mtd" if mtd_amount > 0 else "none"
+        ),
     }
 
 

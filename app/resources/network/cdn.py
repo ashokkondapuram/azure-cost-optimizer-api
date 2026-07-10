@@ -1,28 +1,9 @@
-from app.resources.types import ResourceMonitorProfile, TechnicalFetchSpec, field, metric
+"""Compatibility shim — implementation: it_services.network_cdn.resource_profile"""
 
-CANONICAL_TYPE = "network/cdn"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Cdn/profiles",
-    display_name="CDN profile",
-    sync_property_paths=("provisioningState", "originResponseTimeout", "resourceState"),
-    generic_arm_sync=True,
-    fields=(
-        field("resource_state", "props:resourceState", "Resource state", "status", "CDN_EGRESS_EXTENDED"),
-        field("sku", "row:sku", "SKU", "configuration", "CDN_EGRESS_EXTENDED"),
-    ),
-)
+_impl = import_module("it_services.network_cdn.resource_profile")
 
-MONITOR_PROFILE = ResourceMonitorProfile(
-    monitor_arm_type="microsoft.cdn/profiles",
-    canonical_type=CANONICAL_TYPE,
-    display_name="CDN profile",
-    doc_ref="microsoft-cdn-profiles-metrics",
-    metrics=(),
-)
 
-EXTRA_USAGE_METRICS = (
-    metric("cost_export", "mtd_cost", "monthly_cost_usd",
-           "Month-to-date billed cost", "P7D", "CDN_EGRESS_EXTENDED"),
-)
+def __getattr__(name: str):
+    return getattr(_impl, name)

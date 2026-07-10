@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "service": "Azure Container Registry",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/container-registry/",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-containerregistry-registries-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/container-registry/"
+  },
+  "tiers": {
+    "Basic": {
+      "monthly_usd": 5.0,
+      "included_storage_gb": 10,
+      "webhooks_included": 2,
+      "geo_replication": false
+    },
+    "Standard": {
+      "monthly_usd": 25.0,
+      "included_storage_gb": 100,
+      "webhooks_included": 10,
+      "geo_replication": false
+    },
+    "Premium": {
+      "monthly_usd": 100.0,
+      "included_storage_gb": 500,
+      "webhooks_included": 500,
+      "geo_replication": true
+    }
+  },
+  "pricing": {
+    "storage_per_gb_month_usd": 0.10,
+    "transactions_per_10k_usd": 0.002
+  },
+  "optimization_thresholds": {
+    "image_retention_days": 90,
+    "untagged_cleanup_savings_pct": 0.30,
+    "pull_count_low": 1000.0,
+    "storage_high_gb": 50.0,
+    "geo_replica_review_count": 3,
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  }
+}

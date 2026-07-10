@@ -21,6 +21,7 @@ from app.optimizer.advanced_engine import score_resource
 from app.optimizer.dependency_analyzer import analyze_dependencies, enrich_dependency_criticality
 from app.optimizer.trend_analyzer import analyze_resource_trends
 from app.optimizer.workload_profiler import profile_resource
+from app.savings_aggregation import resolve_resource_savings
 from app.utils import json_field, norm_arm_id, parse_tags_json, utc_now
 
 log = structlog.get_logger()
@@ -28,6 +29,7 @@ log = structlog.get_logger()
 _ACTION_REASONS: dict[str, str] = {
     "resize_down": "Right-size underutilized compute based on utilization, cost, and workload stability",
     "downgrade_disk": "Reduce disk tier or size — cost outweighs performance headroom",
+    "decommission": "Remove idle or unused resources to eliminate recurring charges",
     "buy_reservation": "Stable workload qualifies for reservation or savings plan",
     "investigate": "Review cost and utilization signals before changing this resource",
     "manual_review": "Savings opportunity conflicts with performance, SLA, or dependency risk",
@@ -157,6 +159,7 @@ def _build_combined_evidence(
     advisor_savings: float,
     finding_savings: float,
     facts: dict[str, float],
+    savings_breakdown: Any | None = None,
 ) -> dict[str, Any]:
     """Compact summary of merged advisor, engine findings, and monitor metrics."""
     cost_metric_count = len(optimization_metrics.get("cost") or [])
@@ -165,6 +168,10 @@ def _build_combined_evidence(
         1 for key in facts
         if key.endswith("_pct") or "cpu" in key or "mem" in key or "disk" in key
     )
+
+    unified = None
+    if savings_breakdown is not None:
+        unified = savings_breakdown.unified_monthly
 
     return {
         "advisor_count": len(cost_advisor) + len(perf_advisor),
@@ -178,8 +185,13 @@ def _build_combined_evidence(
         "has_advisor": bool(cost_advisor or perf_advisor),
         "has_findings": bool(findings),
         "has_metrics": (cost_metric_count + perf_metric_count) > 0 or monitor_fact_count > 0,
-        "advisor_monthly_savings": round(advisor_savings, 2) if advisor_savings else None,
-        "finding_monthly_savings": round(finding_savings, 2) if finding_savings else None,
+        "advisor_monthly_savings": round(advisor_savings, 2) if advisor_savings is not None and advisor_savings > 0 else None,
+        "finding_monthly_savings": round(finding_savings, 2) if finding_savings is not None and finding_savings > 0 else None,
+        "unified_monthly_savings": round(unified, 2) if unified is not None and unified > 0 else (
+            round(finding_savings, 2) if finding_savings and finding_savings > 0 else None
+        ),
+        "savings_by_action_class": getattr(savings_breakdown, "by_action_class", None),
+        "overlap_action_classes": getattr(savings_breakdown, "overlap_action_classes", None),
         "sources_merged": True,
     }
 
@@ -292,6 +304,12 @@ def _decide_for_resource(
 
     advisor_savings = sum(a.potential_savings_monthly or 0.0 for a in cost_advisor)
     finding_savings = sum(f.estimated_savings_usd or 0.0 for f in open_findings)
+    savings_breakdown = resolve_resource_savings(
+        resource_id=resource_id,
+        advisor_recs=cost_advisor,
+        findings=open_findings,
+    )
+    unified_savings = savings_breakdown.unified_monthly
     rule_ids = {f.rule_id for f in open_findings if f.rule_id}
 
     monthly_cost = float(snapshot.monthly_cost_usd or 0) if snapshot else 0.0
@@ -318,6 +336,7 @@ def _decide_for_resource(
         trends=trends,
         advisor_savings=advisor_savings,
         finding_savings=finding_savings,
+        unified_monthly_savings=unified_savings,
         rule_ids=rule_ids,
         has_cost_advisor=bool(cost_advisor),
         has_perf_advisor=bool(perf_advisor),
@@ -340,6 +359,7 @@ def _decide_for_resource(
         advisor_savings=advisor_savings,
         finding_savings=finding_savings,
         facts=merged_facts,
+        savings_breakdown=savings_breakdown,
     )
     cost_evidence, utilization_evidence, rules_applied = _build_analysis_payload(
         scorecard=scorecard,

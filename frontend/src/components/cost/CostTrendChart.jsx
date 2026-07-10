@@ -1,11 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import {
   LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Brush,
+  ResponsiveContainer,
 } from 'recharts';
 import { formatCurrency } from '../../utils/format';
 import { formatChartAxis } from '../../utils/costCurrency';
 import { barColorByPct } from '../../utils/visualPolish';
+import ChartBrushNavigator from '../charts/ChartBrushNavigator';
+import { useChartBrushRange, useBrushedChartData } from '../../hooks/useChartBrushRange';
 
 export function CostDailyTrendChart({
   data,
@@ -15,13 +17,15 @@ export function CostDailyTrendChart({
   loading,
 }) {
   const [hidden, setHidden] = useState({});
-  const [brushRange, setBrushRange] = useState(null);
-
-  const chartData = useMemo(() => {
-    if (!brushRange) return data;
-    const [start, end] = brushRange;
-    return data.slice(start, end + 1);
-  }, [data, brushRange]);
+  const {
+    startIndex,
+    endIndex,
+    maxIndex,
+    isZoomed,
+    onBrushChange,
+    resetBrush,
+  } = useChartBrushRange(data.length);
+  const chartData = useBrushedChartData(data, startIndex, endIndex, maxIndex);
 
   const hasCompare = data.some((r) => r.compareCost != null);
 
@@ -60,11 +64,11 @@ export function CostDailyTrendChart({
             </button>
           </div>
         )}
-        {brushRange && (
+        {isZoomed && (
           <button
             type="button"
             className="btn btn-ghost btn-sm"
-            onClick={() => setBrushRange(null)}
+            onClick={resetBrush}
           >
             Reset zoom
           </button>
@@ -95,18 +99,16 @@ export function CostDailyTrendChart({
           {hasCompare && !hidden.compare && (
             <Line type="monotone" dataKey="compareCost" name="compareCost" stroke="#94a3b8" strokeWidth={2} dot={false} strokeDasharray="4 4" />
           )}
-          <Brush
-            dataKey="dateLabel"
-            height={24}
-            stroke="var(--border)"
-            onChange={(range) => {
-              if (range?.startIndex != null && range?.endIndex != null) {
-                setBrushRange([range.startIndex, range.endIndex]);
-              }
-            }}
-          />
         </LineChart>
       </ResponsiveContainer>
+      <ChartBrushNavigator
+        data={data}
+        dataKey="dateLabel"
+        valueKey="cost"
+        startIndex={startIndex}
+        endIndex={endIndex}
+        onRangeChange={onBrushChange}
+      />
     </div>
   );
 }

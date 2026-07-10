@@ -20,7 +20,10 @@ export function getErrorMessage(error, fallback = 'Something went wrong. Please 
   }
   if (data?.message) return data.message;
   if (error.code === 'ECONNABORTED') return 'Request timed out. Please try again.';
-  if (!error.response) return 'Cannot reach the API. Check that the backend is running.';
+  if (!error.response) {
+    if (typeof error.message === 'string' && error.message.trim()) return error.message;
+    return 'Cannot reach the API. Check that the backend is running.';
+  }
   if (error.response.status === 401) return 'Your session ended. Sign in again.';
   if (error.response.status === 403) return 'You do not have permission to access this resource.';
   if (error.response.status === 404) return 'The requested resource was not found.';

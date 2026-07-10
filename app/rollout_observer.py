@@ -50,9 +50,9 @@ def check_rollout_observations(db: Session, subscription_id: str | None = None) 
 
 
 def check_all_subscriptions(db: Session) -> dict[str, Any]:
-    from app.operations_scheduler import _list_subscription_ids
+    from app.scheduler_utils import list_subscription_ids
 
-    subs = _list_subscription_ids(db)
+    subs = list_subscription_ids(db)
     combined = {
         "subscriptions": len(subs),
         "ready_to_expand": [],

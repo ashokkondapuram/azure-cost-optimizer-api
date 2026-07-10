@@ -1,10 +1,16 @@
 import React from 'react';
-import { formatMetricStatValue, statColumnsForMetric, optimizationMetricStatusLabel } from '../utils/resourceMetricsUtils';
+import {
+  formatMetricStatValue,
+  normalizeMetricRow,
+  optimizationMetricStatusLabel,
+  statColumnsForRows,
+} from '../utils/resourceMetricsUtils';
 
 function MetricsTable({ rows, metricNameKey = 'metric_name', labelKey = 'label' }) {
-  if (!rows?.length) return null;
+  const normalizedRows = (rows || []).map(normalizeMetricRow).filter(Boolean);
+  if (!normalizedRows.length) return null;
 
-  const columns = statColumnsForMetric(rows[0]);
+  const columns = statColumnsForRows(normalizedRows);
 
   return (
     <div className="table-wrap resource-metrics-table-wrap">
@@ -19,10 +25,9 @@ function MetricsTable({ rows, metricNameKey = 'metric_name', labelKey = 'label' 
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {normalizedRows.map((row) => {
             const stats = row.stats || {};
             const metricKey = row[metricNameKey] || row.fact_key;
-            const cols = statColumnsForMetric(row);
             return (
               <tr key={`${metricKey}-${row.fact_key || row.label}`}>
                 <th scope="row" title={metricKey}>
@@ -31,7 +36,7 @@ function MetricsTable({ rows, metricNameKey = 'metric_name', labelKey = 'label' 
                     <span className="resource-metrics-derived" title="Computed metric"> · computed</span>
                   )}
                 </th>
-                {cols.map((col) => (
+                {columns.map((col) => (
                   <td key={col.key} className={stats[col.key] == null ? 'resource-azure-metrics__empty' : ''}>
                     {formatMetricStatValue(row.fact_key, stats[col.key], row.unit)}
                   </td>
@@ -59,18 +64,23 @@ export default function ResourceMetricsDetailTable({
   instances = [],
 }) {
   const aggregateRows = metrics?.length
-    ? metrics.map((row) => ({
+    ? metrics.map((row) => normalizeMetricRow({
       ...row,
       stats: row.stats || {},
       isDerived: false,
     }))
-    : metricsDetail;
+    : (metricsDetail || []).map((row) => normalizeMetricRow({ ...row, isDerived: false }));
 
-  const derivedRows = (derived || []).map((row) => ({
+  const derivedRows = (derived || []).map((row) => normalizeMetricRow({
     fact_key: row.fact_key,
     label: row.label,
     unit: row.unit,
-    stats: { average: row.value, maximum: row.value, minimum: row.value },
+    stats: {
+      average: row.value,
+      maximum: row.value,
+      minimum: row.value,
+    },
+    display_stats: ['average', 'minimum', 'maximum'],
     status: row.status,
     isDerived: true,
   }));

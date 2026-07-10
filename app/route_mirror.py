@@ -11,12 +11,23 @@ log = structlog.get_logger()
 _SKIP_PATHS = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
 
 
+def _iter_api_routes(routes) -> list[APIRoute]:
+    """Yield APIRoute instances from app.routes and nested include_router mounts."""
+    found: list[APIRoute] = []
+    for route in routes:
+        if isinstance(route, APIRoute):
+            found.append(route)
+            continue
+        original = getattr(route, "original_router", None)
+        if original is not None and hasattr(original, "routes"):
+            found.extend(_iter_api_routes(original.routes))
+    return found
+
+
 def _route_method_keys(routes) -> set[tuple[str, str]]:
     """Set of (path, HTTP method) pairs already registered."""
     keys: set[tuple[str, str]] = set()
-    for route in routes:
-        if not isinstance(route, APIRoute):
-            continue
+    for route in _iter_api_routes(routes):
         for method in route.methods:
             keys.add((route.path, method.upper()))
     return keys
@@ -30,9 +41,7 @@ def mirror_routes_under_api_prefix(application: FastAPI) -> int:
     existing = _route_method_keys(application.routes)
     added = 0
 
-    for route in list(application.routes):
-        if not isinstance(route, APIRoute):
-            continue
+    for route in _iter_api_routes(application.routes):
         if route.path.startswith("/api") or route.path in _SKIP_PATHS:
             continue
         mirrored = f"/api{route.path}"

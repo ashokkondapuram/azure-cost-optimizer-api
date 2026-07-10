@@ -19,16 +19,24 @@ __all__ = ["ExtendedFinding", "ExtendedOptimizationEngine"]
 
 
 class ExtendedOptimizationEngine(EngineAnalysisHelpers):
-    def __init__(self, rule_overrides: dict[str, dict] | None = None):
+    def __init__(self, rule_overrides: dict[str, dict] | None = None, global_config: dict | None = None):
+        from app.optimizer.engine_runtime import split_rule_overrides
+
+        rule_only, inline_global = split_rule_overrides(rule_overrides)
+        self.global_config = {**(global_config or {}), **inline_global}
+        self._rule_overrides = rule_only
         self.rules: dict[str, Any] = {}
         self._vm_catalog_cache: dict[tuple[str, str], list[dict[str, Any]]] = {}
         self._aks_k8s_versions_cache: dict[tuple[str, str], set[str]] = {}
         self._aks_k8s_catalog_cache: dict[tuple[str, str], dict[str, Any]] = {}
         for rid, rule in ADVANCED_RULES.items():
             r = copy.deepcopy(rule)
-            if rule_overrides and rid in rule_overrides:
-                apply_rule_overrides(r, rule_overrides[rid])
+            if rule_only and rid in rule_only:
+                apply_rule_overrides(r, rule_only[rid])
             self.rules[rid] = r
+        from app.disk_analysis_config import hydrate_disk_rules
+
+        hydrate_disk_rules(self.rules)
 
     def analyze(
         self,
@@ -70,6 +78,9 @@ class ExtendedOptimizationEngine(EngineAnalysisHelpers):
         cognitive_search_services: list[dict] | None = None,
         firewalls: list[dict] | None = None,
         cdn_profiles: list[dict] | None = None,
+        expressroute_circuits: list[dict] | None = None,
+        traffic_managers: list[dict] | None = None,
+        front_doors: list[dict] | None = None,
         vnets: list[dict] | None = None,
         private_endpoints: list[dict] | None = None,
         private_link_services: list[dict] | None = None,
@@ -86,52 +97,61 @@ class ExtendedOptimizationEngine(EngineAnalysisHelpers):
         resource_cost_histories: dict[str, list[float]] | None = None,
         utilization_trends: dict[str, dict[str, dict[str, Any]]] | None = None,
         workload_classes: dict[str, str] | None = None,
+        advisor_vm_targets: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        from app.optimizer.engine_runtime import build_standard_rules, filter_resources
+        from app.optimizer.post_analysis import run_post_analysis
+
+        gc = self.global_config
         buckets = {
-            "vms": vms or [],
-            "vmss": vmss or [],
-            "disks": disks or [],
-            "snapshots": snapshots or [],
-            "public_ips": public_ips or [],
-            "load_balancers": load_balancers or [],
-            "app_gateways": app_gateways or [],
-            "app_services": app_services or [],
-            "app_service_plans": app_service_plans or [],
-            "network_interfaces": network_interfaces or [],
-            "nat_gateways": nat_gateways or [],
-            "redis_caches": redis_caches or [],
-            "storage": storage or [],
-            "aks_clusters": aks_clusters or [],
-            "sql_databases": sql_databases or [],
-            "cosmosdb": cosmosdb or [],
-            "keyvaults": keyvaults or [],
-            "nsgs": nsgs or [],
-            "postgresql": postgresql or [],
-            "container_registries": container_registries or [],
-            "log_analytics_workspaces": log_analytics_workspaces or [],
-            "app_insights_components": app_insights_components or [],
-            "apim_services": apim_services or [],
-            "data_factories": data_factories or [],
-            "logic_apps": logic_apps or [],
-            "event_hubs": event_hubs or [],
-            "service_bus_namespaces": service_bus_namespaces or [],
-            "databricks_workspaces": databricks_workspaces or [],
-            "synapse_workspaces": synapse_workspaces or [],
-            "adx_clusters": adx_clusters or [],
-            "ml_workspaces": ml_workspaces or [],
-            "recovery_vaults": recovery_vaults or [],
-            "cognitive_search_services": cognitive_search_services or [],
-            "firewalls": firewalls or [],
-            "cdn_profiles": cdn_profiles or [],
-            "vnets": vnets or [],
-            "private_endpoints": private_endpoints or [],
-            "private_link_services": private_link_services or [],
-            "private_dns_zones": private_dns_zones or [],
+            "vms": filter_resources(vms, gc),
+            "vmss": filter_resources(vmss, gc),
+            "disks": filter_resources(disks, gc),
+            "snapshots": filter_resources(snapshots, gc),
+            "public_ips": filter_resources(public_ips, gc),
+            "load_balancers": filter_resources(load_balancers, gc),
+            "app_gateways": filter_resources(app_gateways, gc),
+            "app_services": filter_resources(app_services, gc),
+            "app_service_plans": filter_resources(app_service_plans, gc),
+            "network_interfaces": filter_resources(network_interfaces, gc),
+            "nat_gateways": filter_resources(nat_gateways, gc),
+            "redis_caches": filter_resources(redis_caches, gc),
+            "storage": filter_resources(storage, gc),
+            "aks_clusters": filter_resources(aks_clusters, gc),
+            "sql_databases": filter_resources(sql_databases, gc),
+            "cosmosdb": filter_resources(cosmosdb, gc),
+            "keyvaults": filter_resources(keyvaults, gc),
+            "nsgs": filter_resources(nsgs, gc),
+            "postgresql": filter_resources(postgresql, gc),
+            "container_registries": filter_resources(container_registries, gc),
+            "log_analytics_workspaces": filter_resources(log_analytics_workspaces, gc),
+            "app_insights_components": filter_resources(app_insights_components, gc),
+            "apim_services": filter_resources(apim_services, gc),
+            "data_factories": filter_resources(data_factories, gc),
+            "logic_apps": filter_resources(logic_apps, gc),
+            "event_hubs": filter_resources(event_hubs, gc),
+            "service_bus_namespaces": filter_resources(service_bus_namespaces, gc),
+            "databricks_workspaces": filter_resources(databricks_workspaces, gc),
+            "synapse_workspaces": filter_resources(synapse_workspaces, gc),
+            "adx_clusters": filter_resources(adx_clusters, gc),
+            "ml_workspaces": filter_resources(ml_workspaces, gc),
+            "recovery_vaults": filter_resources(recovery_vaults, gc),
+            "cognitive_search_services": filter_resources(cognitive_search_services, gc),
+            "firewalls": filter_resources(firewalls, gc),
+            "cdn_profiles": filter_resources(cdn_profiles, gc),
+            "expressroute_circuits": filter_resources(expressroute_circuits, gc),
+            "traffic_managers": filter_resources(traffic_managers, gc),
+            "front_doors": filter_resources(front_doors, gc),
+            "vnets": filter_resources(vnets, gc),
+            "private_endpoints": filter_resources(private_endpoints, gc),
+            "private_link_services": filter_resources(private_link_services, gc),
+            "private_dns_zones": filter_resources(private_dns_zones, gc),
         }
         ctx = AnalysisContext(
             subscription_id=subscription_id,
             rules=self.rules,
             cost_by_resource=cost_by_resource or {},
+            global_config=self.global_config,
             vm_metrics=vm_metrics or {},
             node_metrics=node_metrics or {},
             resource_metrics=resource_metrics or vm_metrics or {},
@@ -143,6 +163,7 @@ class ExtendedOptimizationEngine(EngineAnalysisHelpers):
             resource_cost_histories=resource_cost_histories or {},
             utilization_trends=utilization_trends or {},
             workload_classes=workload_classes or {},
+            advisor_vm_targets=advisor_vm_targets or {},
         )
         if cost_history:
             buckets["cost_anomalies"] = [{"trigger": True}]
@@ -152,6 +173,33 @@ class ExtendedOptimizationEngine(EngineAnalysisHelpers):
             buckets,
             budgets=budgets,
         )
+        std_engine = type("StdBridge", (), {"rules": build_standard_rules(self._rule_overrides), "global_config": self.global_config})()
+        post_rows = run_post_analysis(std_engine, buckets=buckets, cost_by_resource=cost_by_resource, subscription_id=subscription_id)
+        for row in post_rows:
+            payload = row.to_dict()
+            findings.append(ExtendedFinding(
+                rule_id=payload["rule_id"],
+                rule_name=payload["rule_name"],
+                category=payload["category"],
+                severity=payload["severity"],
+                resource_id=payload["resource_id"],
+                resource_name=payload["resource_name"],
+                resource_type=payload["resource_type"],
+                subscription_id=payload["subscription_id"],
+                resource_group=payload["resource_group"],
+                location=payload["location"],
+                detail=payload["detail"],
+                recommendation=payload["recommendation"],
+                estimated_savings_usd=payload["estimated_savings_usd"],
+                annualized_savings_usd=round(payload["estimated_savings_usd"] * 12, 2),
+                waste_score=payload["waste_score"],
+                confidence_score=60,
+                action_priority="P3",
+                impact=payload["recommendation"],
+                evidence=payload.get("evidence") or {},
+                tags=payload.get("tags") or {},
+                detected_at=payload["detected_at"],
+            ))
         findings.sort(
             key=lambda f: (self._severity_rank(f.severity), -f.estimated_savings_usd, -f.confidence_score),
         )

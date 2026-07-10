@@ -12,6 +12,10 @@ from sqlalchemy.orm import Session
 from app.auth import arm_auth_context
 from app.azure_advisor import AdvisorClient
 from app.focus_mapping import normalize_arm_id
+from app.advisor_vm_targets import (
+    parse_advisor_recommendation_type_id,
+    parse_advisor_vm_skus,
+)
 from app.models import AdvisorRecommendation
 from app.utils import utc_now
 
@@ -144,6 +148,8 @@ def normalize_advisor_item(item: dict[str, Any], subscription_id: str) -> dict[s
     status = "Active"
     if props.get("exclusionMetadata"):
         status = "Dismissed"
+    current_sku, target_sku = parse_advisor_vm_skus(extended, props=props)
+    recommendation_type_id = parse_advisor_recommendation_type_id(item, props)
 
     return {
         "recommendation_id": str(recommendation_id),
@@ -155,6 +161,9 @@ def normalize_advisor_item(item: dict[str, Any], subscription_id: str) -> dict[s
         "description": str(description) if description else None,
         "potential_savings_monthly": monthly,
         "potential_savings_yearly": yearly,
+        "recommendation_type_id": recommendation_type_id,
+        "current_sku": current_sku,
+        "target_sku": target_sku,
         "status": status,
         "generated_at": _parse_dt(props.get("lastUpdated")),
         "raw_json": item,
@@ -328,6 +337,9 @@ def _serialize_advisor_row(row: AdvisorRecommendation) -> dict[str, Any]:
         "description": row.description,
         "potential_savings_monthly": row.potential_savings_monthly,
         "potential_savings_yearly": row.potential_savings_yearly,
+        "recommendation_type_id": row.recommendation_type_id,
+        "current_sku": row.current_sku,
+        "target_sku": row.target_sku,
         "status": row.status,
         "app_override": bool(row.app_override),
         "generated_at": row.generated_at.isoformat() if row.generated_at else None,

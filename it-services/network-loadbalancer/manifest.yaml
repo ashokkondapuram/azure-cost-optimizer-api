@@ -1,0 +1,22 @@
+service_id: network-loadbalancer
+canonical_type: network/loadbalancer
+display_name: Load balancer
+api_path: /resources/loadbalancers
+arm_type: Microsoft.Network/loadBalancers
+component: Load Balancers
+drawer_ui: false
+
+backend:
+  package: it_services/network_loadbalancer
+  modules:
+    - it_services/network_loadbalancer/resource_profile.py
+  related_app_modules:
+    - app/resources/network/loadbalancer.py
+    - app/optimizer/resource_engines/network/loadbalancer/
+
+frontend:
+  root: frontend/src/it-services/network-loadbalancer
+  entry: frontend/src/it-services/network-loadbalancer/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

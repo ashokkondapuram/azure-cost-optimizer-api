@@ -1,5 +1,6 @@
 /** Shared grouping helpers for optimization hub views. */
 
+import { countDistinctActionResources, normalizeActionResourceId } from './actionUtils';
 import { armResourceTypeFromId } from './resourceAdvisorUtils';
 
 export function resourceGroupFromArmId(resourceId) {
@@ -34,24 +35,43 @@ export function resourceGroupLabelForAction(action) {
   );
 }
 
-function sumSavings(items, field = 'estimated_savings_usd') {
-  return items.reduce((sum, item) => sum + (Number(item[field]) || 0), 0);
-}
-
 export function groupByKey(items, keyFn, { savingsField } = {}) {
   const map = new Map();
   for (const item of items) {
     const key = keyFn(item) || '—';
     if (!map.has(key)) {
-      map.set(key, { key, label: key, items: [], savings: 0 });
+      map.set(key, {
+        key,
+        label: key,
+        items: [],
+        savings: 0,
+        resourceCount: 0,
+        _savingsByResource: new Map(),
+      });
     }
     const group = map.get(key);
     group.items.push(item);
     if (savingsField) {
-      group.savings += Number(item[savingsField]) || 0;
+      const resourceKey = normalizeActionResourceId(item) || String(item.id || '');
+      if (resourceKey) {
+        const amount = Number(item[savingsField]) || 0;
+        group._savingsByResource.set(
+          resourceKey,
+          Math.max(group._savingsByResource.get(resourceKey) || 0, amount),
+        );
+      }
     }
   }
-  const groups = [...map.values()];
+  const groups = [...map.values()].map((group) => {
+    if (group._savingsByResource) {
+      group.savings = [...group._savingsByResource.values()].reduce((sum, value) => sum + value, 0);
+      group.resourceCount = group._savingsByResource.size;
+      delete group._savingsByResource;
+    } else {
+      group.resourceCount = countDistinctActionResources(group.items);
+    }
+    return group;
+  });
   groups.sort((a, b) => {
     if (b.savings !== a.savings) return b.savings - a.savings;
     return b.items.length - a.items.length || a.label.localeCompare(b.label);

@@ -23,15 +23,24 @@ ALGORITHM = "HS256"
 
 
 def token_expire_delta() -> timedelta:
-    """Session lifetime — default 5 minutes; override with JWT_EXPIRE_MINUTES or JWT_EXPIRE_HOURS."""
+    """Absolute JWT lifetime (renewed while the user is active). Default 8 hours."""
     hours_raw = os.getenv("JWT_EXPIRE_HOURS")
     if hours_raw is not None and str(hours_raw).strip() != "":
         return timedelta(hours=int(hours_raw))
-    minutes = int(os.getenv("JWT_EXPIRE_MINUTES", "5"))
-    return timedelta(minutes=minutes)
+    minutes_raw = os.getenv("JWT_EXPIRE_MINUTES")
+    if minutes_raw is not None and str(minutes_raw).strip() != "":
+        return timedelta(minutes=int(minutes_raw))
+    return timedelta(hours=8)
+
+
+def session_idle_minutes() -> int:
+    """Frontend inactivity logout hint — default 1 minute."""
+    return max(1, int(os.getenv("SESSION_IDLE_MINUTES", "1")))
+ROLE_SUPERUSER = "superuser"
 ROLE_ADMIN = "admin"
 ROLE_VIEWER = "viewer"
-VALID_ROLES = {ROLE_ADMIN, ROLE_VIEWER}
+VALID_ROLES = {ROLE_SUPERUSER, ROLE_ADMIN, ROLE_VIEWER}
+PRIVILEGED_ROLES = {ROLE_SUPERUSER, ROLE_ADMIN}
 _USERNAME_RE = re.compile(r"^[a-z0-9._-]{3,64}$")
 
 _LOGIN_ATTEMPTS: dict[str, list[float]] = {}
@@ -152,10 +161,25 @@ def require_authenticated_user(request: Request) -> dict[str, Any]:
     return user
 
 
+def is_privileged_role(role: str | None) -> bool:
+    return (role or "").strip().lower() in PRIVILEGED_ROLES
+
+
+def is_superuser_role(role: str | None) -> bool:
+    return (role or "").strip().lower() == ROLE_SUPERUSER
+
+
 def require_admin_user(request: Request) -> dict[str, Any]:
     user = require_authenticated_user(request)
-    if user.get("role") != ROLE_ADMIN:
+    if not is_privileged_role(user.get("role")):
         raise HTTPException(status_code=403, detail="Admin access required")
+    return user
+
+
+def require_superuser(request: Request) -> dict[str, Any]:
+    user = require_authenticated_user(request)
+    if not is_superuser_role(user.get("role")):
+        raise HTTPException(status_code=403, detail="Superuser access required")
     return user
 
 
@@ -243,6 +267,41 @@ def ensure_default_viewer(db: Session) -> None:
     log.info("app_user_bootstrapped", username=username, role=ROLE_VIEWER)
 
 
+def ensure_default_superuser(db: Session) -> None:
+    """Create the initial superuser when SUPERUSER_PASSWORD is configured."""
+    if db.query(AppUser).filter(AppUser.role == ROLE_SUPERUSER).first():
+        return
+
+    settings = get_settings()
+    username = (os.getenv("SUPERUSER_USERNAME") or "superuser").strip().lower()
+    if not username:
+        return
+
+    if db.query(AppUser).filter(AppUser.username == username).first():
+        return
+
+    password = _bootstrap_password(
+        settings,
+        env_password=(os.getenv("SUPERUSER_PASSWORD") or "").strip(),
+        dev_default="superuser",
+        account=username,
+    )
+    if not password:
+        return
+
+    user = AppUser(
+        id=str(uuid.uuid4()),
+        username=username,
+        display_name="Superuser",
+        password_hash=hash_password(password),
+        role=ROLE_SUPERUSER,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    log.info("app_user_bootstrapped", username=username, role=ROLE_SUPERUSER)
+
+
 def parse_bearer_token(authorization: Optional[str]) -> Optional[str]:
     if not authorization:
         return None
@@ -272,7 +331,7 @@ def list_app_users(db: Session) -> list[dict[str, Any]]:
 def count_active_admins(db: Session) -> int:
     return (
         db.query(AppUser)
-        .filter(AppUser.role == ROLE_ADMIN, AppUser.is_active.is_(True))
+        .filter(AppUser.role.in_([ROLE_ADMIN, ROLE_SUPERUSER]), AppUser.is_active.is_(True))
         .count()
     )
 
@@ -298,12 +357,15 @@ def create_app_user(
     password: str,
     display_name: str | None = None,
     role: str = ROLE_VIEWER,
+    actor_role: str | None = None,
 ) -> AppUser:
     uname = normalize_username(username)
     validate_password(password)
     role_key = (role or ROLE_VIEWER).strip().lower()
     if role_key not in VALID_ROLES:
         raise ValueError(f"Role must be one of: {', '.join(sorted(VALID_ROLES))}")
+    if role_key == ROLE_SUPERUSER and not is_superuser_role(actor_role):
+        raise ValueError("Only a superuser can create another superuser account.")
 
     existing = db.query(AppUser).filter(AppUser.username == uname).first()
     if existing:

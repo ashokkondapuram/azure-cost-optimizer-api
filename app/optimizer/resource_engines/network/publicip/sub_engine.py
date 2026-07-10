@@ -1,17 +1,9 @@
-"""Public IPs optimization sub-engine."""
-from __future__ import annotations
+"""Compatibility shim — implementation: it_services.network_publicip.engine.sub_engine"""
 
-from typing import Any
+from importlib import import_module
 
-from app.optimizer.resource_engines.runtime.base import ResourceSubEngine
-from app.optimizer.resource_engines.network.publicip.analysis import analyze_public_ips
+_impl = import_module("it_services.network_publicip.engine.sub_engine")
 
 
-class PublicIpSubEngine(ResourceSubEngine):
-    component = "Public IPs"
-    bucket_keys = ('public_ips',)
-
-    def analyze(self, buckets: dict[str, list]) -> list[Any]:
-        ips = self.prepare_resources(buckets.get("public_ips") or [])
-        findings = analyze_public_ips(self.engine, self.ctx.subscription_id, ips, self.ctx.cost_by_resource)
-        return self.enhance_findings(findings, ips)
+def __getattr__(name: str):
+    return getattr(_impl, name)

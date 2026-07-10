@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 import { getDrawerOverviewTiles } from '../utils/resourceDrawerUtils';
 
-export default function ResourceDrawerOverview({ resource, compact = false }) {
+export default function ResourceDrawerOverview({ resource, apiPath = '', compact = false }) {
   const tiles = useMemo(
-    () => getDrawerOverviewTiles(resource),
-    [resource],
+    () => getDrawerOverviewTiles(resource, { apiPath }),
+    [resource, apiPath],
   );
 
   if (!tiles.length) return null;

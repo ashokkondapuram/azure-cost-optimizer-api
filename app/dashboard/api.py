@@ -11,6 +11,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.cost_db import (
+    _MONTH_BUCKET_TIMEFRAMES,
+    _PERIOD_SCOPED_TIMEFRAMES,
     cost_by_resource_type_from_db,
     cost_summary_from_db,
     daily_cost_response_from_db,
@@ -19,9 +21,10 @@ from app.cost_db import (
 from app.cost_live_query import (
     query_cost_summary_live,
     query_daily_costs_live,
+    query_forecast_daily_live,
     query_forecast_summary_live,
 )
-from app.cost_resolve import resolve_cost_db_then_live
+from app.cost_resolve import resolve_cost_for_timeframe
 from app.cost_explorer_sync import resource_type_display_name
 from app.focus_mapping import normalize_arm_id
 from app.models import (
@@ -133,13 +136,16 @@ def _resolve_cost_summary(
     *,
     resource_types: list[str] | None,
     token: str | None,
+    db_only: bool = False,
 ) -> tuple[dict | None, str | None]:
     def live_call() -> dict | None:
-        if not token or resource_types:
+        if db_only or not token or resource_types:
             return None
         return query_cost_summary_live(db, subscription_id, timeframe, token=token)
 
-    return resolve_cost_db_then_live(
+    return resolve_cost_for_timeframe(
+        timeframe,
+        has_resource_type_filter=bool(resource_types),
         db_call=lambda: cost_summary_from_db(
             db, subscription_id, timeframe, resource_types=resource_types,
         ),
@@ -154,13 +160,16 @@ def _resolve_daily_cost_raw(
     *,
     resource_types: list[str] | None,
     token: str | None,
+    db_only: bool = False,
 ) -> tuple[dict | None, str | None]:
     def live_call() -> dict | None:
-        if not token or resource_types:
+        if db_only or not token or resource_types:
             return None
         return query_daily_costs_live(db, subscription_id, timeframe, token=token)
 
-    return resolve_cost_db_then_live(
+    return resolve_cost_for_timeframe(
+        timeframe,
+        has_resource_type_filter=bool(resource_types),
         db_call=lambda: daily_cost_response_from_db(
             db, subscription_id, timeframe, resource_types=resource_types,
         ),
@@ -336,7 +345,7 @@ def _monthly_cost_trend_from_points(
 
     days_in_month = calendar.monthrange(today.year, today.month)[1]
     days_elapsed = max(1, today.day)
-    projected = round(current_mtd, 2)
+    projected = round(current_mtd * (days_in_month / days_elapsed), 2)
 
     last_month_total = round(
         sum(
@@ -364,6 +373,7 @@ def _monthly_cost_trend_from_points(
         "delta_pct": delta_pct,
         "delta_usd": delta_usd,
         "mtd_delta_usd": mtd_delta_usd,
+        "forecast_source": "prorated_mtd" if current_mtd > 0 else "none",
     }
 
 
@@ -604,6 +614,8 @@ def _utilization_from_findings(
             OptimizationFinding.resource_type.isnot(None),
             OptimizationFinding.resource_type != "",
         )
+        .order_by(OptimizationFinding.estimated_savings_usd.desc())
+        .limit(500)
         .all()
     )
     deduped = dedupe_open_findings_for_display(rows)
@@ -639,6 +651,8 @@ def _utilization_from_open_findings(
             OptimizationFinding.resource_type.isnot(None),
             OptimizationFinding.resource_type != "",
         )
+        .order_by(OptimizationFinding.estimated_savings_usd.desc())
+        .limit(500)
         .all()
     )
     deduped = dedupe_open_findings_for_display(rows)
@@ -718,8 +732,11 @@ def _build_portal_section(
     top_spend_items: list[dict[str, Any]],
     cost_summary: dict[str, Any],
     findings_summary: dict[str, Any] | None = None,
+    advisor_summary: dict[str, Any] | None = None,
     resource_types: list[str] | None = None,
     monthly_trend: dict[str, Any] | None = None,
+    forecast_daily_points: list[dict[str, Any]] | None = None,
+    weekly_points: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """KPI row + dashboard panels (data only — no boilerplate copy)."""
     total_resources = int(
@@ -729,25 +746,12 @@ def _build_portal_section(
     )
     health = _resource_health_counts(db, subscription_id, total_resources)
     mtd_amount = cost_summary.get("pretax_total") or cost_summary.get("cost_usd_total") or 0
-    token = _live_cost_token(db) if not resource_types else None
-    summary_from_live = (cost_summary.get("source") or "") == "azure"
-    if token and not resource_types:
-        weekly = _weekly_cost_from_daily_points(daily_points)
-        if monthly_trend is None:
-            if summary_from_live:
-                monthly_trend = _monthly_cost_trend_from_api(
-                    db, subscription_id, mtd_summary=cost_summary, token=token,
-                )
-            else:
-                monthly_trend = _monthly_cost_trend_from_points(
-                    daily_points, mtd_amount=float(mtd_amount or 0),
-                )
-    else:
-        weekly = _weekly_cost_from_points(daily_points)
-        if monthly_trend is None:
-            monthly_trend = _monthly_cost_trend_from_points(
-                daily_points, mtd_amount=float(mtd_amount or 0),
-            )
+    weekly_source_points = weekly_points if weekly_points is not None else daily_points
+    weekly = _weekly_cost_from_daily_points(weekly_source_points)
+    if monthly_trend is None:
+        monthly_trend = _monthly_cost_trend_from_points(
+            daily_points, mtd_amount=float(mtd_amount or 0),
+        )
     open_findings = int((findings_summary or {}).get("open_findings") or 0)
     cost_resources = int(inventory_counts.get("cost_resources") or 0)
 
@@ -760,17 +764,24 @@ def _build_portal_section(
     elif mtd_amount:
         weekly_sub = f"MTD {round(float(mtd_amount), 2):,.2f} {billing_currency}"
 
-    monthly_sub: str | None = None
+    monthly_sub_parts: list[str] = []
+    if monthly_trend.get("forecast_source") == "azure_forecast":
+        monthly_sub_parts.append("Azure Cost Management forecast")
+    elif monthly_trend.get("forecast_source") == "prorated_mtd":
+        monthly_sub_parts.append("Estimated from month-to-date run rate")
     if monthly_trend["delta_pct"] is not None:
-        monthly_sub = (
+        monthly_sub_parts.append(
             f"{'↓' if (monthly_trend['delta_pct'] or 0) < 0 else '↑'} "
             f"{abs(monthly_trend['delta_pct'])}% vs last month"
         )
     elif monthly_trend["last_month"] > 0:
-        monthly_sub = f"Last month {monthly_trend['last_month']:,.2f} {billing_currency}"
+        monthly_sub_parts.append(
+            f"Last month {monthly_trend['last_month']:,.2f} {billing_currency}"
+        )
+    monthly_sub = " · ".join(monthly_sub_parts) if monthly_sub_parts else None
 
     est_savings = round(float((findings_summary or {}).get("total_estimated_savings_usd") or 0), 2)
-    advisor = get_advisor_findings_summary(db, subscription_id)
+    advisor = advisor_summary or get_advisor_findings_summary(db, subscription_id)
     advisor_sub: str | None = None
     if advisor["high_impact"]:
         advisor_sub = f"{advisor['high_impact']} high impact"
@@ -861,6 +872,7 @@ def _build_portal_section(
             "daily_cost_trend": {
                 "title": "Daily cost trend",
                 "points": daily_points[-14:],
+                "forecast_points": forecast_daily_points or [],
                 "currency": billing_currency,
                 "monthly_comparison": monthly_trend,
             },
@@ -935,10 +947,13 @@ def _get_dashboard_overview_uncached(
     runs_limit: int = 10,
 ) -> dict[str, Any]:
     sub = _normalize_sub(subscription_id)
-    token = _live_cost_token(db) if not resource_types else None
+    # Dashboard reads synced PostgreSQL first — live Azure Cost Management is slow and
+    # runs on background cost sync instead of blocking the overview request.
+    db_only = not resource_types
+    token = _live_cost_token(db) if not db_only else None
 
     cost_summary, cost_source = _resolve_cost_summary(
-        db, subscription_id, timeframe, resource_types=resource_types, token=token,
+        db, subscription_id, timeframe, resource_types=resource_types, token=token, db_only=db_only,
     )
     if not cost_summary:
         cost_summary = {}
@@ -950,7 +965,12 @@ def _get_dashboard_overview_uncached(
         ytd_summary = cost_summary
     else:
         ytd_row, _ytd_source = _resolve_cost_summary(
-            db, subscription_id, "ThisYear", resource_types=resource_types, token=token,
+            db,
+            subscription_id,
+            "ThisYear",
+            resource_types=resource_types,
+            token=token,
+            db_only=db_only,
         )
         ytd_summary = ytd_row or {
             "pretax_total": 0.0,
@@ -960,18 +980,31 @@ def _get_dashboard_overview_uncached(
         }
 
     daily_raw, daily_source = _resolve_daily_cost_raw(
-        db, subscription_id, timeframe, resource_types=resource_types, token=token,
+        db, subscription_id, timeframe, resource_types=resource_types, token=token, db_only=db_only,
     )
     daily = _daily_cost_from_raw(daily_raw) if daily_raw else {
         "points": [],
         "billing_currency": cost_summary.get("billing_currency") or "CAD",
         "source": daily_source or "database",
     }
-    monthly_trend: dict[str, Any] | None = None
-    if token and not resource_types and cost_source == "azure" and cost_summary:
-        monthly_trend = _monthly_cost_trend_from_api(
-            db, subscription_id, mtd_summary=cost_summary, token=token,
+
+    daily_points = daily.get("points") or []
+    mtd_amount = float(cost_summary.get("pretax_total") or cost_summary.get("cost_usd_total") or 0)
+    monthly_trend = _monthly_cost_trend_from_points(daily_points, mtd_amount=mtd_amount)
+
+    weekly_points: list[dict[str, Any]] | None = None
+    if db_only:
+        weekly_raw, _weekly_source = _resolve_daily_cost_raw(
+            db,
+            subscription_id,
+            "Last14Days",
+            resource_types=None,
+            token=None,
+            db_only=True,
         )
+        if weekly_raw:
+            weekly_points = _daily_cost_from_raw(weekly_raw).get("points") or []
+
     inventory_counts = get_resource_counts(db, subscription_id)
     underutil = list_underutil_outliers(db, subscription_id, limit=underutil_limit)
     top_spend = get_top_spend(
@@ -984,6 +1017,7 @@ def _get_dashboard_overview_uncached(
         or "CAD"
     )
     findings_summary = get_findings_summary_db(db, subscription_id)
+    advisor_summary = get_advisor_findings_summary(db, sub)
     effective_cost_source = (
         cost_source
         or daily_source
@@ -1001,14 +1035,17 @@ def _get_dashboard_overview_uncached(
             db,
             subscription_id,
             inventory_counts=inventory_counts,
-            daily_points=daily.get("points") or [],
+            daily_points=daily_points,
             billing_currency=billing_currency,
             underutil_items=underutil.get("items") or [],
             top_spend_items=top_spend.get("items") or [],
             cost_summary=cost_summary,
             findings_summary=findings_summary,
+            advisor_summary=advisor_summary,
             resource_types=resource_types,
             monthly_trend=monthly_trend,
+            forecast_daily_points=[],
+            weekly_points=weekly_points,
         ),
         "cost": {
             "summary": cost_summary,
@@ -1018,7 +1055,7 @@ def _get_dashboard_overview_uncached(
         },
         "optimization": {
             "summary": findings_summary,
-            "advisor": get_advisor_findings_summary(db, sub),
+            "advisor": advisor_summary,
             "recommendations": list_advisor_recommendations(
                 db, subscription_id, limit=advisor_limit,
             ),
@@ -1062,6 +1099,10 @@ def get_sync_status(db: Session, subscription_id: str) -> dict[str, Any]:
         .first()
     )
 
+    from app.cost_period_totals import latest_ytd_from_db, list_period_totals_from_db
+    ytd_row = latest_ytd_from_db(db, sub)
+    period_totals = list_period_totals_from_db(db, sub)
+
     analysis_row = (
         db.query(AnalysisJob)
         .filter(AnalysisJob.subscription_id == sub)
@@ -1081,7 +1122,9 @@ def get_sync_status(db: Session, subscription_id: str) -> dict[str, Any]:
 
     inv_synced = inv_agg.last_synced
     from app.azure_token_cache import get_token_cache_status
+    from app.cost_explorer_worker import is_cost_sync_pending
     from app.cost_query_cache import cost_cache_metrics
+    from app.perf_cache import perf_cache_metrics
 
     return {
         "subscription_id": sub,
@@ -1099,12 +1142,17 @@ def get_sync_status(db: Session, subscription_id: str) -> dict[str, Any]:
         },
         "cost": {
             "last_synced_at": _iso(cost_row.synced_at if cost_row else None),
+            "pending": is_cost_sync_pending(sub),
             "month": cost_row.month if cost_row else month_for_timeframe("MonthToDate"),
             "total_billing": round(cost_row.total_billing, 2) if cost_row else 0.0,
             "total_usd": round(cost_row.total_usd, 2) if cost_row else 0.0,
             "billing_currency": (cost_row.billing_currency if cost_row else None) or "CAD",
             "freshness": _staleness_label(cost_row.synced_at if cost_row else None),
-            "status": "success" if cost_row else "empty",
+            "status": "pending" if is_cost_sync_pending(sub) else ("success" if cost_row else "empty"),
+            "ytd_total_billing": ytd_row.get("pretax_total") if ytd_row else None,
+            "ytd_period_end": ytd_row.get("period_end") if ytd_row else None,
+            "ytd_synced_at": ytd_row.get("synced_at") if ytd_row else None,
+            "period_totals": period_totals,
         },
         "analysis": {
             "last_job_at": _iso(analysis_row.created_at if analysis_row else None),
@@ -1120,6 +1168,7 @@ def get_sync_status(db: Session, subscription_id: str) -> dict[str, Any]:
         },
         "token": get_token_cache_status(db),
         "cost_cache": cost_cache_metrics(),
+        "read_cache": perf_cache_metrics(),
     }
 
 
@@ -1179,6 +1228,14 @@ def get_top_spend(
 ) -> dict[str, Any]:
     """Top resource types by MTD cost (cost explorer worker data)."""
     sub = _normalize_sub(subscription_id)
+    if timeframe not in _MONTH_BUCKET_TIMEFRAMES:
+        return {
+            "subscription_id": sub,
+            "month": month_for_timeframe(timeframe),
+            "items": [],
+            "source": "database",
+            "granularity": "resource_type",
+        }
     month = month_for_timeframe(timeframe)
     cap = max(1, min(limit, 100))
 
@@ -1198,7 +1255,7 @@ def get_top_spend(
         )
 
     rows = _query_for_month(month)
-    if not rows:
+    if not rows and timeframe not in _PERIOD_SCOPED_TIMEFRAMES:
         latest = (
             db.query(func.max(CostByResourceTypeSnapshot.month))
             .filter(CostByResourceTypeSnapshot.subscription_id == sub)

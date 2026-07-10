@@ -7,7 +7,7 @@ from app.metrics_catalog import (
     sql_server_metrics_unavailable,
 )
 from app.resources.registry import RESOURCE_MONITOR_PROFILES, list_monitor_profiles
-from app.resources.types import utilization_metric
+from app.resources.types import infer_metric_metadata, utilization_metric
 
 
 def test_all_monitor_profiles_have_metric_metadata():
@@ -48,6 +48,25 @@ def test_list_monitor_profiles_includes_unit_and_impact():
     profiles = list_monitor_profiles()
     vm = next(p for p in profiles if p["canonical_type"] == "compute/vm")
     assert vm["metrics"][0]["unit"] == "percent"
+
+
+def test_webapp_cpu_time_uses_seconds_not_percent():
+    metric = utilization_metric(
+        "CpuTime",
+        "cpu_time_sec",
+        "CPU time consumed",
+        aggregation="Total",
+    )
+    assert metric.unit == "seconds"
+    assert metric.primary_stat == "total"
+
+
+def test_latency_and_byte_fact_keys_infer_correct_units():
+    assert infer_metric_metadata("query_duration_ms", "Maximum")["unit"] == "milliseconds"
+    assert infer_metric_metadata("byte_count", "Total")["unit"] == "bytes"
+    assert infer_metric_metadata("pe_bytes_out", "Total")["unit"] == "bytes"
+    assert infer_metric_metadata("ingestion_bytes", "Total")["unit"] == "mb"
+    assert infer_metric_metadata("provisioned_throughput", "Maximum")["unit"] == "number"
 
 
 def test_sql_server_metrics_unavailable_message():

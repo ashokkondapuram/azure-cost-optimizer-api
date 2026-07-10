@@ -13,6 +13,8 @@ GET  /engine/analysis/{subscription_id}/resource-summary
      Resource snapshot findings summary
 GET  /engine/analysis/{subscription_id}/advanced-scores
      Paginated advanced scoring scoreboard
+POST /engine/analysis/{subscription_id}/ai-recommendations
+     Azure OpenAI recommendations synthesized from stored findings
 POST /engine/analysis/{subscription_id}/run
      Trigger a fresh scoring pass (advisor sync → resource analysis → advanced engine)
 """
@@ -20,17 +22,85 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.user_auth import require_viewer
+from app.savings_aggregation import aggregate_subscription_savings
+from app.user_auth import require_authenticated_user
 
 router = APIRouter(prefix="/engine/analysis", tags=["Engine Analysis"])
 
 
-def _get_db_and_auth(db: Session = Depends(get_db), _=Depends(require_viewer)):
+def _auth_dep(request: Request):
+    return require_authenticated_user(request)
+
+
+def _get_db_and_auth(db: Session = Depends(get_db), _=Depends(_auth_dep)):
     return db
+
+
+def _resolve_billing_currency(db: Session, sub: str) -> str:
+    from app.models import CostByServiceSnapshot
+    row = (
+        db.query(CostByServiceSnapshot.billing_currency)
+        .filter(CostByServiceSnapshot.subscription_id == sub)
+        .first()
+    )
+    return (row[0] if row else None) or "CAD"
+
+
+def _finding_meta_by_resource(db: Session, sub: str) -> tuple[dict[str, str], dict[str, list[str]]]:
+    from app.models import OptimizationFinding
+    from app.utils import norm_arm_id
+
+    severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4, "unknown": 5}
+    severity_by_rid: dict[str, str] = {}
+    rules_by_rid: dict[str, list[str]] = {}
+    rows = (
+        db.query(OptimizationFinding.resource_id, OptimizationFinding.severity, OptimizationFinding.rule_id)
+        .filter(
+            OptimizationFinding.subscription_id == sub,
+            OptimizationFinding.status.in_(["open", "acknowledged"]),
+        )
+        .all()
+    )
+    for rid, severity, rule_id in rows:
+        norm = norm_arm_id(rid or "")
+        if not norm:
+            continue
+        sev = (severity or "unknown").lower()
+        prev = severity_by_rid.get(norm)
+        if not prev or severity_rank.get(sev, 9) < severity_rank.get(prev, 9):
+            severity_by_rid[norm] = sev
+        if rule_id:
+            rules_by_rid.setdefault(norm, [])
+            if rule_id not in rules_by_rid[norm]:
+                rules_by_rid[norm].append(rule_id)
+    return severity_by_rid, rules_by_rid
+
+
+def _enrich_scoreboard_item(
+    item: dict[str, Any],
+    *,
+    advisor_rids: set,
+    finding_rids: set,
+    severity_by_rid: dict[str, str],
+    rules_by_rid: dict[str, list[str]],
+) -> dict[str, Any]:
+    from app.utils import norm_arm_id
+
+    rid = norm_arm_id(item.get("resource_id") or "")
+    enriched = dict(item)
+    enriched["composite_score"] = item.get("overall_recommendation_score")
+    enriched["tier"] = item.get("recommendation_tier")
+    enriched["estimated_savings_usd"] = item.get("cost_savings_monthly")
+    enriched["has_advisor_recommendation"] = rid in advisor_rids
+    enriched["has_open_finding"] = rid in finding_rids
+    enriched["high_priority"] = rid in (advisor_rids & finding_rids)
+    enriched["finding_severity"] = severity_by_rid.get(rid)
+    enriched["open_finding_rules"] = rules_by_rid.get(rid, [])
+    return enriched
 
 
 # ---------------------------------------------------------------------------
@@ -58,11 +128,14 @@ def _advisor_summary(db: Session, sub: str) -> dict[str, Any]:
         total_savings += savings
         by_category[cat].append({
             "id": r.id,
+            "recommendation_id": r.recommendation_id,
             "resource_id": r.resource_id,
             "impact": r.impact,
-            "short_description": r.short_description,
+            "summary": r.summary,
+            "short_description": r.summary,
+            "description": r.description,
             "potential_savings_monthly": savings,
-            "recommendation_type": r.recommendation_type,
+            "category": r.category,
         })
     return {
         "total": len(rows),
@@ -208,16 +281,22 @@ def combined_analysis(
         if f.resource_id
     }
     cross_ref_rids = advisor_rids & finding_rids
+    severity_by_rid, rules_by_rid = _finding_meta_by_resource(db, sub)
 
-    # Enrich scoreboard items with advisor & finding flags
-    for item in scoreboard["items"]:
-        rid = norm_arm_id(item.get("resource_id") or "")
-        item["has_advisor_recommendation"] = rid in advisor_rids
-        item["has_open_finding"] = rid in finding_rids
-        item["high_priority"] = rid in cross_ref_rids
+    for i, item in enumerate(scoreboard["items"]):
+        scoreboard["items"][i] = _enrich_scoreboard_item(
+            item,
+            advisor_rids=advisor_rids,
+            finding_rids=finding_rids,
+            severity_by_rid=severity_by_rid,
+            rules_by_rid=rules_by_rid,
+        )
+
+    unified = aggregate_subscription_savings(db, sub)
 
     return {
         "subscription_id": sub,
+        "billing_currency": _resolve_billing_currency(db, sub),
         "advisor": advisor,
         "resource_findings": findings,
         "advanced_scoring": scoreboard,
@@ -225,12 +304,27 @@ def combined_analysis(
             "resources_in_both_advisor_and_findings": len(cross_ref_rids),
             "resource_ids": sorted(cross_ref_rids)[:50],
         },
-        "combined_estimated_monthly_savings": round(
-            advisor["total_potential_savings_monthly"]
-            + findings["total_estimated_savings_monthly"],
-            2,
-        ),
+        "unified_savings": unified,
+        "combined_estimated_monthly_savings": unified["unified_estimated_monthly_savings"],
     }
+
+
+@router.post("/{subscription_id}/ai-recommendations")
+def ai_recommendations(
+    subscription_id: str,
+    force_refresh: bool = Query(False, description="Bypass in-process cache and call Azure OpenAI again"),
+    max_findings: int | None = Query(None, ge=1, le=200),
+    db: Session = Depends(_get_db_and_auth),
+) -> dict[str, Any]:
+    """Generate subscription-level recommendations via Azure OpenAI from stored findings."""
+    from app.ai_subscription_recommendations import generate_subscription_ai_recommendations
+
+    return generate_subscription_ai_recommendations(
+        db,
+        subscription_id.strip().lower(),
+        force_refresh=force_refresh,
+        max_findings=max_findings,
+    )
 
 
 @router.post("/{subscription_id}/run")
@@ -269,8 +363,13 @@ def run_engine(
     except Exception as exc:
         steps["advanced_scoring"] = {"status": "error", "error": str(exc)}
 
+    has_error = any(
+        isinstance(step, dict) and step.get("status") == "error"
+        for step in steps.values()
+    )
+
     return {
         "subscription_id": sub,
-        "status": "ok",
+        "status": "error" if has_error else "ok",
         "steps": steps,
     }

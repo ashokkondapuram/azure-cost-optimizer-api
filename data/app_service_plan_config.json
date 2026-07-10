@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "service": "Azure App Service Plans",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/app-service/overview-hosting-plans",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-web-serverfarms-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/app-service/linux/"
+  },
+  "consolidation": {
+    "min_apps_for_dedicated_plan": 5,
+    "autoscale_max_instances_default": 10,
+    "autoscale_max_instances_dev": 3
+  },
+  "optimization_thresholds": {
+    "plan_load_low_pct": 20.0,
+    "memory_pressure_pct": 80.0,
+    "tcp_connections_high": 300,
+    "consolidation_app_count_max": 5,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 10.0
+  }
+}

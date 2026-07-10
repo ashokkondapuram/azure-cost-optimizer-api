@@ -191,6 +191,19 @@ def compute_vnet_peering_count(_row: dict, props: dict) -> int:
     return len(peerings) if isinstance(peerings, list) else 0
 
 
+def compute_cosmos_api_type(row: dict, props: dict) -> str | None:
+    from app.cosmosdb_catalog import parse_cosmos_arm_account
+
+    return parse_cosmos_arm_account(row).get("api_type")
+
+
+def compute_cosmos_region_count(_row: dict, props: dict) -> int | None:
+    locations = props.get("locations") or []
+    if not locations:
+        return None
+    return len(locations)
+
+
 COMPUTED: dict[str, Callable[[dict, dict], Any]] = {
     "backend_pool_count": compute_backend_pool_count,
     "all_backends_empty": compute_all_backends_empty,
@@ -217,4 +230,6 @@ COMPUTED: dict[str, Callable[[dict, dict], Any]] = {
     "privatedns_record_set_count": compute_privatedns_record_set_count,
     "privatedns_is_empty": compute_privatedns_is_empty,
     "vnet_peering_count": compute_vnet_peering_count,
+    "cosmos_api_type": compute_cosmos_api_type,
+    "cosmos_region_count": compute_cosmos_region_count,
 }

@@ -21,8 +21,10 @@ export default function ResourceAzureMetrics({
   prefetchedData = undefined,
   prefetchedLoading = false,
   prefetchedError = null,
+  embedded = false,
 }) {
-  const usePrefetch = prefetchedData !== undefined || prefetchedLoading;
+  // Treat null as "no prefetch" so the drawer can fall back to /metrics/resource/auto.
+  const usePrefetch = prefetchedLoading || prefetchedData != null;
   const { data: queryData, isLoading: queryLoading, isError: queryError, error, isFetching } = useQuery({
     queryKey: ['resource-azure-metrics', resourceId, timespan],
     queryFn: () => fetchResourceAzureMetrics({ resource_id: resourceId, timespan }),
@@ -33,8 +35,8 @@ export default function ResourceAzureMetrics({
 
   const data = usePrefetch ? prefetchedData : queryData;
   const isLoading = usePrefetch ? prefetchedLoading : queryLoading;
-  const isError = usePrefetch ? !!prefetchedError : queryError;
-  const loadError = usePrefetch ? prefetchedError : error;
+  const isError = Boolean(prefetchedError) || (!usePrefetch && queryError);
+  const loadError = prefetchedError || error;
 
   const inventoryProperties = data?.inventory_properties || [];
   const hasMonitorDetail = (data?.metrics?.length > 0)
@@ -74,15 +76,8 @@ export default function ResourceAzureMetrics({
     </div>
   );
 
-  return (
-    <DrawerCollapsibleSection
-      title={`${sectionTitle} · ${periodLabel}`}
-      icon={<Activity size={13} />}
-      defaultOpen
-      compact
-      badge={badge}
-      headerAction={headerAction}
-    >
+  const body = (
+    <>
       {data?.data_quality === 'cost_export_only' && data?.ok && (
         <p className="alert alert--info" role="status" style={{ fontSize: '0.85rem' }}>
           Usage estimated from cost data.
@@ -160,6 +155,35 @@ export default function ResourceAzureMetrics({
           </div>
         </>
       )}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="resource-azure-metrics resource-azure-metrics--embedded">
+        <div className="resource-azure-metrics__embedded-head">
+          <h4 className="resource-azure-metrics__embedded-title">
+            {sectionTitle}
+            {' · '}
+            {periodLabel}
+          </h4>
+          {headerAction}
+        </div>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <DrawerCollapsibleSection
+      title={`${sectionTitle} · ${periodLabel}`}
+      icon={<Activity size={13} />}
+      defaultOpen
+      compact
+      badge={badge}
+      headerAction={headerAction}
+    >
+      {body}
     </DrawerCollapsibleSection>
   );
 }

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Finding
+from app.models import OptimizationFinding
 
 router = APIRouter(prefix="/security-posture", tags=["Security Posture"])
 
@@ -64,8 +64,8 @@ def get_security_posture(
     sub = (subscription_id or "").strip().lower()
 
     all_findings = (
-        db.query(Finding)
-        .filter(Finding.subscription_id == sub)
+        db.query(OptimizationFinding)
+        .filter(OptimizationFinding.subscription_id == sub)
         .all()
     )
     if not all_findings:
@@ -122,8 +122,8 @@ def security_posture_trend(
     sub = (subscription_id or "").strip().lower()
 
     findings = (
-        db.query(Finding)
-        .filter(Finding.subscription_id == sub)
+        db.query(OptimizationFinding)
+        .filter(OptimizationFinding.subscription_id == sub)
         .all()
     )
 

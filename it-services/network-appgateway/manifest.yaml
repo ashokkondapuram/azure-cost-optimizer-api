@@ -1,0 +1,22 @@
+service_id: network-appgateway
+canonical_type: network/appgateway
+display_name: Application gateway
+api_path: /resources/appgateways
+arm_type: Microsoft.Network/applicationGateways
+component: Application Gateways
+drawer_ui: false
+
+backend:
+  package: it_services/network_appgateway
+  modules:
+    - it_services/network_appgateway/resource_profile.py
+  related_app_modules:
+    - app/resources/network/appgateway.py
+    - app/optimizer/resource_engines/network/appgateway/
+
+frontend:
+  root: frontend/src/it-services/network-appgateway
+  entry: frontend/src/it-services/network-appgateway/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

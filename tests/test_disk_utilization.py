@@ -29,6 +29,14 @@ def test_provisioned_iops_from_inventory():
     assert provisioned_iops(disk) == 3000.0
 
 
+def test_provisioned_iops_from_tier_when_arm_missing():
+    disk = {
+        "sku": {"name": "StandardSSD_LRS"},
+        "properties": {"diskSizeGB": 256, "diskState": "Attached"},
+    }
+    assert provisioned_iops(disk) == 500.0
+
+
 def test_combined_disk_iops_from_monitor_facts():
     resource = {
         "_technical_facts": {

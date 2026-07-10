@@ -86,6 +86,9 @@ def _enrich_properties(canonical_type: str, state: str | None, props: dict) -> d
             "instanceView",
             {"statuses": [{"code": f"PowerState/{power}"}]},
         )
+    if canonical_type == "compute/vmss" and state_text:
+        power = state_text.split("/")[-1] if "/" in state_text else state_text
+        out.setdefault("powerState", power)
     if canonical_type == "appservice/webapp" and state_text:
         out.setdefault("state", state_text)
     if canonical_type == "database/postgresql" and state_text:

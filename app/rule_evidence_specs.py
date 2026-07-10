@@ -77,7 +77,10 @@ def _spec(
     desc = savings_desc or {
         "full_monthly_cost": "Estimated savings equals month-to-date billed cost if the resource is removed.",
         "factor_of_monthly_cost": "Estimated savings = month-to-date cost × savings factor (conservative scenario).",
-        "azure_retail_sku_diff": "Estimated savings = Azure retail on-demand monthly price (current SKU − suggested SKU).",
+        "azure_retail_sku_diff": (
+            "Estimated savings = monthly run-rate × (1 − suggested retail ÷ current retail) "
+            "when billed cost is available; otherwise Azure retail list-price delta."
+        ),
         "per_unit": "Estimated savings based on unit count × per-unit monthly cost.",
         "governance": "Governance or reliability finding — no direct cost savings estimated.",
         "budget_guardrail": "Budget guardrail — savings depend on remediation actions taken.",
@@ -599,6 +602,60 @@ RULE_EVIDENCE_SPECS: dict[str, RuleEvidenceSpec] = {
         summary="Load balancer backends are empty.",
         savings_method="full_monthly_cost",
     ),
+    "LOAD_BALANCER_SNAT_PRESSURE": _spec(
+        "snat_pressure",
+        signals=(SignalDef("SNAT port usage %", "snat_port_usage_pct", threshold_key="lb_snat_pressure_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="Load balancer SNAT port utilization exceeds safe threshold.",
+        savings_method="governance",
+    ),
+    "LOAD_BALANCER_THROUGHPUT_RIGHTSIZE": _spec(
+        "throughput_rightsize",
+        signals=(SignalDef("Avg vs peak bytes %", "byte_count", threshold_key="lb_throughput_low_pct_of_peak", comparator="lt", format_value=_fmt_pct),),
+        summary="Sustained load balancer throughput is far below peak.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.30,
+    ),
+    "LOAD_BALANCER_BACKEND_CONSOLIDATION": _spec(
+        "low_traffic",
+        signals=(SignalDef("Byte count", "byte_count", threshold_key="lb_idle_byte_threshold", comparator="lt"),),
+        summary="Load balancer has backends but very low traffic.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.50,
+    ),
+    "LOAD_BALANCER_BASIC_SKU_MIGRATION": _spec(
+        "basic_sku_migration",
+        signals=(SignalDef("SKU", "sku_name", threshold_literal="Basic", comparator="eq"),),
+        summary="Basic load balancer SKU is retiring — migrate to Standard.",
+        savings_method="governance",
+    ),
+    "PUBLIC_IP_BASIC_SKU_MIGRATION": _spec(
+        "basic_sku_migration",
+        signals=(SignalDef("SKU", "sku_name", threshold_literal="Basic", comparator="eq"),),
+        summary="Basic public IP SKU is retiring — migrate to Standard.",
+        savings_method="governance",
+    ),
+    "NAT_GATEWAY_SNAT_EXHAUSTION": _spec(
+        "snat_exhaustion",
+        signals=(SignalDef("SNAT utilization %", "snat_utilization_pct", threshold_key="nat_snat_exhaustion_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="NAT Gateway SNAT utilization exceeds safe threshold.",
+        savings_method="governance",
+    ),
+    "NAT_GATEWAY_SKU_V2_UPGRADE": _spec(
+        "sku_v2_candidate",
+        signals=(SignalDef("Throughput (Gbps)", "throughput_gbps", threshold_key="nat_throughput_v2_upgrade_gbps", comparator="gte"),),
+        summary="NAT Gateway throughput may require StandardV2 SKU.",
+        savings_method="governance",
+    ),
+    "NAT_GATEWAY_SUBNET_CONSOLIDATION": _spec(
+        "subnet_consolidation",
+        signals=(
+            SignalDef("Public IP count", "public_ip_count", threshold_literal="1", comparator="gt"),
+            SignalDef("Subnet count", "subnet_count", threshold_literal="1", comparator="gt"),
+        ),
+        summary="NAT Gateway has multiple IPs and subnets with low traffic.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.25,
+    ),
     "APPGW_UNUSED": _spec(
         "idle_no_listeners",
         signals=(SignalDef("HTTP listeners configured", "http_listener_count", threshold_literal="1", comparator="gte"),),
@@ -672,6 +729,64 @@ RULE_EVIDENCE_SPECS: dict[str, RuleEvidenceSpec] = {
         savings_method="factor_of_monthly_cost",
         savings_factor=0.35,
     ),
+    "REDIS_IDLE_DETECTION": _spec(
+        "idle_zero_ops",
+        signals=(SignalDef("Operations per second", "ops_per_sec", threshold_key="redis_idle_ops_threshold", comparator="lte"),),
+        summary="Redis cache shows zero operations per second in Azure Monitor.",
+        savings_method="full_monthly_cost",
+    ),
+    "REDIS_MEMORY_PRESSURE": _spec(
+        "memory_pressure",
+        signals=(
+            SignalDef("Memory utilization", "memory_pct", threshold_key="redis_memory_pressure_pct", comparator="gte", format_value=_fmt_pct),
+            SignalDef("Evicted keys", "evicted_keys", comparator="gt", threshold_literal="0"),
+        ),
+        summary="Redis memory pressure or evictions require upgrade or policy review.",
+        savings_method="governance",
+    ),
+    "REDIS_LOW_UTILIZATION": _spec(
+        "low_utilization",
+        signals=(
+            SignalDef("Memory utilization", "memory_pct", threshold_key="redis_low_utilization_pct", comparator="lte", format_value=_fmt_pct),
+            SignalDef("Server load", "server_load_pct", threshold_key="redis_server_load_low_pct", comparator="lte", format_value=_fmt_pct),
+        ),
+        summary="Redis memory and server load are consistently low.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.35,
+    ),
+    "REDIS_HIT_RATIO_POOR": _spec(
+        "poor_hit_ratio",
+        signals=(SignalDef("Cache hit rate", "cache_hit_rate_pct", threshold_key="redis_hit_ratio_poor_pct", comparator="lte", format_value=_fmt_pct),),
+        summary="Redis cache hit ratio is below the healthy threshold.",
+        savings_method="governance",
+    ),
+    "REDIS_CLUSTER_UNNECESSARY": _spec(
+        "cluster_unnecessary",
+        signals=(
+            SignalDef("Shard count", "shard_count", comparator="lte", threshold_literal="1"),
+            SignalDef("Operations per second", "ops_per_sec", threshold_key="redis_cluster_ops_threshold", comparator="lte"),
+        ),
+        summary="Single-shard Premium Redis with low throughput may not need clustering.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.35,
+    ),
+    "REDIS_PERSISTENCE_REVIEW": _spec(
+        "persistence_review",
+        signals=(SignalDef("Persistence enabled", "persistence_enabled", comparator="eq", threshold_literal="true"),),
+        summary="Redis persistence (RDB/AOF) is enabled — review durability vs. storage cost.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.10,
+    ),
+    "REDIS_TIER_REVIEW": _spec(
+        "tier_shard_review",
+        signals=(
+            SignalDef("Capacity", "capacity", threshold_key="redis_premium_min_capacity", comparator="gte"),
+            SignalDef("Shard count", "shard_count", comparator="gt", threshold_literal="1"),
+        ),
+        summary="Redis tier, shard count, or eviction policy may exceed workload needs.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.35,
+    ),
     "SQL_IDLE": _spec(
         "sql_underutilized",
         signals=(SignalDef("DTU/CPU utilization", "dtu_pct", threshold_key="db_dtu_idle_pct", comparator="lte", format_value=_fmt_pct),),
@@ -705,6 +820,92 @@ RULE_EVIDENCE_SPECS: dict[str, RuleEvidenceSpec] = {
         savings_method="factor_of_monthly_cost",
         savings_factor=0.30,
     ),
+    "COSMOS_SERVERLESS": _spec(
+        "serverless_candidate",
+        signals=(SignalDef("Total RU (7d)", "total_ru", threshold_key="cosmos_serverless_ru_threshold", comparator="lt"),),
+        summary="Cosmos DB RU consumption supports serverless migration.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.35,
+    ),
+    "COSMOS_RU_RIGHT_SIZING_UNDER": _spec(
+        "ru_underutilized",
+        signals=(SignalDef("Normalized RU %", "normalized_ru_pct", threshold_key="cosmos_ru_low_pct", comparator="lt", format_value=_fmt_pct),),
+        summary="Cosmos DB normalized RU consumption is below the downscale threshold.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.35,
+    ),
+    "COSMOS_RU_RIGHT_SIZING_OVER": _spec(
+        "ru_overutilized",
+        signals=(SignalDef("Normalized RU %", "normalized_ru_pct", threshold_key="cosmos_ru_high_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="Cosmos DB normalized RU consumption exceeds the upscale threshold.",
+        savings_method="governance",
+    ),
+    "COSMOS_THROTTLING_DETECTED": _spec(
+        "throttling_risk",
+        signals=(SignalDef("Normalized RU %", "normalized_ru_peak_pct", threshold_key="cosmos_throttle_ru_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="Cosmos DB normalized RU consumption indicates throttling risk.",
+        savings_method="governance",
+    ),
+    "COSMOS_HOT_CONTAINER_DETECTED": _spec(
+        "hot_partition",
+        signals=(SignalDef("RU skew ratio", "ru_skew_ratio", threshold_key="cosmos_hot_partition_skew_ratio", comparator="gte"),),
+        summary="Cosmos DB RU consumption is uneven across partitions.",
+        savings_method="governance",
+    ),
+    "COSMOS_API_COST_VARIANCE": _spec(
+        "api_premium",
+        signals=(SignalDef("API type", "api_type", comparator="not_empty"),),
+        summary="Cosmos DB API type may carry higher RU cost than SQL API.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.15,
+    ),
+    "COSMOS_CONSISTENCY_OVERPROVISIONED": _spec(
+        "consistency_review",
+        signals=(SignalDef("Consistency level", "consistency_level", comparator="not_empty"),),
+        summary="Cosmos DB consistency level increases RU cost.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.25,
+    ),
+    "COSMOS_LARGE_ITEMS_DETECTED": _spec(
+        "large_items",
+        signals=(SignalDef("Average item size", "avg_item_bytes", threshold_key="cosmos_large_item_bytes", comparator="gte"),),
+        summary="Cosmos DB average item size is large.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.15,
+    ),
+    "COSMOS_INDEXING_OVERPROVISIONED": _spec(
+        "index_overprovisioned",
+        signals=(SignalDef("Index to data ratio", "index_to_data_ratio", threshold_key="cosmos_index_to_data_ratio", comparator="gte"),),
+        summary="Cosmos DB index size is high relative to data.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.20,
+    ),
+    "COSMOS_MULTI_WRITE_UNNECESSARY": _spec(
+        "multi_write_review",
+        signals=(SignalDef("Multi-write enabled", "multi_write_enabled", threshold_literal="true", comparator="eq"),),
+        summary="Cosmos DB multi-region writes may be unnecessary.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.30,
+    ),
+    "COSMOS_FAILOVER_UNNECESSARY": _spec(
+        "failover_review",
+        signals=(SignalDef("Automatic failover", "automatic_failover_enabled", threshold_literal="true", comparator="eq"),),
+        summary="Cosmos DB automatic failover may be unnecessary for non-production.",
+        savings_method="governance",
+    ),
+    "COSMOS_FREE_TIER_SUBOPTIMAL": _spec(
+        "free_tier_review",
+        signals=(SignalDef("Free tier", "free_tier_enabled", threshold_literal="true", comparator="eq"),),
+        summary="Cosmos DB free tier usage exceeds included capacity.",
+        savings_method="governance",
+    ),
+    "COSMOS_RESERVED_CAPACITY_ELIGIBLE": _spec(
+        "reserved_capacity_candidate",
+        signals=(SignalDef("Normalized RU %", "normalized_ru_pct", threshold_key="cosmos_ru_low_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="Cosmos DB stable RU utilization supports reserved capacity.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.38,
+    ),
     "POSTGRESQL_STOPPED_EXTENDED": _spec(
         "postgres_stopped_billed",
         signals=(SignalDef("Server state", "state", threshold_literal="Ready", comparator="neq"),),
@@ -724,6 +925,78 @@ RULE_EVIDENCE_SPECS: dict[str, RuleEvidenceSpec] = {
         summary="PostgreSQL storage allocation is {storage_gb} GB.",
         savings_method="factor_of_monthly_cost",
         savings_factor=0.20,
+    ),
+    "POSTGRESQL_LOW_COMPUTE_UTILIZATION": _spec(
+        "low_compute",
+        signals=(
+            SignalDef("CPU utilization", "cpu_pct", threshold_key="postgresql_cpu_low_pct", comparator="lt", format_value=_fmt_pct),
+            SignalDef("Memory utilization", "memory_pct", threshold_key="postgresql_memory_low_pct", comparator="lt", format_value=_fmt_pct),
+        ),
+        summary="PostgreSQL shows sustained low CPU and memory utilization.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.35,
+    ),
+    "POSTGRESQL_HIGH_COMPUTE_DEMAND": _spec(
+        "high_cpu",
+        signals=(SignalDef("CPU utilization", "cpu_pct", threshold_key="postgresql_cpu_high_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="PostgreSQL CPU exceeds the high utilization threshold.",
+        savings_method="governance",
+    ),
+    "POSTGRESQL_MEMORY_PRESSURE": _spec(
+        "memory_pressure",
+        signals=(SignalDef("Memory utilization", "memory_pct", threshold_key="postgresql_memory_pressure_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="PostgreSQL memory utilization is elevated in Azure Monitor.",
+        savings_method="governance",
+    ),
+    "POSTGRESQL_STORAGE_EXPANSION": _spec(
+        "storage_expansion",
+        signals=(SignalDef("Storage utilization", "storage_pct", threshold_key="postgresql_storage_high_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="PostgreSQL storage utilization is high.",
+        savings_method="governance",
+    ),
+    "POSTGRESQL_IOPS_PRESSURE": _spec(
+        "iops_pressure",
+        signals=(SignalDef("Disk IOPS consumed", "disk_iops_pct", threshold_key="postgresql_iops_pressure_pct", comparator="gte", format_value=_fmt_pct),),
+        summary="PostgreSQL disk IOPS consumption is near limits.",
+        savings_method="governance",
+    ),
+    "POSTGRESQL_CONNECTION_POOL_RISK": _spec(
+        "connection_pool_risk",
+        signals=(SignalDef("Active connections", "active_connections", threshold_key="postgresql_connection_risk_absolute", comparator="gte"),),
+        summary="PostgreSQL concurrent connections are high.",
+        savings_method="governance",
+    ),
+    "POSTGRESQL_HA_UNNECESSARY": _spec(
+        "ha_unnecessary",
+        signals=(SignalDef("HA mode", "ha_mode", comparator="not_empty"),),
+        summary="PostgreSQL HA is enabled in a non-production environment.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.33,
+    ),
+    "POSTGRESQL_HA_REQUIRED": _spec(
+        "ha_required",
+        signals=(SignalDef("HA mode", "ha_mode", comparator="not_empty"),),
+        summary="Production PostgreSQL server does not have HA enabled.",
+        savings_method="governance",
+    ),
+    "POSTGRESQL_READ_REPLICA_ANALYSIS": _spec(
+        "read_replica_review",
+        signals=(SignalDef("Replication lag (sec)", "replication_lag_sec", threshold_key="postgresql_replication_lag_seconds", comparator="gt"),),
+        summary="PostgreSQL read replica cost and lag should be reviewed.",
+        savings_method="full_monthly_cost",
+    ),
+    "POSTGRESQL_VERSION_OUTDATED": _spec(
+        "version_outdated",
+        signals=(SignalDef("Version", "version", comparator="not_empty"),),
+        summary="PostgreSQL major version is behind supported releases.",
+        savings_method="governance",
+    ),
+    "POSTGRESQL_BACKUP_RETENTION_REVIEW": _spec(
+        "backup_retention_review",
+        signals=(SignalDef("Backup retention (days)", "backup_retention_days", comparator="not_empty"),),
+        summary="PostgreSQL backup retention exceeds typical targets.",
+        savings_method="factor_of_monthly_cost",
+        savings_factor=0.10,
     ),
     # ── Containers / ACR ───────────────────────────────────────────────────
     "ACR_PREMIUM_EXTENDED": _spec(
@@ -1435,12 +1708,36 @@ def attach_savings_methodology(
     elif savings_def.method == "azure_retail_sku_diff":
         current = facts.get("current_sku_monthly_usd") or facts.get("current_tier_monthly_usd")
         suggested = facts.get("suggested_sku_monthly_usd") or facts.get("suggested_tier_monthly_usd")
-        if current is not None and suggested is not None:
+        retail_savings = facts.get("retail_monthly_savings_usd")
+        run_rate = facts.get("monthly_run_rate_usd")
+        basis = facts.get("savings_basis")
+        if (
+            basis == "monthly_run_rate"
+            and run_rate
+            and current is not None
+            and suggested is not None
+            and float(current) > 0
+        ):
+            ratio = float(suggested) / float(current)
+            methodology["formula"] = (
+                f"Monthly run-rate ${float(run_rate):,.2f}/mo × (1 − ${float(suggested):,.2f} ÷ ${float(current):,.2f}) "
+                f"= ${estimated_savings_usd or facts.get('run_rate_monthly_savings_usd') or 0:,.2f}/mo"
+            )
+            if retail_savings is not None:
+                methodology["retail_formula"] = (
+                    f"Retail list-price ceiling: ${float(current):,.2f}/mo − ${float(suggested):,.2f}/mo "
+                    f"= ${float(retail_savings):,.2f}/mo"
+                )
+            mtd = facts.get("mtd_cost_usd")
+            if mtd:
+                methodology["mtd_cost_usd"] = mtd
+        elif current is not None and suggested is not None:
             methodology["formula"] = (
                 f"Azure retail ${float(current):,.2f}/mo − ${float(suggested):,.2f}/mo "
-                f"= ${estimated_savings_usd or 0:,.2f}/mo"
+                f"= ${float(retail_savings if retail_savings is not None else estimated_savings_usd or 0):,.2f}/mo"
             )
         methodology["pricing_source"] = facts.get("pricing_source", "azure_retail_prices")
+        methodology["savings_basis"] = basis
         if facts.get("hours_per_month"):
             methodology["hours_per_month"] = facts.get("hours_per_month")
     elif savings_def.method == "full_monthly_cost" and monthly:

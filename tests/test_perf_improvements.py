@@ -108,3 +108,21 @@ def test_cache_policy_for_resource_lists():
     assert "max-age=300" in cache_policy_for_path("/resources/vms")
     assert cache_policy_for_path("/optimize/jobs/abc") == "no-store"
     assert "max-age=120" in cache_policy_for_path("/optimize/findings")
+
+
+def test_perf_cache_metrics_track_hits_and_misses():
+    from app.perf_cache import cached_cost_map, clear_subscription_read_caches, perf_cache_metrics
+
+    clear_subscription_read_caches()
+    calls = {"n": 0}
+
+    def loader():
+        calls["n"] += 1
+        return {"a": 1}
+
+    cached_cost_map("metrics-test", loader)
+    cached_cost_map("metrics-test", loader)
+    metrics = perf_cache_metrics()
+    assert calls["n"] == 1
+    assert metrics["hits"] >= 1
+    assert metrics["misses"] >= 1

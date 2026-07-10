@@ -1,5 +1,6 @@
 import { toDisplayText } from './formatDisplay';
 import { formatDateTime } from './format';
+import { shouldSkipOverviewTiles } from '../it-services/registry';
 
 function addTile(tiles, label, rawValue) {
   const value = toDisplayText(rawValue);
@@ -30,8 +31,12 @@ function addPropertyTiles(tiles, properties) {
 }
 
 /** Inventory tiles for resource insight drawer (cost lives in header KPI strip only). */
-export function getDrawerOverviewTiles(resource) {
+export function getDrawerOverviewTiles(resource, { apiPath = '' } = {}) {
   if (!resource) return [];
+
+  if (shouldSkipOverviewTiles(resource, apiPath)) {
+    return [];
+  }
 
   const tiles = [];
 

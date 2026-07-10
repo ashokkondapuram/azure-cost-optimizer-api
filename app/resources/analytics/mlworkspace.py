@@ -1,19 +1,9 @@
-from app.resources.types import TechnicalFetchSpec, metric
+"""Compatibility shim — implementation: it_services.analytics_mlworkspace.resource_profile"""
 
-CANONICAL_TYPE = "analytics/mlworkspace"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.MachineLearningServices/workspaces",
-    display_name="Azure ML workspace",
-    sync_property_paths=("provisioningState", "discoveryUrl"),
-    generic_arm_sync=True,
-    fields=(),
-)
+_impl = import_module("it_services.analytics_mlworkspace.resource_profile")
 
-EXTRA_USAGE_METRICS = (
-    metric("cost_export", "mtd_cost", "monthly_cost_usd",
-           "Month-to-date billed cost", "P7D", "ML_WORKSPACE_COMPUTE"),
-)
 
-MONITOR_PROFILE = None
+def __getattr__(name: str):
+    return getattr(_impl, name)

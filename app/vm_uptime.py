@@ -78,13 +78,16 @@ def time_created_from_vm(vm: dict[str, Any]) -> datetime | None:
 def vm_is_running(vm: dict[str, Any], *, power_state: str = "") -> bool:
     canonical = vm.get("_canonical_type") or internal_resource_type(vm.get("id") or "")
     if canonical == "compute/vmss":
-        capacity = (vm.get("sku") or {}).get("capacity")
-        try:
-            if capacity is not None and int(capacity) <= 0:
-                return False
-        except (TypeError, ValueError):
-            pass
-        prov = str((vm.get("properties") or {}).get("provisioningState") or "").lower()
+        from app.vm_utils import _vmss_capacity
+
+        props = vm.get("properties") or {}
+        power = str(props.get("powerState") or power_state or "").strip().lower()
+        if power:
+            return power == "running"
+        capacity = _vmss_capacity(vm, props)
+        if capacity is not None:
+            return capacity > 0
+        prov = str(props.get("provisioningState") or "").lower()
         return prov in ("", "succeeded")
     norm = (power_state or "").replace("PowerState/", "").strip().lower()
     if norm:

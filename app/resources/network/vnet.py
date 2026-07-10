@@ -1,34 +1,9 @@
-from app.resources.types import ResourceMonitorProfile, TechnicalFetchSpec, field, metric
+"""Compatibility shim — implementation: it_services.network_vnet.resource_profile"""
 
-CANONICAL_TYPE = "network/vnet"
+from importlib import import_module
 
-TECHNICAL_FETCH_SPEC = TechnicalFetchSpec(
-    canonical_type=CANONICAL_TYPE,
-    arm_type="Microsoft.Network/virtualNetworks",
-    display_name="Virtual network",
-    sync_property_paths=(
-        "addressSpace",
-        "subnets",
-        "virtualNetworkPeerings",
-        "provisioningState",
-    ),
-    generic_arm_sync=True,
-    fields=(
-        field("subnet_count", "computed:subnet_count", "Subnet count", "capacity"),
-        field("peering_count", "computed:vnet_peering_count", "Peering count", "association",
-              "VNET_PEERING_REVIEW_EXTENDED"),
-    ),
-)
+_impl = import_module("it_services.network_vnet.resource_profile")
 
-EXTRA_USAGE_METRICS = (
-    metric("cost_export", "mtd_cost", "monthly_cost_usd",
-           "Month-to-date billed cost", "P7D", "BANDWIDTH_REVIEW"),
-)
 
-MONITOR_PROFILE = ResourceMonitorProfile(
-    monitor_arm_type="microsoft.network/virtualnetworks",
-    canonical_type=CANONICAL_TYPE,
-    display_name="Virtual network",
-    doc_ref="microsoft-network-virtualnetworks-metrics",
-    metrics=(),
-)
+def __getattr__(name: str):
+    return getattr(_impl, name)

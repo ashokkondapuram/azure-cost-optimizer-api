@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
+import useIdleSession from '../hooks/useIdleSession';
 import {
   clearUnauthorizedHandler,
   setUnauthorizedHandler,
 } from '../api/authSession';
 import { getStoredToken, getTokenExpiryMs, hasActiveSession } from '../api/tokenStorage';
+import { AUTH_TOKEN_REFRESHED_EVENT } from '../config/session';
 
 import { loginPathWithNext } from '../utils/authRedirect';
 
@@ -41,6 +43,11 @@ export default function AuthSessionSync() {
       state: { from: locationRef.current },
     });
   }, [logout, navigate, queryClient]);
+
+  useIdleSession({
+    enabled: isAuthenticated && !loading && location.pathname !== '/login',
+    onIdle: redirectToLogin,
+  });
 
   useEffect(() => {
     setUnauthorizedHandler(({ loginPath }) => {
@@ -110,10 +117,12 @@ export default function AuthSessionSync() {
       refreshUser().catch(() => {});
     };
     document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener(AUTH_TOKEN_REFRESHED_EVENT, scheduleExpiryCheck);
 
     return () => {
       clearInterval(pollId);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener(AUTH_TOKEN_REFRESHED_EVENT, scheduleExpiryCheck);
       if (expiryTimerRef.current) clearTimeout(expiryTimerRef.current);
     };
   }, [isAuthenticated, loading, redirectToLogin, refreshUser, scheduleExpiryCheck]);

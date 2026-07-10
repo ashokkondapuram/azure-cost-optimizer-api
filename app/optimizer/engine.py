@@ -12,8 +12,7 @@ import concurrent.futures
 import structlog
 from datetime import datetime, timezone, timedelta
 from typing import Any
-from app.optimizer.rules import DEFAULT_RULES, Rule, Severity, Category
-from app.optimizer.rule_overrides import apply_rule_overrides
+from app.optimizer.rules import Rule, Severity, Category
 from app.appgateway_utils import http_listener_count
 from app.cost_utils import resource_cost, savings_from_factor, aks_pool_cost_share
 from app.azure_retail_pricing import estimate_vm_sku_savings, vm_os_type
@@ -21,91 +20,136 @@ from app.pricing.savings_calculator import savings_from_retail_or_none
 from app.disk_staleness import augment_disk_evidence, evaluate_unattached_disk, staleness_evidence
 from app.vm_sizing import extract_vm_utilization, recommend_vm_sku, suggest_smaller_sku
 from app.optimizer.resource_engines.compute.vm.helpers import idle_vm_action_text, sizing_action_label
-from app.finding_evidence import build_rule_evidence
+from app.optimizer.standard_finding import Finding, extract_resource_group, extract_subscription_id
+from app.optimizer.engine_runtime import build_standard_rules, filter_resources
+from app.optimizer.engine_filters import should_skip_resource
+from app.optimizer.post_analysis import run_post_analysis
+
 from app.aks_versions import is_minor_version_supported, normalize_k8s_minor, supported_minors_for_location
 
 log = structlog.get_logger()
 
+_SYNC_BATCH_SIZE = 500
 
-# ─── Finding dataclass ────────────────────────────────────────────────────────
-class Finding:
-    __slots__ = (
-        "rule_id", "rule_name", "category", "severity",
-        "resource_id", "resource_name", "resource_type",
-        "subscription_id", "resource_group", "location",
-        "detail", "recommendation", "estimated_savings_usd",
-        "waste_score", "tags", "detected_at", "evidence",
-    )
 
-    def __init__(self, rule: Rule, resource: dict, detail: str,
-                 recommendation: str, savings: float = 0.0, score: int = 50,
-                 evidence: dict[str, Any] | None = None):
-        self.rule_id   = rule.id
-        self.rule_name = rule.name
-        self.category  = rule.category.value
-        self.severity  = rule.severity.value
-        self.resource_id   = resource.get("id", "")
-        self.resource_name = resource.get("name", "")
-        self.resource_type = resource.get("type", "")
-        self.subscription_id = _extract_sub(resource.get("id", ""))
-        self.resource_group  = _extract_rg(resource.get("id", ""))
-        self.location        = resource.get("location", "")
-        self.detail          = detail
-        self.recommendation  = recommendation
-        self.waste_score     = score   # 0=fine, 100=critical waste
-        self.tags            = resource.get("tags") or {}
-        self.detected_at     = datetime.now(timezone.utc).isoformat()
-        savings = round(savings, 2)
-        self.estimated_savings_usd = savings
-        self.evidence = build_rule_evidence(
-            rule.id,
-            evidence or {},
-            finding={
-                "rule_id": rule.id,
-                "resource_id": resource.get("id", ""),
-                "resource_type": resource.get("type", ""),
-                "detail": detail,
-                "estimated_savings_usd": savings,
-            },
-            estimated_savings_usd=savings,
-        )
+def _aks_pool_prefixes(clusters: list, node_pools: dict) -> list[str]:
+    """Collect '{cluster}-{pool}' prefixes for AKS node metric indexing."""
+    prefixes: list[str] = []
+    for cluster in clusters:
+        cname = cluster.get("name", "")
+        if not cname:
+            continue
+        cid = cluster.get("id", "")
+        pools = node_pools.get(cid, node_pools.get(cid.lower(), []))
+        if not pools:
+            pools = (cluster.get("properties") or {}).get("agentPoolProfiles", [])
+        for pool in pools:
+            pname = pool.get("name", "")
+            if pname:
+                prefixes.append(f"{cname}-{pname}".lower())
+    return prefixes
 
-    def to_dict(self) -> dict:
-        return {s: getattr(self, s) for s in self.__slots__}
+
+def _index_aks_node_metrics(
+    node_metrics: dict,
+    clusters: list,
+    node_pools: dict,
+) -> dict[str, list[tuple[str, dict]]]:
+    """Map '{cluster}-{pool}' prefix -> node metrics using per-cluster pool lists."""
+    index: dict[str, list[tuple[str, dict]]] = {}
+    cluster_prefixes: list[tuple[str, list[str], list[str]]] = []
+
+    for cluster in clusters:
+        cname = cluster.get("name", "")
+        if not cname:
+            continue
+        cid = cluster.get("id", "")
+        pools = node_pools.get(cid, node_pools.get(cid.lower(), []))
+        if not pools:
+            pools = (cluster.get("properties") or {}).get("agentPoolProfiles", [])
+        prefixes: list[str] = []
+        pool_names: list[str] = []
+        for pool in pools:
+            pname = pool.get("name", "")
+            if pname:
+                pool_names.append(pname.lower())
+                prefix = f"{cname}-{pname}".lower()
+                prefixes.append(prefix)
+                index.setdefault(prefix, [])
+        if prefixes:
+            cluster_prefixes.append((
+                cname.lower(),
+                sorted(prefixes, key=len, reverse=True),
+                sorted(pool_names, key=len, reverse=True),
+            ))
+
+    if not node_metrics or not cluster_prefixes:
+        return index
+
+    for key, nm in node_metrics.items():
+        node_lower = key.lower()
+        cluster_hint = ""
+        node_name = node_lower
+        if "/" in node_lower:
+            cluster_hint, node_name = node_lower.split("/", 1)
+
+        matched: str | None = None
+        for cname, prefixes, pool_names in cluster_prefixes:
+            if cluster_hint and cname != cluster_hint:
+                continue
+            for prefix in prefixes:
+                if prefix in node_name or prefix in node_lower:
+                    matched = prefix
+                    break
+            if matched:
+                break
+            for pname in pool_names:
+                token = f"aks-{pname}"
+                if token in node_name:
+                    matched = f"{cname}-{pname}"
+                    break
+            if matched:
+                break
+        if matched:
+            index.setdefault(matched, []).append((key, nm))
+
+    return index
 
 
 def _extract_sub(resource_id: str) -> str:
-    parts = resource_id.lower().split("/")
-    try:
-        return parts[parts.index("subscriptions") + 1]
-    except (ValueError, IndexError):
-        return ""
+    return extract_subscription_id(resource_id)
 
 
 def _extract_rg(resource_id: str) -> str:
-    parts = resource_id.lower().split("/")
-    try:
-        return parts[parts.index("resourcegroups") + 1]
-    except (ValueError, IndexError):
-        return ""
+    return extract_resource_group(resource_id)
+
+
+def _passes_savings_gate(finding: Finding, rules: dict[str, Rule]) -> bool:
+    """C5 — drop findings below per-rule min_monthly_savings_usd when savings > 0."""
+    rule = rules.get(finding.rule_id)
+    if not rule:
+        return True
+    min_savings = float(getattr(rule, "min_monthly_savings_usd", 0.0) or 0.0)
+    if finding.estimated_savings_usd <= 0:
+        return True
+    return finding.estimated_savings_usd >= min_savings
 
 
 # ─── Engine ───────────────────────────────────────────────────────────────────
 class OptimizationEngine:
     """Main engine. Instantiate once, call .analyze() per subscription/scope."""
 
-    def __init__(self, rule_overrides: dict[str, dict] | None = None):
+    def __init__(self, rule_overrides: dict[str, dict] | None = None, global_config: dict | None = None):
         """
         rule_overrides: per-rule threshold overrides, e.g.:
           { "VM_IDLE": {"cpu_idle_pct": 3.0, "enabled": False} }
+        global_config: tag/RG/type filters under __global__ profile key.
         """
-        self.rules: dict[str, Rule] = {}
-        for rid, rule in DEFAULT_RULES.items():
-            import copy
-            r = copy.deepcopy(rule)
-            if rule_overrides and rid in rule_overrides:
-                apply_rule_overrides(r, rule_overrides[rid])
-            self.rules[rid] = r
+        from app.optimizer.engine_runtime import split_rule_overrides
+
+        rule_only, inline_global = split_rule_overrides(rule_overrides)
+        self.global_config = {**(global_config or {}), **inline_global}
+        self.rules = build_standard_rules(rule_only)
 
     # ─── Public entry point ───────────────────────────────────────────────
     def analyze(
@@ -134,6 +178,10 @@ class OptimizationEngine:
         cost_by_resource: dict | None = None,           # resourceId -> cost_usd
         budgets:       list[dict] | None = None,
         subscription_spend_usd: float = 0.0,
+        expressroute_circuits: list[dict] | None = None,
+        traffic_managers: list[dict] | None = None,
+        front_doors: list[dict] | None = None,
+        cdn_profiles: list[dict] | None = None,
         max_workers:   int = 4,
     ) -> dict:
         """Run all rule checks in parallel. Returns structured report."""
@@ -142,18 +190,19 @@ class OptimizationEngine:
                  disks=len(disks or []), storage=len(storage or []))
 
         findings: list[Finding] = []
+        gc = self.global_config
 
         tasks = [
-            (self._check_vms,        (vms or [], vm_metrics or {}, cost_by_resource or {})),
-            (self._check_disks,      (disks or [], cost_by_resource or {})),
-            (self._check_snapshots,  (snapshots or [], cost_by_resource or {})),
-            (self._check_aks,        (aks_clusters or [], aks_node_pools or {}, node_metrics or {}, cost_by_resource or {})),
-            (self._check_storage,    (storage or [],)),
-            (self._check_network,    (public_ips or [], load_balancers or [], app_gateways or [], network_interfaces or [], nat_gateways or [], cost_by_resource or {})),
-            (self._check_app_services, (app_services or [], app_service_plans or [], cost_by_resource or {})),
-            (self._check_redis,      (redis_caches or [], cost_by_resource or {})),
-            (self._check_databases,  (sql_servers or [], sql_databases or [], cosmosdb or [])),
-            (self._check_security,   (keyvaults or [],)),
+            (self._check_vms,        (filter_resources(vms, gc), vm_metrics or {}, cost_by_resource or {})),
+            (self._check_disks,      (filter_resources(disks, gc), cost_by_resource or {})),
+            (self._check_snapshots,  (filter_resources(snapshots, gc), cost_by_resource or {})),
+            (self._check_aks,        (filter_resources(aks_clusters, gc), aks_node_pools or {}, node_metrics or {}, cost_by_resource or {})),
+            (self._check_storage,    (filter_resources(storage, gc),)),
+            (self._check_network,    (filter_resources(public_ips, gc), filter_resources(load_balancers, gc), filter_resources(app_gateways, gc), filter_resources(network_interfaces, gc), filter_resources(nat_gateways, gc), cost_by_resource or {})),
+            (self._check_app_services, (filter_resources(app_services, gc), filter_resources(app_service_plans, gc), cost_by_resource or {})),
+            (self._check_redis,      (filter_resources(redis_caches, gc), cost_by_resource or {})),
+            (self._check_databases,  (filter_resources(sql_servers, gc), filter_resources(sql_databases, gc), filter_resources(cosmosdb, gc))),
+            (self._check_security,   (filter_resources(keyvaults, gc),)),
             (self._check_cost,       (budgets or [], subscription_spend_usd)),
         ]
 
@@ -166,6 +215,26 @@ class OptimizationEngine:
                 except Exception as exc:
                     log.error("engine.task.failed", task=name, error=str(exc))
 
+        sub_id = _subscription_id_from(
+            vms, sql_databases, public_ips, app_services, aks_clusters, storage,
+        )
+        costs = cost_by_resource or {}
+        buckets = {
+            "vms": vms or [],
+            "disks": disks or [],
+            "storage": storage or [],
+            "public_ips": public_ips or [],
+            "sql_databases": sql_databases or [],
+            "app_services": app_services or [],
+            "load_balancers": load_balancers or [],
+            "aks_clusters": aks_clusters or [],
+            "traffic_managers": traffic_managers or [],
+            "front_doors": front_doors or [],
+            "expressroute_circuits": expressroute_circuits or [],
+            "cdn_profiles": cdn_profiles or [],
+        }
+        findings.extend(run_post_analysis(self, buckets=buckets, cost_by_resource=costs, subscription_id=sub_id))
+        findings = [f for f in findings if _passes_savings_gate(f, self.rules)]
         findings.sort(key=lambda f: _severity_rank(f.severity))
 
         total_savings = sum(f.estimated_savings_usd for f in findings)
@@ -188,6 +257,8 @@ class OptimizationEngine:
         rule_spot     = self.rules["SPOT_OPPORTUNITY"]
 
         for vm in vms:
+            if should_skip_resource(vm, self.global_config):
+                continue
             if not rule_idle.enabled and not rule_over.enabled:
                 continue
             rid  = vm.get("id", "")
@@ -460,6 +531,7 @@ class OptimizationEngine:
         rule_asc    = self.rules["AKS_NO_AUTOSCALER"]
         rule_split  = self.rules["AKS_SINGLE_NODE_POOL"]
         supported_by_region: dict[tuple[str, str], set[str]] = {}
+        node_index = _index_aks_node_metrics(node_metrics, clusters, node_pools)
 
         for cluster in clusters:
             cid   = cluster.get("id", "")
@@ -575,14 +647,13 @@ class OptimizationEngine:
                     ))
 
                 # Node metrics — idle nodes
-                pool_node_prefix = f"{cname}-{pname}"
+                pool_node_prefix = f"{cname}-{pname}".lower()
                 idle_nodes = 0
-                for node_id, nm in node_metrics.items():
-                    if pool_node_prefix.lower() in node_id.lower():
-                        ncpu = _avg_metric(nm, "cpuUsage") or _avg_metric(nm, "Percentage CPU") or 0
-                        nmem = _avg_metric(nm, "memUsage") or _avg_metric(nm, "Memory Working Set Bytes") or 0
-                        if rule_idle.enabled and ncpu < rule_idle.node_cpu_idle and nmem < rule_idle.node_mem_idle:
-                            idle_nodes += 1
+                for _node_id, nm in node_index.get(pool_node_prefix, []):
+                    ncpu = _avg_metric(nm, "cpuUsage") or _avg_metric(nm, "Percentage CPU") or 0
+                    nmem = _avg_metric(nm, "memUsage") or _avg_metric(nm, "Memory Working Set Bytes") or 0
+                    if rule_idle.enabled and ncpu < rule_idle.node_cpu_idle and nmem < rule_idle.node_mem_idle:
+                        idle_nodes += 1
 
                 if rule_over.enabled and idle_nodes > 0:
                     out.append(Finding(
@@ -929,6 +1000,15 @@ class OptimizationEngine:
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
+def _subscription_id_from(*resource_lists: list | None) -> str:
+    for bucket in resource_lists:
+        for item in bucket or []:
+            sub = _extract_sub(item.get("id", "") if isinstance(item, dict) else "")
+            if sub:
+                return sub
+    return ""
+
+
 def _avg_metric(metrics: dict | None, name: str) -> float | None:
     if not metrics:
         return None

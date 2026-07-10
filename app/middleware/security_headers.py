@@ -18,7 +18,7 @@ from typing import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 
 # Tight CSP for the API layer.  The SPA's own static files are served by the
 # same FastAPI process, so we include 'self' for script/style.  Adjust
@@ -58,6 +58,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         request.state.request_id = request_id
 
         response: Response = await call_next(request)
+        if response is None:
+            return JSONResponse(
+                status_code=500,
+                content={"error": {"code": "internal_error", "message": "No response produced."}},
+            )
 
         # ── Core security headers (all environments) ──────────────────────
         response.headers["X-Content-Type-Options"] = "nosniff"

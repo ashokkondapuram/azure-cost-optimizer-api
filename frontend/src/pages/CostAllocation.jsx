@@ -9,24 +9,17 @@
  * Data: /costs/summary, /costs/by-service, /costs/by-resource-type,
  *       /costs/resource-group
  */
-import React, { useState, useCallback, useContext, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from 'recharts';
-import { Layers, DollarSign, RefreshCw, AlertTriangle, ChevronDown } from 'lucide-react';
+import { Layers, DollarSign, ChevronDown } from 'lucide-react';
 import {
   fetchCostSummary, fetchCostByService,
   fetchCostByResourceType,
 } from '../api/costAllocation';
-import { downloadCsv, toCsv, downloadJson } from '../api/exportCenter';
-
-let SubscriptionContext;
-try { ({ SubscriptionContext } = require('../context/SubscriptionContext')); } catch { SubscriptionContext = null; }
-function useCtxSub() {
-  const ctx = SubscriptionContext ? useContext(SubscriptionContext) : null; // eslint-disable-line
-  return ctx?.subscriptionId ?? ctx?.activeSubscription ?? null;
-}
+import { downloadCsv, toCsv } from '../api/exportCenter';
+import AdvancedToolLayout, { useAdvancedSubscription } from '../components/advanced/AdvancedToolLayout';
 
 const fmt = (n, cur = 'CAD') =>
   n != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: cur, maximumFractionDigits: 0 }).format(n) : '—';
@@ -117,8 +110,7 @@ function ResourceTypeTable({ data, loading, currency }) {
 }
 
 export default function CostAllocation() {
-  const ctxSub = useCtxSub();
-  const [subId, setSubId] = useState(ctxSub ?? '');
+  const { subscription } = useAdvancedSubscription();
   const [timeframe, setTimeframe] = useState('MonthToDate');
   const [summary, setSummary] = useState(null);
   const [serviceData, setServiceData] = useState(null);
@@ -127,13 +119,13 @@ export default function CostAllocation() {
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!subId.trim()) return;
+    if (!subscription?.trim()) return;
     setLoading(true); setError(null);
     try {
       const [sum, svc, typ] = await Promise.all([
-        fetchCostSummary(subId, { timeframe }),
-        fetchCostByService(subId, { timeframe }),
-        fetchCostByResourceType(subId, timeframe),
+        fetchCostSummary(subscription, { timeframe }),
+        fetchCostByService(subscription, { timeframe }),
+        fetchCostByResourceType(subscription, timeframe),
       ]);
       setSummary(sum);
 
@@ -158,46 +150,34 @@ export default function CostAllocation() {
         .map((r) => ({ name: r[tNameIdx] ?? r[0] ?? 'Unknown', cost: parseFloat(r[tCostIdx] ?? r[2] ?? 0) }))
         .filter((r) => r.cost > 0);
       setTypeData(parsedTyp);
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(e); }
     finally { setLoading(false); }
-  }, [subId, timeframe]);
+  }, [subscription, timeframe]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const currency = summary?.billing_currency ?? 'CAD';
   const totalCost = summary?.total_cost ?? summary?.totalCost ?? summary?.properties?.totalCost;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6 md:px-8">
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-1">
-          <Layers size={20} className="text-teal-600" />
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">Cost Allocation</h1>
-        </div>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Subscription spend broken down by service, resource type, and resource group.
-        </p>
-      </div>
-
+    <AdvancedToolLayout
+      title="Cost allocation"
+      subtitle="Subscription spend broken down by service, resource type, and resource group."
+      iconKey="costAllocation"
+      iconRoute="/cost-allocation"
+      onRefresh={load}
+      loading={loading}
+      error={error}
+      errorTitle="Could not load cost allocation"
+    >
       <div className="flex flex-wrap items-center gap-3 mb-5">
-        <input type="text" value={subId} onChange={(e) => setSubId(e.target.value)}
-          placeholder="Subscription ID"
-          className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 w-80"
-        />
         <select value={timeframe} onChange={(e) => setTimeframe(e.target.value)}
           className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-1.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-teal-500">
           {TIMEFRAMES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <button onClick={load} disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 disabled:opacity-50 px-4 py-1.5 text-sm font-medium text-white transition-colors">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          {loading ? 'Loading…' : 'Load'}
-        </button>
       </div>
-
-      {error && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
-          <AlertTriangle size={15} className="mt-0.5 shrink-0" />{error}
-        </div>
-      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
         {loading ? Array.from({length:3}).map((_,i)=><Skeleton key={i} className="h-16 rounded-xl" />) : (
@@ -214,13 +194,6 @@ export default function CostAllocation() {
 
       <ServiceDonut data={serviceData} loading={loading} currency={currency} />
       <ResourceTypeTable data={typeData} loading={loading} currency={currency} />
-
-      {!loading && !summary && !error && (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-400 dark:text-gray-500 gap-3">
-          <Layers size={40} strokeWidth={1.5} />
-          <p className="text-sm font-medium">Enter a subscription ID and click Load</p>
-        </div>
-      )}
-    </div>
+    </AdvancedToolLayout>
   );
 }

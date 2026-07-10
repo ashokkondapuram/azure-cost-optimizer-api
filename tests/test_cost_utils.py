@@ -8,6 +8,7 @@ from app.cost_utils import (
     by_service_properties_from_response,
     by_resource_properties_from_response,
     normalize_monthly_cost_usd,
+    project_mtd_to_monthly_run_rate,
     parse_cost_by_resource_details,
     resource_cost_billing_from_map,
     resource_cost_usd_from_map,
@@ -210,6 +211,12 @@ def test_normalize_monthly_cost_usd_from_dict():
 def test_normalize_monthly_cost_usd_zero_returns_none():
     assert normalize_monthly_cost_usd(0.0) is None
     assert normalize_monthly_cost_usd({"usd": 0.0, "pretax": 0.0, "currency": "USD"}) is None
+
+
+def test_project_mtd_to_monthly_run_rate():
+    from datetime import date
+
+    assert project_mtd_to_monthly_run_rate(70.0, as_of=date(2026, 7, 7)) == pytest.approx(310.0)
 
 
 def test_apply_costs_preserves_snapshot_when_map_misses():

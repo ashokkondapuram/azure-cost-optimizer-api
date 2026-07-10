@@ -1,23 +1,33 @@
-import { useQuery } from '@tanstack/react-query';
 import { fetchOptimizationActions } from '../api/azure';
-import { ACTION_INDEX_LIMIT } from '../utils/actionUtils';
+import { ACTION_PAGE_SIZE } from '../utils/actionUtils';
+import { useInfiniteOptimizationList, useOptimizationListPage } from './useInfiniteOptimizationList';
 
-export default function useOptimizationActions(subscription, filters = {}) {
-  const enabled = Boolean(subscription);
+export default function useOptimizationActions(subscription, filters = {}, options = {}) {
+  const infinite = options.infinite !== false;
+  const pageSize = options.pageSize ?? ACTION_PAGE_SIZE;
 
-  const query = useQuery({
-    queryKey: ['optimization-actions', subscription, filters],
-    queryFn: () => fetchOptimizationActions({
-      subscription_id: subscription,
-      limit: ACTION_INDEX_LIMIT,
-      ...filters,
-    }),
-    enabled,
-    staleTime: 60_000,
+  const infiniteQuery = useInfiniteOptimizationList({
+    queryKey: ['optimization-actions'],
+    queryFn: fetchOptimizationActions,
+    subscription,
+    filters,
+    pageSize,
+    enabled: infinite && Boolean(subscription),
   });
 
-  const items = query.data?.items || [];
-  const summary = query.data?.summary || {};
+  const pageQuery = useOptimizationListPage({
+    queryKey: ['optimization-actions'],
+    queryFn: fetchOptimizationActions,
+    subscription,
+    filters,
+    limit: options.limit ?? pageSize,
+    enabled: !infinite && Boolean(subscription),
+  });
+
+  const query = infinite ? infiniteQuery : pageQuery;
+  const firstPage = infinite ? infiniteQuery.firstPage : pageQuery.firstPage;
+  const items = query.items;
+  const summary = firstPage?.summary || {};
   const byId = new Map(items.map((item) => [item.id, item]));
 
   return {
@@ -25,9 +35,16 @@ export default function useOptimizationActions(subscription, filters = {}) {
     items,
     summary,
     byId,
-    total: query.data?.total ?? items.length,
-    totalSavings: query.data?.total_estimated_monthly_savings ?? 0,
-    pageSavings: query.data?.page_estimated_monthly_savings ?? 0,
-    indexReady: !query.isLoading && (query.isSuccess || query.isError),
+    total: query.total,
+    totalSavings: firstPage?.distinct_estimated_monthly_savings
+      ?? firstPage?.total_estimated_monthly_savings
+      ?? 0,
+    pageSavings: firstPage?.distinct_page_estimated_monthly_savings
+      ?? firstPage?.page_estimated_monthly_savings
+      ?? 0,
+    loadMore: infinite ? infiniteQuery.loadMore : undefined,
+    hasMore: infinite ? infiniteQuery.hasMore : false,
+    isLoadingMore: infinite ? infiniteQuery.isLoadingMore : false,
+    loadedCount: items.length,
   };
 }

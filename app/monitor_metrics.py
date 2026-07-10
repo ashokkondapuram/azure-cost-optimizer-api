@@ -16,6 +16,7 @@ from app.resources import (
     UsageMetricDef,
     get_monitor_profile,
     get_technical_fetch_spec,
+    monitor_arm_type,
     to_usage_metric_defs,
 )
 from app.resources.types import filter_stats_for_display
@@ -356,6 +357,67 @@ def enrich_derived_monitor_facts(
             peak_util = peak_disk_iops_utilization_pct({"_technical_facts": out}, resource)
             if peak_util is not None:
                 out["max_disk_iops_utilization_pct"] = peak_util
+    elif canonical == "database/redis":
+        hits = out.get("cache_hits")
+        misses = out.get("cache_misses")
+        if hits is not None or misses is not None:
+            total = float(hits or 0.0) + float(misses or 0.0)
+            if total > 0:
+                out["cache_hit_rate"] = round(float(hits or 0.0) / total * 100.0, 2)
+        miss_rate = out.get("cache_miss_rate_pct")
+        if miss_rate is not None and "cache_hit_rate" not in out:
+            out["cache_hit_rate"] = round(max(0.0, min(100.0, 100.0 - float(miss_rate))), 2)
+    elif canonical == "database/postgresql":
+        active = out.get("active_connections")
+        peak = out.get("max_connections")
+        if active is not None and peak is not None and float(peak) > 0:
+            out["connection_utilization_pct"] = round(float(active) / float(peak) * 100.0, 2)
+    elif canonical == "database/cosmosdb":
+        avg_ru = out.get("normalized_ru_pct")
+        peak_ru = out.get("normalized_ru_peak_pct")
+        if avg_ru is not None and peak_ru is not None and float(avg_ru) > 0:
+            out["ru_skew_ratio"] = round(float(peak_ru) / float(avg_ru), 2)
+        data_bytes = out.get("data_usage_bytes")
+        doc_count = out.get("document_count")
+        if data_bytes is not None and doc_count is not None and float(doc_count) > 0:
+            out["avg_item_bytes"] = round(float(data_bytes) / float(doc_count), 2)
+        index_bytes = out.get("index_usage_bytes")
+        if index_bytes is not None and data_bytes is not None and float(data_bytes) > 0:
+            out["index_to_data_ratio"] = round(float(index_bytes) / float(data_bytes), 2)
+    elif canonical == "network/nat":
+        from app.nat_gateway_catalog import snat_capacity_for_gateway
+
+        snat_count = out.get("snat_connection_count")
+        if snat_count is not None:
+            capacity = snat_capacity_for_gateway(resource)
+            if capacity > 0:
+                out["snat_utilization_pct"] = round(float(snat_count) / capacity * 100.0, 2)
+    elif canonical == "network/loadbalancer":
+        used = out.get("used_snat_ports")
+        allocated = out.get("allocated_snat_ports")
+        if used is not None and allocated is not None and float(allocated) > 0:
+            out["snat_port_usage_pct"] = round(float(used) / float(allocated) * 100.0, 2)
+    elif canonical == "network/privateendpoint":
+        inbound = out.get("pe_bytes_in")
+        outbound = out.get("pe_bytes_out")
+        if inbound is not None or outbound is not None:
+            out["pe_bytes_total"] = round(float(inbound or 0.0) + float(outbound or 0.0), 2)
+    elif canonical == "network/privatelinkservice":
+        used = out.get("pls_nat_ports_used")
+        allocated = out.get("pls_nat_ports_allocated")
+        if used is not None and allocated is not None and float(allocated) > 0:
+            out["pls_nat_port_usage_pct"] = round(float(used) / float(allocated) * 100.0, 2)
+    elif canonical == "network/appgateway":
+        avg_cu = out.get("billed_capacity_units")
+        sku = resource.get("sku") or {}
+        capacity = int(sku.get("capacity") or 1)
+        if avg_cu is not None and capacity > 0:
+            from app.app_gateway_catalog import tier_spec
+            tier = sku.get("tier") or sku.get("name") or "Standard_v2"
+            cu_per_unit = float(tier_spec(tier).get("cu_per_capacity_unit") or 100)
+            provisioned = capacity * cu_per_unit
+            if provisioned > 0:
+                out["cu_utilization_pct"] = round(float(avg_cu) / provisioned * 100.0, 2)
     return out
 
 
@@ -631,17 +693,32 @@ def load_azure_monitor_metrics(
             except Exception:
                 pass
 
+    resource_index: dict[str, tuple[dict, str]] = {}
     for canonical, resources in resources_by_type.items():
         for resource in resources:
             rid = (resource.get("id") or "").lower()
-            payload = resource_metrics.get(rid)
-            if not payload:
-                continue
-            profile = get_monitor_profile(resource.get("id") or "", canonical)
-            facts = extract_monitor_facts_from_profile(payload, profile)
-            facts = enrich_derived_monitor_facts(resource, canonical, facts, payload)
-            if facts:
-                resource_facts[rid] = facts
+            if rid:
+                resource_index[rid] = (resource, canonical)
+
+    profile_cache: dict[tuple[str, str | None], ResourceMonitorProfile | None] = {}
+
+    def _profile_for(resource: dict, canonical: str) -> ResourceMonitorProfile | None:
+        arm_id = resource.get("id") or ""
+        key = (monitor_arm_type(arm_id), canonical)
+        if key not in profile_cache:
+            profile_cache[key] = get_monitor_profile(arm_id, canonical)
+        return profile_cache[key]
+
+    for rid, payload in resource_metrics.items():
+        entry = resource_index.get(rid)
+        if not entry:
+            continue
+        resource, canonical = entry
+        profile = _profile_for(resource, canonical)
+        facts = extract_monitor_facts_from_profile(payload, profile)
+        facts = enrich_derived_monitor_facts(resource, canonical, facts, payload)
+        if facts:
+            resource_facts[rid] = facts
 
     if resource_metrics:
         log.info(

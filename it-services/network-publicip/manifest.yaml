@@ -1,0 +1,22 @@
+service_id: network-publicip
+canonical_type: network/publicip
+display_name: Public IP address
+api_path: /resources/publicips
+arm_type: Microsoft.Network/publicIPAddresses
+component: Public IPs
+drawer_ui: false
+
+backend:
+  package: it_services/network_publicip
+  modules:
+    - it_services/network_publicip/resource_profile.py
+  related_app_modules:
+    - app/resources/network/publicip.py
+    - app/optimizer/resource_engines/network/publicip/
+
+frontend:
+  root: frontend/src/it-services/network-publicip
+  entry: frontend/src/it-services/network-publicip/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

@@ -1,8 +1,12 @@
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 import os
+import threading
+import structlog
 
 from app.platform import get_app_service_database_url, normalize_database_url
+
+logger = structlog.get_logger(__name__)
 
 DEFAULT_SQLITE_URL = "sqlite:///./azurefinops.db"
 
@@ -43,6 +47,7 @@ def _make_engine(url: str):
 _active_url = get_bootstrap_database_url()
 engine = _make_engine(_active_url)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+_engine_lock = threading.RLock()
 
 
 def get_active_database_url() -> str:
@@ -50,7 +55,8 @@ def get_active_database_url() -> str:
 
 
 def get_db():
-    db = SessionLocal()
+    with _engine_lock:
+        db = SessionLocal()
     try:
         yield db
     finally:
@@ -64,11 +70,16 @@ def reconfigure_engine(url: str) -> None:
     if url == _active_url:
         return
 
-    old_engine = engine
-    engine = _make_engine(url)
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    _active_url = url
-    old_engine.dispose()
+    with _engine_lock:
+        if url == _active_url:
+            return
+
+        old_engine = engine
+        engine = _make_engine(url)
+        SessionLocal.configure(bind=engine)
+        _active_url = url
+        logger.info("database_reconfigured", old_url=_active_url, new_url=url)
+        old_engine.dispose(close=True)
 
 
 def init_db():
@@ -120,11 +131,12 @@ def migrate_schema():
     if not insp.has_table("app_users"):
         from .models import AppUser
         AppUser.__table__.create(bind=engine, checkfirst=True)
-        from app.user_auth import ensure_default_admin, ensure_default_viewer
+        from app.user_auth import ensure_default_admin, ensure_default_viewer, ensure_default_superuser
         db = SessionLocal()
         try:
             ensure_default_admin(db)
             ensure_default_viewer(db)
+            ensure_default_superuser(db)
         finally:
             db.close()
 
@@ -193,6 +205,10 @@ def migrate_schema():
         from .models import CostSyncRun
         CostSyncRun.__table__.create(bind=engine, checkfirst=True)
 
+    if not insp.has_table("cost_period_totals"):
+        from .models import CostPeriodTotalSnapshot
+        CostPeriodTotalSnapshot.__table__.create(bind=engine, checkfirst=True)
+
     if not insp.has_table("k8s_utilization"):
         from .models import K8sUtilization
         K8sUtilization.__table__.create(bind=engine, checkfirst=True)
@@ -212,6 +228,14 @@ def migrate_schema():
     if not insp.has_table("component_sync_state"):
         from .models import ComponentSyncState
         ComponentSyncState.__table__.create(bind=engine, checkfirst=True)
+
+    if not insp.has_table("maintenance_sync_runs"):
+        from .models import MaintenanceSyncRun
+        MaintenanceSyncRun.__table__.create(bind=engine, checkfirst=True)
+
+    if not insp.has_table("planned_maintenance_items"):
+        from .models import PlannedMaintenanceItem
+        PlannedMaintenanceItem.__table__.create(bind=engine, checkfirst=True)
 
     if not insp.has_table("cost_by_resource_type"):
         from .models import CostByResourceTypeSnapshot
@@ -240,6 +264,16 @@ def migrate_schema():
     if not insp.has_table("advisor_recommendations"):
         from .models import AdvisorRecommendation
         AdvisorRecommendation.__table__.create(bind=engine, checkfirst=True)
+    elif insp.has_table("advisor_recommendations"):
+        advisor_cols = {c["name"] for c in insp.get_columns("advisor_recommendations")}
+        for col, typedef in {
+            "recommendation_type_id": "VARCHAR",
+            "current_sku": "VARCHAR",
+            "target_sku": "VARCHAR",
+        }.items():
+            if col not in advisor_cols:
+                with engine.begin() as conn:
+                    conn.execute(text(f"ALTER TABLE advisor_recommendations ADD COLUMN {col} {typedef}"))
 
     if not insp.has_table("optimization_actions"):
         from .models import OptimizationAction

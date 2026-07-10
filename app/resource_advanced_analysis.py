@@ -6,6 +6,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.advanced_analysis_insights import build_advanced_insights
 from app.advanced_scoring import serialize_scorecard
 from app.finding_quality import filter_valuable_findings, serialize_finding_summary
 from app.metrics_loader import load_cached_resource_facts
@@ -94,6 +95,18 @@ def get_resource_advanced_analysis(
 
     dependencies = analyze_dependencies(db, sub, rid)
     trends = analyze_resource_trends(db, sub, rid)
+    facts_map = load_cached_resource_facts(db, sub)
+    facts = facts_map.get(rid) or {}
+    utilization_evidence = {
+        "avg_cpu_pct": facts.get("avg_cpu_pct"),
+        "max_cpu_pct": facts.get("max_cpu_pct"),
+        "avg_memory_pct": facts.get("avg_memory_pct"),
+        "max_memory_pct": facts.get("max_memory_pct"),
+        "has_monitor_data": any(
+            facts.get(k) is not None
+            for k in ("avg_cpu_pct", "max_cpu_pct", "avg_memory_pct", "max_memory_pct")
+        ),
+    }
 
     workload = None
     if profile:
@@ -109,8 +122,7 @@ def get_resource_advanced_analysis(
             "synced_at": profile.synced_at.isoformat() if profile.synced_at else None,
         }
     elif snap:
-        facts_map = load_cached_resource_facts(db, sub)
-        fields = profile_resource(db, snap, facts_map.get(rid) or {})
+        fields = profile_resource(db, snap, facts)
         workload = {
             "workload_type": fields.get("workload_type"),
             "burstiness_score": fields.get("burstiness_score"),
@@ -124,6 +136,13 @@ def get_resource_advanced_analysis(
             "computed_on_demand": True,
         }
 
+    insights = build_advanced_insights(
+        workload=workload,
+        dependencies=dependencies,
+        trends=trends,
+        utilization_evidence=utilization_evidence,
+    )
+
     return {
         "subscription_id": sub,
         "resource_id": rid,
@@ -131,6 +150,8 @@ def get_resource_advanced_analysis(
         "resource_type": snap.resource_type if snap else None,
         "monthly_cost_usd": float(snap.monthly_cost_usd or 0) if snap else None,
         "workload_profile": workload,
+        "utilization_evidence": utilization_evidence,
+        "insights": insights,
         "scorecard": serialize_scorecard(scoring) if scoring else None,
         "dependencies": dependencies,
         "trends": trends,

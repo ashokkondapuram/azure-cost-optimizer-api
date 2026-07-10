@@ -24,7 +24,14 @@ from app.services.system_settings import get_effective_config
 
 log = structlog.get_logger(__name__)
 
-_SYSTEM_PROMPT = """InfinityOps advisor. For each finding, write the user-facing recommendation and a one-line summary.
+_SYSTEM_PROMPT = """InfinityOps advisor. For each finding, evaluate the supplied evidence (metrics, checks, signals, savings) and produce grounded recommendations.
+
+Writing style:
+- Evaluate objectively from the payload ("This disk shows…", "Average CPU is…"). Do NOT address the reader — no "you", "your", "please", or portal walkthroughs.
+- executive_summary: one-line evaluation citing specific evidence from the payload.
+- recommendation: recommended action grounded in that evidence.
+- implementation_steps: concise operational steps to execute the recommendation (imperative verbs, e.g. "Validate backup dependencies", "Delete unattached disk") — not instructions to a person.
+
 Use only supplied evidence — do not invent metrics or costs. Be concise.
 
 Return JSON: {"enrichments":[{"index":0,"executive_summary":"...","recommendation":"...","implementation_steps":["..."],"risk_level":"low|medium|high","confidence_delta":0,"stale_likelihood":"low|medium|high|unknown","data_gaps":[]}]}
@@ -242,7 +249,7 @@ def _call_ai_batch_with_retry(
         {"role": "system", "content": _SYSTEM_PROMPT},
         {
             "role": "user",
-            "content": "Recommendations for this batch:\n"
+            "content": "Evaluate these findings using only the supplied evidence:\n"
             + json.dumps(payload, separators=(",", ":"), default=str),
         },
     ]

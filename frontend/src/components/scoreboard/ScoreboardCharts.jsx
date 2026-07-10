@@ -17,6 +17,7 @@ const TIER_COLORS = {
   tier2_balanced: 'var(--primary)',
   tier3_risky: 'var(--warning)',
   blocked: 'var(--danger)',
+  maintenance_hold: 'var(--text3)',
 };
 
 const SCORE_BUCKETS = [
@@ -61,7 +62,7 @@ function buildHistogram(items) {
   return buckets.map((b) => ({ name: b.label, count: b.count }));
 }
 
-function ScoreboardCharts({ items = [], tierSummary = {} }) {
+function ScoreboardCharts({ items = [], tierSummary = {}, activeTier = '', onTierClick }) {
   const tierData = useMemo(() => buildTierData(items, tierSummary), [items, tierSummary]);
   const histogram = useMemo(() => buildHistogram(items), [items]);
 
@@ -94,12 +95,29 @@ function ScoreboardCharts({ items = [], tierSummary = {} }) {
             </ResponsiveContainer>
           </div>
           <ul className="scoreboard-charts__legend">
-            {tierData.map((entry) => (
-              <li key={entry.tier}>
-                <span className={`tier-pill tier-pill--${entry.tone}`}>{entry.name}</span>
-                <span>{entry.value}</span>
-              </li>
-            ))}
+            {tierData.map((entry) => {
+              const active = activeTier === entry.tier;
+              const clickable = typeof onTierClick === 'function';
+              return (
+                <li key={entry.tier}>
+                  {clickable ? (
+                    <button
+                      type="button"
+                      className={`scoreboard-charts__legend-btn${active ? ' scoreboard-charts__legend-btn--active' : ''}`}
+                      onClick={() => onTierClick(active ? '' : entry.tier)}
+                    >
+                      <span className={`tier-pill tier-pill--${entry.tone}`}>{entry.name}</span>
+                      <span>{entry.value}</span>
+                    </button>
+                  ) : (
+                    <>
+                      <span className={`tier-pill tier-pill--${entry.tone}`}>{entry.name}</span>
+                      <span>{entry.value}</span>
+                    </>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
 

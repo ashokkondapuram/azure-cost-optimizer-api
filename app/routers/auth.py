@@ -16,8 +16,13 @@ from app.user_auth import (
     reset_app_user_password,
     require_admin_user,
     require_authenticated_user,
+    require_superuser,
+    is_privileged_role,
+    is_superuser_role,
     serialize_app_user,
+    session_idle_minutes,
     ROLE_ADMIN,
+    ROLE_SUPERUSER,
     ROLE_VIEWER,
 )
 import structlog
@@ -37,7 +42,7 @@ class CreateUserRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64)
     password: str = Field(..., min_length=8, max_length=256)
     display_name: Optional[str] = Field(None, max_length=128)
-    role: str = Field(ROLE_VIEWER, description="admin or viewer")
+    role: str = Field(ROLE_VIEWER, description="superuser, admin, or viewer")
 
 
 class ResetUserPasswordRequest(BaseModel):
@@ -87,14 +92,35 @@ def login(body: LoginRequest, request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/me", summary="Current signed-in user")
-def auth_me(request: Request):
+def auth_me(request: Request, db: Session = Depends(get_db)):
     user = require_authenticated_user(request)
+    role = user.get("role")
+    from app.nav_access import nav_access_payload_for_user
+
+    nav = nav_access_payload_for_user(role, db)
     return {
         "id": user["id"],
         "username": user["username"],
         "display_name": user.get("display_name") or user["username"],
-        "role": user["role"],
-        "is_admin": user.get("role") == ROLE_ADMIN,
+        "role": role,
+        "is_superuser": is_superuser_role(role),
+        "is_admin": is_privileged_role(role),
+        "allowed_paths": nav["allowed_paths"],
+        "session_idle_minutes": session_idle_minutes(),
+    }
+
+
+@router.post("/refresh", summary="Renew session token while active")
+def refresh_token(request: Request):
+    user = require_authenticated_user(request)
+    try:
+        token = create_access_token(user_id=user["id"], username=user["username"], role=user["role"])
+    except RuntimeError as exc:
+        log.error("refresh_blocked", reason=str(exc))
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return {
+        "access_token": token,
+        "token_type": "bearer",
     }
 
 
@@ -106,7 +132,7 @@ def list_users(request: Request, db: Session = Depends(get_db)):
 
 @router.post("/users", summary="Create an application user (admin only)")
 def create_user(request: Request, body: CreateUserRequest, db: Session = Depends(get_db)):
-    require_admin_user(request)
+    actor = require_admin_user(request)
     try:
         user = create_app_user(
             db,
@@ -114,6 +140,7 @@ def create_user(request: Request, body: CreateUserRequest, db: Session = Depends
             password=body.password,
             display_name=body.display_name,
             role=body.role,
+            actor_role=actor.get("role"),
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
