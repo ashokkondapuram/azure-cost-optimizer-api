@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "service": "Governance",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "GOVERNANCE_TAG_ENFORCEMENT": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_WARNING": {
+      "required_evidence": [
+        {
+          "signal": "budget_utilization_pct",
+          "label": "Budget utilization",
+          "aggregation": "current",
+          "period": "MTD",
+          "unit": "%",
+          "threshold_key": "budget_warn_pct",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_CRITICAL": {
+      "required_evidence": [
+        {
+          "signal": "budget_utilization_pct",
+          "label": "Budget utilization",
+          "aggregation": "current",
+          "period": "MTD",
+          "unit": "%",
+          "threshold_key": "budget_warn_pct",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_GUARDRAIL_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "budget_utilization_pct",
+          "label": "Budget utilization",
+          "aggregation": "current",
+          "period": "MTD",
+          "unit": "%",
+          "threshold_key": "budget_warn_pct",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

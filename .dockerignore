@@ -1,0 +1,68 @@
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# Python
+__pycache__
+**/__pycache__
+*.py[cod]
+*.db
+.venv
+venv
+env
+.pytest_cache
+.mypy_cache
+.ruff_cache
+htmlcov
+.coverage
+*.egg-info
+deps
+
+# Node (any path)
+**/node_modules
+frontend/build
+
+# Tests and dev-only files
+tests
+requirements-dev.txt
+specs
+
+# Local secrets
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+
+# Docs and misc artifacts
+*.md
+docs
+azure_dashboard_*
+*.docx
+*.pdf
+
+# Design / figma exports (not needed in images)
+figma-*.json
+build_figma*.py
+
+# K8s agent (separate image in k8s/Dockerfile)
+k8s
+
+# CI / pipelines
+azure-pipelines.yml
+.github
+
+# Optional large assessment dumps (threshold JSON in data/ is still included)
+data/storage-container-assessment.json
+data/storage-file-share-assessment.json
+data/storage-queue-assessment.json
+data/storage-table-assessment.json
+
+# Docker Desktop k8s manifests (not used by app images)
+docker/desktop/k8s

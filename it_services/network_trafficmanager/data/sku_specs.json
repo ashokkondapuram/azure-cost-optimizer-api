@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "service_id": "network-trafficmanager",
+  "canonical_type": "network/trafficmanager",
+  "arm_type": "Microsoft.Network/trafficManagerProfiles",
+  "display_name": "Traffic Manager profile",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Performance": {
+      "routing": "performance"
+    },
+    "Priority": {
+      "routing": "priority"
+    },
+    "Geographic": {
+      "routing": "geographic"
+    },
+    "MultiValue": {
+      "routing": "multivalue"
+    },
+    "Subnet": {
+      "routing": "subnet"
+    }
+  },
+  "pricing": {
+    "billing_model": "dns_query",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.381443+00:00"
+}

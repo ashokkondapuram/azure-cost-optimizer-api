@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "service": "Cost Anomaly",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "COST_SPIKE_DETECTED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

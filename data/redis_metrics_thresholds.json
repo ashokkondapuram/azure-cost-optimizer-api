@@ -1,0 +1,209 @@
+{
+  "schema_version": 1,
+  "service": "Redis",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "REDIS_FAILED": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_OVERSIZED": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_TIER_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_HEALTH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_RIGHTSIZE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_IDLE_DETECTION": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_MEMORY_PRESSURE": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "evicted_keys",
+          "label": "Evicted keys",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "count",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_LOW_UTILIZATION": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "server_load_pct",
+          "label": "Server load",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "redis_server_load_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_HIT_RATIO_POOR": {
+      "required_evidence": [
+        {
+          "signal": "cache_hit_rate_pct",
+          "label": "Cache hit rate",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "redis_hit_ratio_poor_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_CLUSTER_UNNECESSARY": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_PERSISTENCE_REVIEW": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    }
+  }
+}

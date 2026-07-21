@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "service_id": "database-sql",
+  "canonical_type": "database/sql",
+  "arm_type": "Microsoft.Sql/servers",
+  "display_name": "SQL server",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Basic": {
+      "dtu_max": 5,
+      "max_db_gb": 2
+    },
+    "S0": {
+      "dtu": 10,
+      "max_db_gb": 250
+    },
+    "S3": {
+      "dtu": 100,
+      "max_db_gb": 250
+    },
+    "P1": {
+      "vcores": 2,
+      "max_db_gb": 1024
+    },
+    "P2": {
+      "vcores": 4,
+      "max_db_gb": 1024
+    },
+    "GP_Gen5_2": {
+      "vcores": 2,
+      "tier": "GeneralPurpose"
+    },
+    "BC_Gen5_2": {
+      "vcores": 2,
+      "tier": "BusinessCritical"
+    }
+  },
+  "pricing": {
+    "billing_model": "dtu_or_vcore",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.099638+00:00"
+}

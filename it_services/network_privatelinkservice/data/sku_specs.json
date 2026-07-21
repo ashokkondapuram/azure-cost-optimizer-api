@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "service_id": "network-privatelinkservice",
+  "canonical_type": "network/privatelinkservice",
+  "arm_type": "Microsoft.Network/privateLinkServices",
+  "display_name": "Private link service",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard": {
+      "nat_ip_hourly_usd": 0.01
+    }
+  },
+  "pricing": {
+    "billing_model": "hourly",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.343540+00:00"
+}

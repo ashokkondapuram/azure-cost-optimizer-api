@@ -1,0 +1,22 @@
+service_id: analytics-adx
+canonical_type: analytics/adx
+display_name: Azure Data Explorer
+api_path: /resources/adx
+arm_type: Microsoft.Kusto/clusters
+component: Analytics
+drawer_ui: false
+
+backend:
+  package: it_services/analytics_adx
+  modules:
+    - it_services/analytics_adx/resource_profile.py
+  related_app_modules:
+    - app/resources/analytics/adx.py
+    - app/optimizer/resource_engines/analytics/
+
+frontend:
+  root: frontend/src/it-services/analytics-adx
+  entry: frontend/src/it-services/analytics-adx/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

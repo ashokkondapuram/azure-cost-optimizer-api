@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/topics/sync.pipeline.status-value.v1.json",
+  "title": "sync.pipeline.status-value",
+  "allOf": [
+    { "$ref": "../base/job-envelope.v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "job_type": { "const": "pipeline.status" },
+        "payload": { "$ref": "../payloads/pipeline-status.v1.json" }
+      }
+    }
+  ]
+}

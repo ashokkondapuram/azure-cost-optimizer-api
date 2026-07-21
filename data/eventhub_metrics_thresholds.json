@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "service": "Azure Event Hubs",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/event-hubs/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/event-hubs/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 60,
+    "incoming_messages_low": 10000,
+    "savings_factor": 0.25,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "EVENT_HUBS_TIER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "EVENT_HUBS_TIER": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "EVENT_HUBS_LOW_THROUGHPUT_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

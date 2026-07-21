@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/payloads/api-dead-letter.v1.json",
+  "title": "ApiDeadLetterPayload",
+  "description": "Failed API work item after max retries. Partition key: subscription_id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "subscription_id",
+    "original_topic",
+    "original_message",
+    "failure_reason",
+    "retry_count",
+    "failed_at"
+  ],
+  "properties": {
+    "subscription_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Azure subscription GUID (lowercase). Kafka message key."
+    },
+    "original_topic": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Source topic (for example api.cost.requested)."
+    },
+    "original_message": {
+      "type": "object",
+      "description": "Full message that failed processing.",
+      "additionalProperties": true
+    },
+    "failure_reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable failure summary."
+    },
+    "error": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "retriable": { "type": "boolean" }
+      }
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "failed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_service": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

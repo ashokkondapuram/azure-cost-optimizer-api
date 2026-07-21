@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "service": "Postgresql",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "POSTGRESQL_STOPPED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_BURSTABLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_STORAGE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "storage_utilization_pct",
+          "label": "Storage utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "postgresql_storage_high_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_LOW_COMPUTE_UTILIZATION": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_HIGH_COMPUTE_DEMAND": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_MEMORY_PRESSURE": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_STORAGE_EXPANSION": {
+      "required_evidence": [
+        {
+          "signal": "storage_utilization_pct",
+          "label": "Storage utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "postgresql_storage_high_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_IOPS_PRESSURE": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS consumed",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "postgresql_iops_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_CONNECTION_POOL_RISK": {
+      "required_evidence": [
+        {
+          "signal": "connection_count",
+          "label": "Active connections",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "connections",
+          "threshold_key": "postgresql_connection_risk_absolute",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_HA_UNNECESSARY": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_HA_REQUIRED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_READ_REPLICA_ANALYSIS": {
+      "required_evidence": [
+        {
+          "signal": "replication_lag_seconds",
+          "label": "Replication lag",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "seconds",
+          "threshold_key": "postgresql_replication_lag_seconds",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_VERSION_OUTDATED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_BACKUP_RETENTION_REVIEW": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    }
+  }
+}

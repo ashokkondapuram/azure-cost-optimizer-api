@@ -1,0 +1,63 @@
+# Local databases (never commit)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+
+# Presentations and decks (not part of repo)
+*.ppt
+*.pptx
+*.pptm
+slides/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+antenv/
+deps/
+python_packages/
+.python_packages/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Environment
+.env
+.env.local
+docker/.env
+docker/desktop/.env
+docker/desktop/k8s/secret.yaml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
+backend/
+web_ui/
+*.zip
+
+# Local design / Figma WIP (not part of production deploy)
+FIGMA_*.md
+DESIGN_TOKENS_REFERENCE.md
+figma-*.json
+build_figma_*.py
+*.fig
+design/figma/

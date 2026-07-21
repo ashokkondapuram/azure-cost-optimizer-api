@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "service": "Snapshot",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "SNAPSHOT_OLD": {
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SNAPSHOT_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SNAPSHOT_ARCHIVE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

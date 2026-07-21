@@ -1,0 +1,98 @@
+/**
+ * Responsive layout — 600px (mobile), 900px (tablet).
+ * Touch targets min 44px; drawer full-height on small screens.
+ */
+
+:root {
+  --bp-mobile: 600px;
+  --bp-tablet: 900px;
+  --touch-target-min: 44px;
+}
+
+/* Card grids */
+.card-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.card-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card-grid--4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .card-grid,
+  .card-grid--4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .card-grid--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .card-grid,
+  .card-grid--2,
+  .card-grid--4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Touch-friendly controls */
+@media (max-width: 600px) {
+  .btn,
+  .form-input,
+  .form-checkbox__control,
+  .ai-explain-drawer__close,
+  .filter-bar__search input {
+    min-height: var(--touch-target-min);
+  }
+
+  .btn-sm {
+    min-height: var(--touch-target-min);
+    padding: 0.5rem 0.85rem;
+  }
+}
+
+/* AI explain drawer — full viewport height on mobile */
+@media (max-width: 600px) {
+  .ai-explain-drawer__panel {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .ai-explain-drawer__head {
+    padding: 1rem 1rem 0.85rem;
+  }
+
+  .ai-explain-drawer__close {
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+  }
+}
+
+/* Filter bar stacks on narrow screens */
+@media (max-width: 900px) {
+  .filter-bar__primary {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .filter-bar__meta {
+    justify-content: space-between;
+  }
+}

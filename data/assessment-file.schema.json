@@ -1,0 +1,564 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local.ops/schemas/assessment-file.schema.json",
+  "title": "Azure Optimization Assessment File",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "resourceType",
+    "assessmentName",
+    "versionDate",
+    "strategy",
+    "apis",
+    "lowCallCollectionPlan",
+    "pythonAssessment",
+    "runtimeContract",
+    "analyzerContract",
+    "actionOutcomeRules",
+    "recommendationRules",
+    "pricingFilters",
+    "knownLimitations",
+    "documentationSources"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "resourceType": {
+      "type": "string",
+      "minLength": 3
+    },
+    "parentResourceType": {
+      "type": "string"
+    },
+    "childResourceTypes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assessmentName": {
+      "type": "string",
+      "minLength": 3
+    },
+    "versionDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "strategy": {
+      "type": "object",
+      "required": [
+        "mode",
+        "goal",
+        "principles"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "goal": {
+          "type": "string"
+        },
+        "principles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "refreshCadence": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "apis": {
+      "type": "object",
+      "minProperties": 1
+    },
+    "lowCallCollectionPlan": {
+      "type": "object",
+      "required": [
+        "goal",
+        "callReductionPrinciples",
+        "minimumCallFlowPerSubscription",
+        "callBudgetModes"
+      ],
+      "properties": {
+        "goal": {
+          "type": "string"
+        },
+        "callReductionPrinciples": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "minimumCallFlowPerSubscription": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "step",
+              "name",
+              "callPattern"
+            ],
+            "properties": {
+              "step": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "callPattern": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "callBudgetModes": {
+          "type": "object",
+          "required": [
+            "inventoryOnly",
+            "standardAssessment",
+            "deepAssessment"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "pythonAssessment": {
+      "type": "object",
+      "required": [
+        "mode",
+        "manualAssessmentAllowed",
+        "aiAssessmentAllowed",
+        "runtimeMayUseNaturalLanguageConditions",
+        "conditionLanguage",
+        "requiredNormalizedInput",
+        "classificationLevels",
+        "defaultScoring",
+        "evaluationOrder",
+        "deterministicCases"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "manualAssessmentAllowed": {
+          "type": "boolean",
+          "const": false
+        },
+        "aiAssessmentAllowed": {
+          "type": "boolean",
+          "const": false
+        },
+        "runtimeMayUseNaturalLanguageConditions": {
+          "type": "boolean",
+          "const": false
+        },
+        "conditionLanguage": {
+          "type": "object",
+          "required": [
+            "type",
+            "supportedOperators"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "field_operator_value"
+            },
+            "supportedOperators": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        },
+        "requiredNormalizedInput": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "classificationLevels": {
+          "type": "array",
+          "minItems": 5
+        },
+        "defaultScoring": {
+          "type": "object"
+        },
+        "evaluationOrder": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "deterministicCases": {
+          "type": "object"
+        },
+        "dataSource": {
+          "const": "database"
+        },
+        "azureApiCallsAllowed": {
+          "const": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "recommendationRules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "pillar",
+          "severity",
+          "condition",
+          "recommendation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_]+$"
+          },
+          "pillar": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          "condition": {
+            "type": "object",
+            "required": [
+              "evaluator",
+              "pythonCompatible",
+              "aiCompatible",
+              "pythonExpression",
+              "requiredSignalPaths",
+              "type",
+              "conditions"
+            ],
+            "properties": {
+              "evaluator": {
+                "type": "string",
+                "const": "field_operator_value"
+              },
+              "pythonCompatible": {
+                "type": "boolean",
+                "const": true
+              },
+              "aiCompatible": {
+                "type": "boolean",
+                "const": true
+              },
+              "pythonExpression": {
+                "type": "string"
+              },
+              "requiredSignalPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "all",
+                  "any"
+                ]
+              },
+              "conditions": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "field",
+                    "operator",
+                    "value"
+                  ],
+                  "properties": {
+                    "field": {
+                      "type": "string"
+                    },
+                    "operator": {
+                      "type": "string"
+                    },
+                    "value": {}
+                  },
+                  "additionalProperties": true
+                }
+              }
+            },
+            "additionalProperties": true
+          },
+          "recommendation": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "runtimeContract": {
+      "type": "object",
+      "required": [
+        "assessmentMode",
+        "manualAssessmentAllowed",
+        "aiAssessmentAllowed",
+        "naturalLanguageConditionsAllowed",
+        "recommendationRulesUseStructuredConditions"
+      ],
+      "properties": {
+        "assessmentMode": {
+          "const": "db_backed_deterministic_rule_evaluation"
+        },
+        "manualAssessmentAllowed": {
+          "type": "boolean",
+          "const": false
+        },
+        "aiAssessmentAllowed": {
+          "const": false
+        },
+        "naturalLanguageConditionsAllowed": {
+          "type": "boolean",
+          "const": false
+        },
+        "recommendationRulesUseStructuredConditions": {
+          "type": "boolean",
+          "const": true
+        },
+        "runtimeInput": {
+          "const": "normalized_resource_record_from_database"
+        },
+        "azureApiCallsAllowed": {
+          "const": false
+        },
+        "costManagementCallsAllowed": {
+          "const": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "pricingFilters": {
+      "type": "object"
+    },
+    "knownLimitations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "documentationSources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "format": "uri"
+      }
+    },
+    "actionOutcomeRules": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "pillar",
+          "severity",
+          "recommendationAction",
+          "actionOutcome",
+          "condition",
+          "requiredData",
+          "output"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "pillar": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "recommendationAction": {
+            "type": "string",
+            "enum": [
+              "upgrade",
+              "downgrade",
+              "stay",
+              "stop_or_delete",
+              "investigate"
+            ]
+          },
+          "actionOutcome": {
+            "type": "string",
+            "enum": [
+              "upgrade",
+              "downgrade",
+              "stay",
+              "stop_or_delete",
+              "investigate"
+            ]
+          },
+          "condition": {
+            "type": "object"
+          },
+          "requiredData": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "output": {
+            "type": "object",
+            "required": [
+              "message",
+              "action",
+              "recommendationAction",
+              "actionOutcome"
+            ],
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "action": {
+                "type": "string",
+                "enum": [
+                  "upgrade",
+                  "downgrade",
+                  "stay",
+                  "stop_or_delete",
+                  "investigate"
+                ]
+              },
+              "recommendationAction": {
+                "type": "string",
+                "enum": [
+                  "upgrade",
+                  "downgrade",
+                  "stay",
+                  "stop_or_delete",
+                  "investigate"
+                ]
+              },
+              "actionOutcome": {
+                "type": "string",
+                "enum": [
+                  "upgrade",
+                  "downgrade",
+                  "stay",
+                  "stop_or_delete",
+                  "investigate"
+                ]
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "analyzerContract": {
+      "type": "object",
+      "required": [
+        "dataSource",
+        "rulesSource",
+        "azureApiCallsAtRecommendationTimeAllowed",
+        "manualAssessmentAllowed",
+        "aiAssessmentRequired",
+        "naturalLanguageAssessmentAllowed",
+        "deterministicEvaluationRequired",
+        "normalizedInputRecord",
+        "conditionEvaluation",
+        "evaluationOrder",
+        "actionPriority",
+        "outputContract",
+        "dbCompatibility"
+      ],
+      "properties": {
+        "dataSource": {
+          "const": "database_normalized_azure_resource_record"
+        },
+        "rulesSource": {
+          "const": "this_assessment_json_file"
+        },
+        "azureApiCallsAtRecommendationTimeAllowed": {
+          "const": false
+        },
+        "manualAssessmentAllowed": {
+          "const": false
+        },
+        "aiAssessmentRequired": {
+          "const": false
+        },
+        "naturalLanguageAssessmentAllowed": {
+          "const": false
+        },
+        "deterministicEvaluationRequired": {
+          "const": true
+        },
+        "normalizedInputRecord": {
+          "type": "object"
+        },
+        "conditionEvaluation": {
+          "type": "object"
+        },
+        "evaluationOrder": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "actionPriority": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "upgrade",
+              "downgrade",
+              "stay",
+              "stop_or_delete",
+              "investigate"
+            ]
+          }
+        },
+        "outputContract": {
+          "type": "object"
+        },
+        "dbCompatibility": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

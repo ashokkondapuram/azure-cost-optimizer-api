@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "description": "Canonical DB-backed pillar trigger standards referenced by assessment JSON files.",
+  "signal_sources": {
+    "cost": {
+      "source": "assessment_json",
+      "inputs": ["azure_cost_management", "azure_retail_prices", "resource_properties", "azure_monitor_metrics"]
+    },
+    "performance": {
+      "source": "assessment_json",
+      "inputs": ["azure_monitor_metrics", "resource_properties", "threshold_defaults"]
+    },
+    "governance": {
+      "source": "assessment_json",
+      "inputs": ["region_governance_policy", "resource_properties", "tags"]
+    },
+    "reliability": {
+      "source": "azure_advisor",
+      "inputs": ["advisor_recommendations"],
+      "advisor_categories": ["HighAvailability", "OperationalExcellence"]
+    },
+    "security": {
+      "source": "azure_advisor",
+      "inputs": ["advisor_recommendations"],
+      "advisor_categories": ["Security"]
+    }
+  },
+  "threshold_defaults": {
+    "cost": {
+      "monthly_cost_increase_pct": 20,
+      "daily_cost_anomaly_pct": 15,
+      "weekly_cost_anomaly_pct": 10,
+      "unit_cost_increase_pct": 10,
+      "idle_days": 14,
+      "idle_days_with_cost": 14,
+      "region_price_variance_pct": 15,
+      "premium_underutilized_incoming_messages_max": 5000,
+      "premium_cpu_utilization_max_pct": 30,
+      "premium_memory_utilization_max_pct": 40
+    },
+    "performance": {
+      "cpu_saturation_pct": 80,
+      "memory_saturation_pct": 85,
+      "disk_iops_saturation_pct": 80,
+      "disk_throughput_saturation_pct": 80,
+      "latency_p95_ms": 500,
+      "queue_depth_high": 1000,
+      "throttle_events_min": 1,
+      "server_errors_min": 1
+    },
+    "reliability": {
+      "deadletter_messages_min": 1,
+      "deprecated_sku_flag": true,
+      "single_az_risk": true,
+      "missing_backup_flag": true,
+      "days_since_activity_idle": 14
+    },
+    "security": {
+      "public_access_blocked": false,
+      "encryption_required": true,
+      "critical_security_finding": true,
+      "high_security_finding": true
+    }
+  },
+  "pillars": {
+    "cost": {
+      "triggers": [
+        {
+          "id": "cost_data_missing",
+          "signal": "signals.missingCostData",
+          "operator": "is_true",
+          "severity": "medium",
+          "action": "investigate",
+          "result_code": "cost_data_missing"
+        },
+        {
+          "id": "cost_monthly_increase",
+          "signal": "cost.monthlyCostIncreasePct",
+          "operator": "gte",
+          "value": 20,
+          "severity": "medium",
+          "action": "investigate",
+          "result_code": "cost_monthly_increase"
+        },
+        {
+          "id": "cost_anomaly_detected",
+          "signal": "signals.costAnomalyDetected",
+          "operator": "is_true",
+          "severity": "medium",
+          "action": "investigate",
+          "result_code": "action_investigate_cost_anomaly"
+        },
+        {
+          "id": "cost_idle_with_spend",
+          "signal": "signals.idleDays",
+          "operator": "gte",
+          "value": 14,
+          "severity": "low",
+          "action": "stop_or_delete",
+          "result_code": "best_no_recent_activity_with_cost"
+        },
+        {
+          "id": "cost_region_price_review",
+          "signal": "signals.regionPriceVariancePct",
+          "operator": "gte",
+          "value": 15,
+          "severity": "low",
+          "action": "investigate",
+          "result_code": "best_region_price_review"
+        },
+        {
+          "id": "cost_premium_underutilized",
+          "signal": "signals.premiumUnderutilized",
+          "operator": "is_true",
+          "severity": "medium",
+          "action": "downgrade",
+          "result_code": "servicebus_premium_rightsize"
+        }
+      ]
+    },
+    "performance": {
+      "triggers": [
+        {
+          "id": "perf_metrics_missing",
+          "signal": "signals.missingRequiredMetrics",
+          "operator": "is_true",
+          "severity": "medium",
+          "action": "investigate",
+          "result_code": "metric_data_missing"
+        },
+        {
+          "id": "perf_throttling",
+          "signal": "signals.throttlingDetected",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "upgrade",
+          "result_code": "perf_throttling"
+        },
+        {
+          "id": "perf_saturation_cpu",
+          "signal": "signals.cpuSaturation",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "upgrade",
+          "result_code": "perf_cpu_saturation"
+        },
+        {
+          "id": "perf_saturation_memory",
+          "signal": "signals.memorySaturation",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "upgrade",
+          "result_code": "perf_memory_saturation"
+        },
+        {
+          "id": "perf_servicebus_throttle_errors",
+          "signal": "signals.throttledOrServerErrors",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "upgrade",
+          "result_code": "servicebus_throttle_or_errors"
+        }
+      ]
+    },
+    "reliability": {
+      "triggers": [
+        {
+          "id": "rel_high_finding",
+          "signal": "signals.anyHighReliabilityFinding",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "investigate",
+          "result_code": "rel_high_finding"
+        },
+        {
+          "id": "rel_deprecated_sku",
+          "signal": "signals.deprecatedSkuOrVersion",
+          "operator": "is_true",
+          "severity": "medium",
+          "action": "upgrade",
+          "result_code": "best_deprecated_sku_or_version"
+        },
+        {
+          "id": "rel_servicebus_deadletter",
+          "signal": "signals.deadletterMessages",
+          "operator": "gt",
+          "value": 0,
+          "severity": "medium",
+          "action": "investigate",
+          "result_code": "servicebus_deadletter_high"
+        },
+        {
+          "id": "rel_single_az",
+          "signal": "signals.singleAzRisk",
+          "operator": "is_true",
+          "severity": "medium",
+          "action": "investigate",
+          "result_code": "rel_single_az_risk"
+        }
+      ]
+    },
+    "security": {
+      "triggers": [
+        {
+          "id": "sec_critical_finding",
+          "signal": "signals.anyCriticalSecurityFinding",
+          "operator": "is_true",
+          "severity": "critical",
+          "action": "investigate",
+          "result_code": "sec_critical_finding"
+        },
+        {
+          "id": "sec_high_finding",
+          "signal": "signals.anyHighSecurityFinding",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "investigate",
+          "result_code": "sec_high_finding"
+        },
+        {
+          "id": "sec_public_access",
+          "signal": "signals.publicAccessEnabled",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "investigate",
+          "result_code": "sec_public_access"
+        },
+        {
+          "id": "sec_encryption_gap",
+          "signal": "signals.encryptionAtRestDisabled",
+          "operator": "is_true",
+          "severity": "high",
+          "action": "upgrade",
+          "result_code": "sec_encryption_gap"
+        }
+      ]
+    }
+  },
+  "service_overrides": {
+    "Microsoft.ServiceBus/namespaces": {
+      "cost": [
+        "servicebus_premium_rightsize",
+        "servicebus_idle_namespace",
+        "best_no_recent_activity_with_cost"
+      ],
+      "performance": [
+        "servicebus_throttle_or_errors"
+      ],
+      "reliability": [
+        "servicebus_deadletter_high",
+        "best_deprecated_sku_or_version"
+      ],
+      "security": [
+        "sec_public_access"
+      ],
+      "metric_thresholds": {
+        "incoming_messages_idle_max": 100,
+        "deadletter_messages_min": 1,
+        "server_errors_min": 1,
+        "throttled_requests_min": 1,
+        "active_messages_high": 10000
+      }
+    }
+  }
+}

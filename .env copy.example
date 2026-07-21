@@ -1,0 +1,232 @@
+# CostOptimizeRecommender — environment configuration template
+#
+# Local dev (bare metal / uvicorn):
+#   cp .env.example .env
+#
+# Docker Desktop:
+#   cp docker/.env.example docker/.env
+#   cp docker/desktop/.env.example docker/desktop/.env
+#   # or: ./docker/build.sh up  (auto-creates docker/.env from example)
+#
+# Never commit .env with real secrets.
+
+# ── Core ─────────────────────────────────────────────────────────────────────
+APP_ENV=development
+LOG_LEVEL=INFO
+DATABASE_URL=sqlite:///./azurefinops.db
+REQUEST_TIMEOUT_SECONDS=60
+CORS_ALLOWED_ORIGINS=http://127.0.0.1:3000,http://localhost:3000
+
+# ── Database pool (PostgreSQL only; ignored for SQLite) ──────────────────────
+# Per microservice — 6 services share one Postgres; keep totals under max_connections.
+DATABASE_POOL_SIZE=8
+DATABASE_MAX_OVERFLOW=12
+DATABASE_POOL_TIMEOUT_SEC=30
+DATABASE_POOL_RECYCLE_SEC=1800
+# SUBSCRIPTION_IDS_CACHE_TTL_SEC=45
+
+# ── Auth ───────────────────────────────────────────────────────────────────
+AUTH_ENABLED=true
+JWT_SECRET=
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=
+VIEWER_USERNAME=viewer
+VIEWER_PASSWORD=
+AUTH_USER_CACHE_SECONDS=60
+SESSION_IDLE_MINUTES=1
+# JWT_EXPIRE_HOURS=8
+# JWT_EXPIRE_MINUTES=
+
+# ── Kubernetes agent ─────────────────────────────────────────────────────────
+# K8S_AGENT_TOKEN=
+# REQUIRE_K8S_AGENT_TOKEN=false
+
+# ── Feature flags (set FEATURE_<NAME>=false to disable) ──────────────────────
+# FEATURE_COST_EXPORT=true
+# FEATURE_ADVISOR_SYNC=true
+# FEATURE_ANOMALY_DETECTION=true
+
+# ── Resource enrichment freshness ────────────────────────────────────────────
+ENRICHMENT_MAX_AGE_HOURS=6
+
+# ── Post-inventory enrichment orchestration ──────────────────────────────────
+# Runs after inventory sync: cost → metrics → advisors → analysis → enrichment tables
+SYNC_ENRICH_ENABLED=true
+SYNC_ENRICH_ASYNC=true
+SYNC_ENRICH_COST=true
+SYNC_ENRICH_METRICS=true
+SYNC_ENRICH_ADVISORS=true
+SYNC_ENRICH_ANALYSIS=true
+SYNC_ENRICH_TIMEOUT_SEC=300
+
+# ── Metrics sync worker ──────────────────────────────────────────────────────
+METRICS_SYNC_INTERVAL_MINUTES=30
+METRICS_SYNC_STARTUP_DELAY_SEC=120
+METRICS_SYNC_WORKER_ENABLED=true
+# Legacy alias: METRICS_SYNC_INTERVAL_HOURS=0.5
+
+# ── Azure Monitor metrics fetch (analysis / inventory) ─────────────────────
+ANALYSIS_MONITOR_METRICS_TIMESPAN=P7D
+ANALYSIS_MONITOR_METRICS_LIMIT_PER_TYPE=0
+ANALYSIS_MONITOR_METRICS_WORKERS=6
+ANALYSIS_MONITOR_METRICS_TIMEOUT_SEC=120
+# Sync pipeline metrics — shorter timeouts, no retries, lower concurrency
+SYNC_MONITOR_METRICS_TIMEOUT_SEC=30
+SYNC_MONITOR_METRICS_MAX_RETRIES=0
+SYNC_MONITOR_METRICS_MAX_WORKERS=3
+SYNC_MONITOR_METRICS_LIMIT_PER_TYPE=0
+# Legacy aliases (still supported):
+# ANALYSIS_VM_METRICS_TIMESPAN=P7D
+# ANALYSIS_VM_METRICS_LIMIT=0
+# ANALYSIS_VM_METRICS_TIMEOUT_SEC=120
+
+# ── Azure credentials (optional for local — Settings UI can also store) ──────
+# AZURE_AUTH_MODE=default
+# AZURE_TENANT_ID=
+# AZURE_CLIENT_ID=
+# AZURE_CLIENT_SECRET=
+# AZURE_DEFAULT_SUBSCRIPTION_ID=
+
+# ── Scheduled operations / workers ───────────────────────────────────────────
+# Per-microservice continuous sync (enable in Docker for platform-* services)
+# SCHEDULED_OPERATIONS_ENABLED=true
+COST_SYNC_INTERVAL_MINUTES=60
+COST_SYNC_STARTUP_DELAY_SEC=0
+INVENTORY_SYNC_INTERVAL_MINUTES=15
+INVENTORY_SYNC_STARTUP_DELAY_SEC=60
+ANALYSIS_SYNC_INTERVAL_MINUTES=10
+ANALYSIS_SYNC_STARTUP_DELAY_SEC=180
+# SCHEDULED_SYNC_HOURS=24
+# SCHEDULED_ANALYSIS_HOURS=6
+# SCHEDULED_PIPELINE_HOURS=6
+# SCHEDULED_ENGINE_SCORING_HOURS=3
+# SCHEDULED_STARTUP_DELAY_SECONDS=60
+# SCHEDULED_COMPONENT_SYNC_ENABLED=true
+# SCHEDULED_COMPONENT_SYNC_TICK_MINUTES=5
+# RESOURCE_DISCOVERY_WORKER_ENABLED=true
+# RESOURCE_DISCOVERY_HOURS=6
+# COST_EXPLORER_WORKER_ENABLED=true   # scheduled refresh; on-demand sync always works
+# COST_REFRESH_HOURS=2
+# RETAIL_PRICE_SYNC_ENABLED=true          # run SKU price backfill after scheduled cost sync
+# RETAIL_PRICE_DB_TTL_HOURS=168           # cache TTL for resource_sku_pricing rows
+# RETAIL_PRICE_QUERY_DELAY_SEC=0.5        # throttle between Azure Retail Prices API calls
+# MAINTENANCE_WORKER_ENABLED=true
+# MAINTENANCE_REFRESH_HOURS=2
+
+# ── Redpanda / Kafka API (microservices sync pipeline) ───────────────────────
+# Enable async job queue between platform-* services (inventory → cost → metrics → analysis).
+# Requires MICROSERVICES_ONLY=1 or MICROSERVICES_ENABLED=1. Falls back to in-thread workers when false.
+# KAFKA_ENABLED=false
+# KAFKA_BOOTSTRAP_SERVERS=127.0.0.1:9092
+# KAFKA_SCHEMA_REGISTRY_URL=http://127.0.0.1:18081
+# KAFKA_SCHEMA_REGISTRY_ENABLED=true
+# KAFKA_SCHEMA_VALIDATION_ENABLED=true
+# KAFKA_SCHEMA_VALIDATION_STRICT=false
+# KAFKA_UI_PORT=8085
+# KAFKA_SCHEMA_REGISTRY_PORT=18081
+# REDPANDA_CONTAINER=costopt-redpanda
+# KAFKA_CONNECT_RETRY_DELAY_SEC=5.0
+# KAFKA_CONNECT_RETRY_MAX_DELAY_SEC=60.0
+# KAFKA_CLIENT_ID=costoptimizer
+# KAFKA_CONSUMER_GROUP_PREFIX=costoptimizer
+# KAFKA_SECURITY_PROTOCOL=PLAINTEXT
+# KAFKA_AUTO_OFFSET_RESET=earliest
+# KAFKA_POLL_TIMEOUT_SEC=1.0
+# KAFKA_TOPIC_PARTITIONS=6
+# KAFKA_TOPIC_REPLICATION_FACTOR=1
+# KAFKA_TOPIC_RETENTION_MS=604800000
+# KAFKA_TOPICS_MANIFEST=/app/data/kafka-topics.yaml
+# KAFKA_SCHEMAS_MANIFEST=/app/data/kafka/schemas/schemas-manifest.yaml
+# KAFKA_DATA_PIPELINE_ENABLED=true
+# KAFKA_ENSURE_TOPICS_ON_STARTUP=true
+# KAFKA_MESSAGE_MAX_BYTES=20971520
+# KAFKA_CHUNK_TARGET_BYTES=768000
+# KAFKA_PUBLISH_MAX_RETRIES=3
+# KAFKA_PUBLISH_RETRY_BACKOFF_SEC=1.0
+# KAFKA_PUBLISH_DELIVERY_TIMEOUT_SEC=10.0
+
+# ── Kafka API throttling (Azure rate limits via api.* topics) ────────────────
+# Fan out sync stages into rate-limited api.cost|metrics|inventory.requested jobs.
+# Requires KAFKA_ENABLED=true, MICROSERVICES_ONLY=1, KAFKA_DATA_PIPELINE_ENABLED=true.
+# KAFKA_API_THROTTLE_ENABLED=true
+# KAFKA_API_DLQ_ENABLED=true
+# KAFKA_API_COST_RATE_PER_SEC=2
+# KAFKA_API_COST_BURST=4
+# KAFKA_API_COST_WORKER_CONCURRENCY=3
+# KAFKA_API_METRICS_RATE_PER_SEC=3
+# KAFKA_API_METRICS_BURST=6
+# KAFKA_API_METRICS_WORKER_CONCURRENCY=3
+# KAFKA_API_INVENTORY_RATE_PER_SEC=4
+# KAFKA_API_INVENTORY_BURST=8
+# KAFKA_API_INVENTORY_WORKER_CONCURRENCY=4
+# KAFKA_API_AGGREGATE_TIMEOUT_SEC=900
+
+# ── Analysis engine ──────────────────────────────────────────────────────────
+# ANALYSIS_ENGINE_WORKERS=6
+# ANALYSIS_JOB_MAX_RUNTIME_HOURS=4
+# ANALYSIS_JOB_MAX_QUEUE_MINUTES=30
+# FULL_ANALYSIS_COOLDOWN_HOURS=24
+ASSESSMENT_PIPELINE_ENABLED=true
+# LEGACY_SUB_ENGINES_ENABLED=true
+
+# ── ARM sync parallelism ─────────────────────────────────────────────────────
+# ARM_SYNC_WORKERS=6
+# ARM_ENRICH_WORKERS=4
+# ARM_VM_INSTANCE_VIEW_WORKERS=4
+# ARM_VMSS_INSTANCE_VIEW_WORKERS=4
+
+# ── Rate limiting ────────────────────────────────────────────────────────────
+# RATE_LIMIT_REQUESTS=60
+# RATE_LIMIT_WINDOW_SECONDS=60
+# RATE_LIMIT_EXPENSIVE_MAX=10
+# RATE_LIMIT_EXPENSIVE_PATHS=/analysis/run,/sync/start
+
+# ── Cost export blob storage ─────────────────────────────────────────────────
+# COST_EXPORT_ACCOUNT_NAME=
+# COST_EXPORT_ACCOUNT_KEY=
+# COST_EXPORT_CONTAINER=cost
+# COST_EXPORT_PREFIX=
+# COST_EXPORT_MAX_CACHE_ROWS=25000
+# COST_EXPORT_CACHE_TTL_SEC=1800
+
+# ── Cost Management API throttling ───────────────────────────────────────────
+# COST_QUERY_DELAY_SEC=10
+# COST_RG_BATCH_SIZE=5
+# COST_RT_BATCH_SIZE=8
+# COST_PAGE_DELAY_SEC=4
+# COST_429_COOLDOWN_SEC=45
+# COST_CACHE_HISTORICAL_TTL_SEC=86400
+# COST_CACHE_MTD_TTL_SEC=900
+
+# ── Azure OpenAI (Settings UI can also store; env overrides stale DB secrets) ─
+# AI_AUTH_MODE=api_key
+# OPENAI_KEY=
+# OPENAI_API_KEY=
+# OPENAI_ENDPOINT=
+# OPENAI_DEPLOYMENT=gpt-4o-mini
+# OPENAI_API_VERSION=2024-05-01-preview
+
+# ── Notifications ────────────────────────────────────────────────────────────
+# EMAIL_BACKEND=smtp
+# SMTP_HOST=localhost
+# SMTP_PORT=587
+# WEBHOOK_URL=
+# WEBHOOK_TYPE=generic
+# WEBHOOK_TIMEOUT_SEC=10
+
+# ── Microservices (local split stack) ────────────────────────────────────────
+# MICROSERVICES_ENABLED=1
+# MONOLITH_URL=http://127.0.0.1:8000
+# GATEWAY_URL=http://127.0.0.1:8080
+# GATEWAY_UPSTREAM_TIMEOUT_SECONDS=120
+# GATEWAY_OPTIMIZE_TIMEOUT_SECONDS=300
+
+# ── Production (Azure App Service) ───────────────────────────────────────────
+# Required in production:
+#   APP_ENV=production
+#   DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db>?sslmode=require
+#   JWT_SECRET=<random-32+-char-secret>
+#   SETTINGS_ENCRYPTION_KEY=<fernet-key>
+#   CORS_ALLOWED_ORIGINS=https://<app-name>.azurewebsites.net
+#   ADMIN_PASSWORD=<strong-password>
+#   K8S_AGENT_TOKEN=<shared-secret>

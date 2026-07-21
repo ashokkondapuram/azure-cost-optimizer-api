@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/payloads/pipeline-status.v1.json",
+  "title": "SyncPipelineStatusPayload",
+  "description": "Payload for sync.pipeline.status progress events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stage", "progress_pct", "status"],
+  "properties": {
+    "stage": {
+      "type": "string",
+      "enum": ["inventory", "cost", "metrics", "analysis"]
+    },
+    "progress_pct": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "done", "skipped", "failed"]
+    },
+    "error": {
+      "type": ["string", "null"]
+    }
+  }
+}

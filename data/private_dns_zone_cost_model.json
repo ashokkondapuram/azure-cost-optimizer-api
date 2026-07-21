@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "service": "Azure Private DNS Zones",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/dns/private-dns-overview",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-privatednszones-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/dns/"
+  },
+  "pricing": {
+    "zone_monthly_usd": 0.50,
+    "queries_per_million_usd": 0.40
+  },
+  "optimization_thresholds": {
+    "zero_query_days": 90,
+    "max_default_record_sets": 2,
+    "evaluation_window_days": 90,
+    "min_monthly_savings_usd": 1.0
+  }
+}

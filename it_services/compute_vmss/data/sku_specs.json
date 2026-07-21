@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "service_id": "compute-vmss",
+  "canonical_type": "compute/vmss",
+  "arm_type": "Microsoft.Compute/virtualMachineScaleSets",
+  "display_name": "Virtual machine scale set",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/virtual-machines/",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-compute-virtualmachines-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/virtual-machines/linux/"
+  },
+  "skus": {
+    "Standard_D2s_v3": {
+      "vcpus": 2,
+      "memory_gb": 8
+    },
+    "Standard_D4s_v3": {
+      "vcpus": 4,
+      "memory_gb": 16
+    },
+    "family_burstable": {
+      "cpu_target_pct_min": 20,
+      "cpu_target_pct_max": 40
+    },
+    "family_general": {
+      "cpu_target_pct_min": 40,
+      "cpu_target_pct_max": 60
+    }
+  },
+  "pricing": {
+    "billing_model": "per_minute",
+    "currency": "USD",
+    "instance_hourly_usd_baseline": 0.096,
+    "egress_cost_per_gb_usd": 0.087,
+    "regional_multiplier_min": 1.0,
+    "regional_multiplier_max": 2.0,
+    "reserved_one_year_savings_pct": 0.3,
+    "reserved_three_year_savings_pct": 0.6,
+    "spot_savings_pct": 0.8
+  },
+  "optimization_thresholds": {
+    "cpu_idle_pct": 5.0,
+    "cpu_downsize_pct": 20.0,
+    "cpu_upsize_pct": 80.0,
+    "memory_free_pct_min": 10.0,
+    "memory_downsize_used_pct_max": 30.0,
+    "disk_queue_depth_contention": 5.0,
+    "disk_read_bps_high": 209715200,
+    "disk_write_bps_high": 104857600,
+    "network_egress_bytes_monthly": 10995116277760,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5.0
+  },
+  "synced_at": "2026-07-10T17:49:08.972358+00:00"
+}

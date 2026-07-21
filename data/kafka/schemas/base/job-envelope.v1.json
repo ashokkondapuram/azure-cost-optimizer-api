@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/job-envelope.v1.json",
+  "title": "SyncPipelineJobEnvelope",
+  "description": "Canonical async job envelope for the microservices sync pipeline.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "job_id",
+    "job_type",
+    "subscription_id",
+    "pipeline_id",
+    "payload",
+    "created_at",
+    "source_service",
+    "idempotency_key"
+  ],
+  "properties": {
+    "job_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique job identifier."
+    },
+    "job_type": {
+      "type": "string",
+      "enum": [
+        "sync.inventory",
+        "sync.cost",
+        "sync.metrics",
+        "sync.analysis",
+        "pipeline.status",
+        "pipeline.completed",
+        "data.inventory.synced",
+        "data.cost.synced",
+        "data.metrics.synced",
+        "data.analysis.completed",
+        "api.cost",
+        "api.cost.completed",
+        "api.metrics",
+        "api.metrics.completed",
+        "api.inventory",
+        "api.inventory.completed",
+        "api.dead-letter"
+      ]
+    },
+    "subscription_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Azure subscription GUID (lowercase)."
+    },
+    "pipeline_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Full sync pipeline run identifier."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Stage-specific payload; see per-topic schema variants."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO-8601 timestamp."
+    },
+    "source_service": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Platform service that produced the message."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Dedup key, typically {pipeline_id}:{job_type}."
+    }
+  }
+}

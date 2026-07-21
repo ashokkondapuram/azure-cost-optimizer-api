@@ -1,0 +1,31 @@
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import './index.css';
+import './styles/zafin-brand-tokens.css';
+import './styles/typography-system.css';
+import './styles/components.css';
+import './styles/print.css';
+import './styles/resource-inventory-shell.css';
+import './styles/scroll-shell-layout.css';
+import './styles/savings-scope.css';
+import './styles/advanced.css';
+import './styles/wiz-shell.css';
+import './styles/wiz-charts.css';
+import './styles/zafin-typography.css';
+import './styles/chart-tokens.css';
+import './styles/animations.css';
+import './styles/responsive.css';
+import './styles/zafin-dark-shell.css';
+import './styles/sidebar-rail-v2.css';
+import './styles/dashboard-v2.css';
+import './styles/cost-explorer-v2.css';
+import './styles/action-centre-v2.css';
+import './styles/insight-canvas-v2.css';
+import './disks/disks.css';
+import App from './App';
+import { installChunkLoadRecovery } from './utils/chunkLoadRecovery';
+
+installChunkLoadRecovery();
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<React.StrictMode><App /></React.StrictMode>);

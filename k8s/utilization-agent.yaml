@@ -1,0 +1,117 @@
+# Lightweight FinOps utilization agent — apply after building the image (see docker/README.md)
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finops-agent
+  labels:
+    app.kubernetes.io/name: finops-utilization-agent
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: utilization-agent
+  namespace: finops-agent
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: finops-utilization-agent
+rules:
+  - apiGroups: [""]
+    resources: ["nodes", "pods", "namespaces"]
+    verbs: ["get", "list"]
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["nodes", "pods"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: finops-utilization-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: finops-utilization-agent
+subjects:
+  - kind: ServiceAccount
+    name: utilization-agent
+    namespace: finops-agent
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: utilization-agent-secret
+  namespace: finops-agent
+type: Opaque
+stringData:
+  # Optional — must match K8S_AGENT_TOKEN on the API if set
+  API_TOKEN: ""
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: utilization-agent-config
+  namespace: finops-agent
+data:
+  # Base URL of the FinOps API (no trailing slash)
+  API_URL: "https://your-finops-api.example.com"
+  BATCH_ENDPOINT: "/k8s/snapshot"
+  CLUSTER_NAME: "my-aks-cluster"
+  POLL_INTERVAL: "60"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: utilization-agent
+  namespace: finops-agent
+  labels:
+    app: utilization-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: utilization-agent
+  template:
+    metadata:
+      labels:
+        app: utilization-agent
+    spec:
+      serviceAccountName: utilization-agent
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        fsGroup: 10001
+      containers:
+        - name: agent
+          image: finops/k8s-agent:1.0
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: utilization-agent-config
+            - secretRef:
+                name: utilization-agent-secret
+                optional: true
+          resources:
+            requests:
+              cpu: 25m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          livenessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - test -f /tmp/agent-heartbeat && find /tmp/agent-heartbeat -mmin -5 | grep -q .
+            initialDelaySeconds: 90
+            periodSeconds: 60
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - test -f /tmp/agent-heartbeat
+            initialDelaySeconds: 30
+            periodSeconds: 30

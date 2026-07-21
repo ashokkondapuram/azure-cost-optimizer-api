@@ -1,0 +1,2 @@
+# Microservices development dependencies (install after requirements.txt)
+-e packages/costoptimizer-core

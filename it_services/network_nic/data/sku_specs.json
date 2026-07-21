@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "service_id": "network-nic",
+  "canonical_type": "network/nic",
+  "arm_type": "Microsoft.Network/networkInterfaces",
+  "display_name": "Network interface",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {},
+  "skus": {
+    "Standard": {
+      "accelerated_networking": "optional"
+    }
+  },
+  "pricing": {
+    "billing_model": "included_with_vm",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.334016+00:00"
+}

@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "service_id": "messaging-eventhub",
+  "canonical_type": "messaging/eventhub",
+  "arm_type": "Microsoft.EventHub/namespaces",
+  "display_name": "Event Hubs namespace",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Basic": {
+      "partitions": 32,
+      "retention_days": 1,
+      "throughput_units": 1
+    },
+    "Standard": {
+      "partitions": 32,
+      "retention_days": 7,
+      "throughput_units": 20
+    },
+    "Premium": {
+      "partitions": 100,
+      "retention_days": 90,
+      "processing_units": true
+    }
+  },
+  "pricing": {
+    "billing_model": "throughput_unit",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.177317+00:00"
+}

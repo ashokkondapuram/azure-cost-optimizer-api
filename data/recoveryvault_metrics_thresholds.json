@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "service": "Recovery Services vault",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/backup/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/backup/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 75,
+    "savings_factor": 0.2,
+    "growth_savings_factor": 0.25,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "KEYVAULT_SOFT_DELETE_OFF": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_PROTECTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_PREMIUM_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_HIGH_OPS_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BACKUP_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BACKUP_RETENTION": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BACKUP_VAULT_GROWTH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

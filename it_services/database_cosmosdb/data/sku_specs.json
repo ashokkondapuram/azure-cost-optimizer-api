@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "service_id": "database-cosmosdb",
+  "canonical_type": "database/cosmosdb",
+  "arm_type": "Microsoft.DocumentDB/databaseAccounts",
+  "display_name": "Cosmos DB account",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "ProvisionedThroughput": {
+      "mode": "provisioned",
+      "min_ru": 400
+    },
+    "Serverless": {
+      "mode": "serverless"
+    },
+    "Autoscale": {
+      "mode": "autoscale",
+      "max_ru": 4000
+    }
+  },
+  "pricing": {
+    "billing_model": "request_units",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.017010+00:00"
+}

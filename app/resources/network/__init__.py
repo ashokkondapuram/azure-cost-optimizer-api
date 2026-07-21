@@ -1,0 +1,1 @@
+"""Network resource definitions."""

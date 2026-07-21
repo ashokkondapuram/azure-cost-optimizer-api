@@ -1,0 +1,618 @@
+# CostOptimizeRecommender — Docker Desktop microservices stack
+#
+# Usage:
+#   cp docker/.env.example docker/.env
+#   ./docker/build.sh up
+#
+# Profiles (set COMPOSE_PROFILES in docker/.env):
+#   dev   — platform microservices + React dev server (default)
+#   prod  — production nginx frontend + gateway
+
+name: costoptimize-desktop
+
+# Dev bind mounts (repo-relative paths resolve from docker/desktop/)
+x-frontend-dev-volumes: &frontend-dev-volumes
+  - ../../frontend/package.json:/app/package.json:ro
+  - ../../frontend/package-lock.json:/app/package-lock.json:ro
+  - ../../frontend/src:/app/src
+  - ../../frontend/public:/app/public
+  - ../../data:/app/data:ro
+  - ./frontend/setupProxy.docker.js:/app/src/setupProxy.js:ro
+  - frontend_node_modules:/app/node_modules
+
+x-backend-env: &backend-env
+  APP_ENV: ${APP_ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  AUTH_ENABLED: ${AUTH_ENABLED:-true}
+  JWT_SECRET: ${JWT_SECRET:-dev-only-change-me-docker-local-32chars}
+  ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+  VIEWER_USERNAME: ${VIEWER_USERNAME:-viewer}
+  VIEWER_PASSWORD: ${VIEWER_PASSWORD:-viewer}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}
+  REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-60}
+  DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-8}
+  DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-12}
+  DATABASE_POOL_TIMEOUT_SEC: ${DATABASE_POOL_TIMEOUT_SEC:-30}
+  DATABASE_POOL_RECYCLE_SEC: ${DATABASE_POOL_RECYCLE_SEC:-1800}
+  AUTH_USER_CACHE_SECONDS: ${AUTH_USER_CACHE_SECONDS:-60}
+  SESSION_IDLE_MINUTES: ${SESSION_IDLE_MINUTES:-1}
+  ENRICHMENT_MAX_AGE_HOURS: ${ENRICHMENT_MAX_AGE_HOURS:-6}
+  COST_SYNC_INTERVAL_MINUTES: ${COST_SYNC_INTERVAL_MINUTES:-60}
+  COST_SYNC_STARTUP_DELAY_SEC: ${COST_SYNC_STARTUP_DELAY_SEC:-0}
+  METRICS_SYNC_INTERVAL_MINUTES: ${METRICS_SYNC_INTERVAL_MINUTES:-30}
+  METRICS_SYNC_STARTUP_DELAY_SEC: ${METRICS_SYNC_STARTUP_DELAY_SEC:-120}
+  METRICS_SYNC_WORKER_ENABLED: ${METRICS_SYNC_WORKER_ENABLED:-true}
+  INVENTORY_SYNC_INTERVAL_MINUTES: ${INVENTORY_SYNC_INTERVAL_MINUTES:-15}
+  INVENTORY_SYNC_STARTUP_DELAY_SEC: ${INVENTORY_SYNC_STARTUP_DELAY_SEC:-60}
+  ANALYSIS_SYNC_INTERVAL_MINUTES: ${ANALYSIS_SYNC_INTERVAL_MINUTES:-10}
+  ANALYSIS_SYNC_STARTUP_DELAY_SEC: ${ANALYSIS_SYNC_STARTUP_DELAY_SEC:-180}
+  ANALYSIS_MONITOR_METRICS_TIMESPAN: ${ANALYSIS_MONITOR_METRICS_TIMESPAN:-P7D}
+  ANALYSIS_MONITOR_METRICS_LIMIT_PER_TYPE: ${ANALYSIS_MONITOR_METRICS_LIMIT_PER_TYPE:-0}
+  ANALYSIS_MONITOR_METRICS_WORKERS: ${ANALYSIS_MONITOR_METRICS_WORKERS:-6}
+  ANALYSIS_MONITOR_METRICS_TIMEOUT_SEC: ${ANALYSIS_MONITOR_METRICS_TIMEOUT_SEC:-120}
+  SYNC_MONITOR_METRICS_TIMEOUT_SEC: ${SYNC_MONITOR_METRICS_TIMEOUT_SEC:-30}
+  SYNC_MONITOR_METRICS_MAX_RETRIES: ${SYNC_MONITOR_METRICS_MAX_RETRIES:-0}
+  SYNC_MONITOR_METRICS_MAX_WORKERS: ${SYNC_MONITOR_METRICS_MAX_WORKERS:-3}
+  SYNC_MONITOR_METRICS_LIMIT_PER_TYPE: ${SYNC_MONITOR_METRICS_LIMIT_PER_TYPE:-0}
+  METRICS_SYNC_TIMEOUT_SEC: ${METRICS_SYNC_TIMEOUT_SEC:-30}
+  METRICS_SYNC_MAX_RETRIES: ${METRICS_SYNC_MAX_RETRIES:-0}
+  METRICS_SYNC_MAX_WORKERS: ${METRICS_SYNC_MAX_WORKERS:-3}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-costoptimizer}:${POSTGRES_PASSWORD:-costoptimizer}@postgres:5432/${POSTGRES_DB:-costoptimizer}?sslmode=disable
+  KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
+  KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-redpanda:9092}
+  KAFKA_CLIENT_ID: ${KAFKA_CLIENT_ID:-costoptimizer}
+  KAFKA_CONSUMER_GROUP_PREFIX: ${KAFKA_CONSUMER_GROUP_PREFIX:-costoptimizer}
+  KAFKA_SCHEMA_REGISTRY_URL: ${KAFKA_SCHEMA_REGISTRY_URL:-http://redpanda:8081}
+  KAFKA_SCHEMA_REGISTRY_ENABLED: ${KAFKA_SCHEMA_REGISTRY_ENABLED:-true}
+  KAFKA_SCHEMA_VALIDATION_ENABLED: ${KAFKA_SCHEMA_VALIDATION_ENABLED:-true}
+  KAFKA_DATA_PIPELINE_ENABLED: ${KAFKA_DATA_PIPELINE_ENABLED:-true}
+  KAFKA_TOPICS_MANIFEST: /app/data/kafka-topics.yaml
+  KAFKA_SCHEMAS_MANIFEST: /app/data/kafka/schemas/schemas-manifest.yaml
+  KAFKA_SCHEMAS_DIR: /app/data/kafka/schemas
+  KAFKA_ENSURE_TOPICS_ON_STARTUP: ${KAFKA_ENSURE_TOPICS_ON_STARTUP:-true}
+  KAFKA_MESSAGE_MAX_BYTES: ${KAFKA_MESSAGE_MAX_BYTES:-20971520}
+  KAFKA_CHUNK_TARGET_BYTES: ${KAFKA_CHUNK_TARGET_BYTES:-768000}
+  KAFKA_PUBLISH_MAX_RETRIES: ${KAFKA_PUBLISH_MAX_RETRIES:-3}
+  KAFKA_PUBLISH_RETRY_BACKOFF_SEC: ${KAFKA_PUBLISH_RETRY_BACKOFF_SEC:-1.0}
+  KAFKA_PUBLISH_DELIVERY_TIMEOUT_SEC: ${KAFKA_PUBLISH_DELIVERY_TIMEOUT_SEC:-10.0}
+  AZURE_AUTH_MODE: ${AZURE_AUTH_MODE:-default}
+  SCHEDULED_OPERATIONS_ENABLED: ${SCHEDULED_OPERATIONS_ENABLED:-false}
+  ASSESSMENT_PIPELINE_ENABLED: ${ASSESSMENT_PIPELINE_ENABLED:-true}
+  RESOURCE_DISCOVERY_WORKER_ENABLED: ${RESOURCE_DISCOVERY_WORKER_ENABLED:-false}
+  COST_EXPLORER_WORKER_ENABLED: ${COST_EXPLORER_WORKER_ENABLED:-false}
+  DASHBOARD_AZURE_HEALTH_TIMEOUT_SEC: ${DASHBOARD_AZURE_HEALTH_TIMEOUT_SEC:-8}
+  PORT: ${BACKEND_PORT:-8000}
+
+x-platform-service-dev-volumes: &platform-service-dev-volumes
+  - ../../app:/app/app
+  - ../../data:/app/data:ro
+  # it_services is COPY'd into platform service images (see services/platform-*/Dockerfile).
+  # Do not bind-mount from OneDrive/cloud-synced paths on macOS — causes OSError errno 35.
+  # For local it_services hot-reload outside cloud sync, add:
+  #   - ../../it_services:/app/it_services:ro
+  - ../../packages:/app/packages:ro
+
+x-platform-service-env: &platform-service-env
+  <<: *backend-env
+  HOST: "0.0.0.0"
+  PYTHONPATH: /app
+  MICROSERVICES_ENABLED: "1"
+  MICROSERVICES_ONLY: "1"
+
+services:
+  # Shared Python deps for platform microservices (build once, reuse across 5 services)
+  python-base:
+    profiles: [dev, prod]
+    build:
+      context: ../..
+      dockerfile: docker/desktop/Dockerfile.python-base
+    image: costoptimize/python-base:dev
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: costopt-postgres
+    labels:
+      com.costoptimize.service: postgres
+      com.costoptimize.role: database
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-costoptimizer}
+      # Dev fallback when compose substitution runs before env_file; override in docker/.env
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-costoptimizer}
+      POSTGRES_DB: ${POSTGRES_DB:-costoptimizer}
+    command:
+      - postgres
+      - -c
+      - max_connections=${POSTGRES_MAX_CONNECTIONS:-200}
+      - -c
+      - shared_buffers=${POSTGRES_SHARED_BUFFERS:-256MB}
+      - -c
+      - work_mem=${POSTGRES_WORK_MEM:-4MB}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - costopt_pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-costoptimizer} -d ${POSTGRES_DB:-costoptimizer}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - costopt_internal
+
+  redpanda:
+    profiles: [dev, prod]
+    image: docker.redpanda.com/redpandadata/redpanda:${REDPANDA_VERSION:-v25.3.1}
+    container_name: costopt-redpanda
+    hostname: redpanda
+    labels:
+      com.costoptimize.service: redpanda
+      com.costoptimize.role: message-broker
+    restart: unless-stopped
+    # Production tuning: docker compose -f docker/desktop/docker-compose.yml -f docker/redpanda.compose.prod.yml up
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://127.0.0.1:9092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://127.0.0.1:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+      - --set redpanda.kafka_batch_max_bytes=20971520
+    ports:
+      - "127.0.0.1:${KAFKA_PORT:-9092}:19092"
+      - "127.0.0.1:${KAFKA_SCHEMA_REGISTRY_PORT:-18081}:18081"
+    volumes:
+      - costopt_redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster info >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 45s
+    networks:
+      - costopt_internal
+
+  redpanda-init:
+    profiles: [dev, prod]
+    image: costoptimize/python-base:dev
+    container_name: costopt-redpanda-init
+    restart: "no"
+    working_dir: /app
+    volumes:
+      - ../..:/app:ro
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      KAFKA_SCHEMA_REGISTRY_URL: http://redpanda:8081
+    command:
+      - python
+      - scripts/kafka_init.py
+      - --brokers
+      - redpanda:9092
+      - --registry-url
+      - http://redpanda:8081
+      - --wait-sec
+      - "90"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      python-base:
+        condition: service_started
+    networks:
+      - costopt_internal
+
+  redpanda-console:
+    profiles: [dev, prod]
+    image: docker.redpanda.com/redpandadata/console:${REDPANDA_CONSOLE_VERSION:-v3.8.0}
+    container_name: costopt-redpanda-console
+    labels:
+      com.costoptimize.service: redpanda-console
+      com.costoptimize.role: message-broker-ui
+    restart: unless-stopped
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml && /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:9092"]
+        schemaRegistry:
+          enabled: true
+          urls: ["http://redpanda:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+    ports:
+      - "127.0.0.1:${KAFKA_UI_PORT:-8085}:8080"
+    depends_on:
+      redpanda:
+        condition: service_started
+    networks:
+      - costopt_internal
+
+  frontend-dev:
+    profiles: [dev]
+    build:
+      context: ../..
+      dockerfile: docker/desktop/Dockerfile.frontend
+      target: dev
+    image: costoptimize/frontend:dev
+    container_name: costopt-frontend
+    labels:
+      com.costoptimize.service: frontend
+      com.costoptimize.role: ui
+      com.costoptimize.profile: dev
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3000"
+      GATEWAY_PROXY_TARGET: ${GATEWAY_PROXY_TARGET:-http://gateway:8080}
+      CORE_SERVICE_PROXY_TARGET: ${CORE_SERVICE_PROXY_TARGET:-http://core-service:8010}
+      COST_SERVICE_PROXY_TARGET: ${COST_SERVICE_PROXY_TARGET:-http://cost-service:8011}
+      ANALYSIS_SERVICE_PROXY_TARGET: ${ANALYSIS_SERVICE_PROXY_TARGET:-http://analysis-service:8013}
+      METRICS_SERVICE_PROXY_TARGET: ${METRICS_SERVICE_PROXY_TARGET:-http://metrics-service:8014}
+      INVENTORY_SERVICE_PROXY_TARGET: ${INVENTORY_SERVICE_PROXY_TARGET:-http://inventory-service:8012}
+      MICROSERVICES_MODE: "1"
+      WDS_SOCKET_HOST: ${WDS_SOCKET_HOST:-127.0.0.1}
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
+      WATCHPACK_POLLING: "true"
+      REACT_APP_API_TIMEOUT_MS: ${REACT_APP_API_TIMEOUT_MS:-120000}
+      REACT_APP_SESSION_IDLE_MS: ${REACT_APP_SESSION_IDLE_MS:-60000}
+      SERVICE_DISPLAY_DEFAULTS_SOURCE: /app/data/service_display_defaults.json
+    working_dir: /app
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      gateway:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    volumes: *frontend-dev-volumes
+    networks:
+      - costopt_internal
+
+  frontend-prod:
+    profiles: [prod]
+    build:
+      context: ../..
+      dockerfile: docker/desktop/Dockerfile.frontend
+      target: prod
+    image: costoptimize/frontend:prod
+    container_name: costopt-frontend
+    labels:
+      com.costoptimize.service: frontend
+      com.costoptimize.role: ui
+      com.costoptimize.profile: prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - costopt_internal
+
+  core-service:
+    profiles: [dev, prod]
+    build:
+      context: ../..
+      dockerfile: services/platform-auth/Dockerfile
+    image: costoptimize/core-service:dev
+    container_name: costopt-core-service
+    labels:
+      com.costoptimize.service: core-service
+      com.costoptimize.role: core-api
+      com.costoptimize.profile: microservices
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      <<: *platform-service-env
+      PORT: ${CORE_SERVICE_PORT:-8010}
+      RELOAD: ${APP_ENV:-development}
+    command:
+      [
+        "sh",
+        "-c",
+        'if [ "$$RELOAD" = "development" ] || [ "$$RELOAD" = "1" ]; then exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8010} --reload; else exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8010}; fi',
+      ]
+    ports:
+      - "127.0.0.1:${CORE_SERVICE_PORT:-8010}:8010"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8010/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - costopt_internal
+    volumes: *platform-service-dev-volumes
+
+  cost-service:
+    profiles: [dev, prod]
+    build:
+      context: ../..
+      dockerfile: services/platform-cost/Dockerfile
+      target: dev
+    image: costoptimize/cost-service:dev
+    container_name: costopt-cost-service
+    labels:
+      com.costoptimize.service: cost-service
+      com.costoptimize.role: cost-api
+      com.costoptimize.profile: microservices
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      <<: *platform-service-env
+      PORT: ${COST_SERVICE_PORT:-8011}
+      RELOAD: ${APP_ENV:-development}
+      SCHEDULED_OPERATIONS_ENABLED: ${SCHEDULED_OPERATIONS_ENABLED:-true}
+      COST_EXPLORER_WORKER_ENABLED: ${COST_EXPLORER_WORKER_ENABLED:-true}
+    command:
+      [
+        "sh",
+        "-c",
+        'if [ "$$RELOAD" = "development" ] || [ "$$RELOAD" = "1" ]; then exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8011} --reload; else exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8011}; fi',
+      ]
+    ports:
+      - "127.0.0.1:${COST_SERVICE_PORT:-8011}:8011"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8011/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - costopt_internal
+    volumes: *platform-service-dev-volumes
+
+  analysis-service:
+    profiles: [dev, prod]
+    build:
+      context: ../..
+      dockerfile: services/platform-analysis/Dockerfile
+      target: dev
+    image: costoptimize/analysis-service:dev
+    container_name: costopt-analysis-service
+    labels:
+      com.costoptimize.service: analysis-service
+      com.costoptimize.role: analysis-api
+      com.costoptimize.profile: microservices
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      <<: *platform-service-env
+      PORT: ${ANALYSIS_SERVICE_PORT:-8013}
+      RELOAD: ${APP_ENV:-development}
+      SCHEDULED_OPERATIONS_ENABLED: ${SCHEDULED_OPERATIONS_ENABLED:-true}
+      SCHEDULED_SYNC_ENABLED: "false"
+      SCHEDULED_COMPONENT_SYNC_ENABLED: "false"
+      SCHEDULED_ANALYSIS_AFTER_SYNC: "false"
+      SCHEDULED_PIPELINE_ENABLED: "false"
+      SCHEDULED_ENGINE_SCORING_ENABLED: "false"
+    command:
+      [
+        "sh",
+        "-c",
+        'if [ "$$RELOAD" = "development" ] || [ "$$RELOAD" = "1" ]; then exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8013} --reload; else exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8013}; fi',
+      ]
+    ports:
+      - "127.0.0.1:${ANALYSIS_SERVICE_PORT:-8013}:8013"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8013/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - costopt_internal
+    volumes: *platform-service-dev-volumes
+
+  metrics-service:
+    profiles: [dev, prod]
+    build:
+      context: ../..
+      dockerfile: services/platform-metrics/Dockerfile
+      target: dev
+    image: costoptimize/metrics-service:dev
+    container_name: costopt-metrics-service
+    labels:
+      com.costoptimize.service: metrics-service
+      com.costoptimize.role: metrics-api
+      com.costoptimize.profile: microservices
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      <<: *platform-service-env
+      PORT: ${METRICS_SERVICE_PORT:-8014}
+      RELOAD: ${APP_ENV:-development}
+      SCHEDULED_OPERATIONS_ENABLED: ${SCHEDULED_OPERATIONS_ENABLED:-true}
+      METRICS_SYNC_WORKER_ENABLED: ${METRICS_SYNC_WORKER_ENABLED:-true}
+    command:
+      [
+        "sh",
+        "-c",
+        'if [ "$$RELOAD" = "development" ] || [ "$$RELOAD" = "1" ]; then exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8014} --reload; else exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8014}; fi',
+      ]
+    ports:
+      - "127.0.0.1:${METRICS_SERVICE_PORT:-8014}:8014"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8014/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - costopt_internal
+    volumes: *platform-service-dev-volumes
+
+  inventory-service:
+    profiles: [dev, prod]
+    build:
+      context: ../..
+      dockerfile: services/platform-inventory/Dockerfile
+      target: dev
+    image: costoptimize/inventory-service:dev
+    container_name: costopt-inventory-service
+    labels:
+      com.costoptimize.service: inventory-service
+      com.costoptimize.role: inventory-api
+      com.costoptimize.profile: microservices
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      <<: *platform-service-env
+      PORT: ${INVENTORY_SERVICE_PORT:-8012}
+      RELOAD: ${APP_ENV:-development}
+      SCHEDULED_OPERATIONS_ENABLED: ${SCHEDULED_OPERATIONS_ENABLED:-true}
+      RESOURCE_DISCOVERY_WORKER_ENABLED: ${RESOURCE_DISCOVERY_WORKER_ENABLED:-true}
+    command:
+      [
+        "sh",
+        "-c",
+        'if [ "$$RELOAD" = "development" ] || [ "$$RELOAD" = "1" ]; then exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8012} --reload; else exec uvicorn main:app --host 0.0.0.0 --port $${PORT:-8012}; fi',
+      ]
+    ports:
+      - "127.0.0.1:${INVENTORY_SERVICE_PORT:-8012}:8012"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8012/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks:
+      - costopt_internal
+    volumes: *platform-service-dev-volumes
+
+  gateway:
+    profiles: [dev, prod]
+    build:
+      context: ../..
+      dockerfile: services/platform-gateway/Dockerfile
+      target: dev
+    image: costoptimize/api-gateway:dev
+    container_name: costopt-api-gateway
+    labels:
+      com.costoptimize.service: gateway
+      com.costoptimize.role: api-gateway
+      com.costoptimize.profile: microservices
+    restart: unless-stopped
+    environment:
+      HOST: "0.0.0.0"
+      PORT: ${GATEWAY_PORT:-8080}
+      MICROSERVICES_ONLY: "1"
+      CORE_SERVICE_URL: http://core-service:${CORE_SERVICE_PORT:-8010}
+      INVENTORY_SERVICE_URL: http://inventory-service:${INVENTORY_SERVICE_PORT:-8012}
+      COST_SERVICE_URL: http://cost-service:${COST_SERVICE_PORT:-8011}
+      ANALYSIS_SERVICE_URL: http://analysis-service:${ANALYSIS_SERVICE_PORT:-8013}
+      METRICS_SERVICE_URL: http://metrics-service:${METRICS_SERVICE_PORT:-8014}
+      SERVICE_URL_COMPUTE_DISK: http://compute-disk:${COMPUTE_DISK_SERVICE_PORT:-8108}
+      SERVICE_URL_SECURITY_KEYVAULT: http://security-keyvault:${SECURITY_KEYVAULT_SERVICE_PORT:-8141}
+      GATEWAY_UPSTREAM_TIMEOUT_SECONDS: ${GATEWAY_UPSTREAM_TIMEOUT_SECONDS:-120}
+      GATEWAY_OPTIMIZE_TIMEOUT_SECONDS: ${GATEWAY_OPTIMIZE_TIMEOUT_SECONDS:-300}
+      GATEWAY_SYNC_ACCEPT_TIMEOUT_SECONDS: ${GATEWAY_SYNC_ACCEPT_TIMEOUT_SECONDS:-30}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      python-base:
+        condition: service_started
+      core-service:
+        condition: service_healthy
+      cost-service:
+        condition: service_healthy
+      analysis-service:
+        condition: service_healthy
+      metrics-service:
+        condition: service_healthy
+      inventory-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - costopt_internal
+
+networks:
+  costopt_internal:
+    driver: bridge
+    name: costopt_internal
+
+volumes:
+  costopt_pgdata:
+    name: costopt_pgdata
+  costopt_redpanda_data:
+    name: costopt_redpanda_data
+  frontend_node_modules:
+    name: costopt_frontend_node_modules
+  pip_cache:
+    name: costopt_pip_cache

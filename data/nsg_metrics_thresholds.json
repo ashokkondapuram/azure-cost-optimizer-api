@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "service": "Nsg",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "NSG_ORPHANED_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NSG_PERMISSIVE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "risky_rule_count",
+          "label": "Risky rule hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "pillar": "security"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NSG_FLOW_LOG_COST": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

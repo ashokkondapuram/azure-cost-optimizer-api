@@ -1,0 +1,251 @@
+/* Wiz 2D charts — polished cards and dashboard grids */
+
+.wiz-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+  align-items: stretch;
+}
+
+.wiz-chart-grid > .wiz-chart-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.wiz-chart-grid > .wiz-chart-card .wiz-chart-body {
+  flex: 1;
+  min-height: 0;
+}
+
+.wiz-chart-grid--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+/* Dashboard: span orphan chart full width on last row */
+.dashboard-section--charts .wiz-chart-grid {
+  margin-top: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dashboard-section--charts .wiz-chart-grid > .wiz-chart-card:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.wiz-chart-grid--panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0 0 0.75rem;
+}
+
+@media (max-width: 1200px) {
+  .wiz-chart-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .wiz-chart-grid,
+  .wiz-chart-grid--panel,
+  .wiz-chart-grid--compact {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wiz-chart-card {
+  position: relative;
+  border-radius: 14px;
+  border: 1px solid var(--border-subtle);
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(139, 92, 246, 0.12), transparent 55%),
+    var(--wiz-surface, var(--surface));
+  padding: 0.85rem 0.9rem 0.75rem;
+  overflow: hidden;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 10px 28px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .wiz-chart-card {
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(139, 92, 246, 0.08), transparent 55%),
+    #fff;
+}
+
+.wiz-chart-card--empty {
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.wiz-chart-card--spark {
+  padding: 0.65rem 0.75rem;
+  margin-top: 0.65rem;
+}
+
+.wiz-chart-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.wiz-chart-card__title {
+  margin: 0;
+  font-size: var(--text-section-title, var(--zafin-text-sm, 0.875rem));
+  font-weight: var(--font-weight-semibold, 600);
+  letter-spacing: -0.01em;
+}
+
+.wiz-chart-card__sub {
+  margin: 0.2rem 0 0;
+  font-size: var(--text-caption, var(--zafin-text-xs, 0.75rem));
+  color: var(--text3);
+}
+
+/* Wiz charts — flat 2D Recharts with polished cards */
+
+.wiz-chart-body {
+  position: relative;
+}
+
+.wiz-chart-body--donut,
+.wiz-chart-body--gauge {
+  min-height: 120px;
+}
+
+.wiz-chart-body__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.wiz-chart-body__center strong {
+  font-size: var(--text-kpi-md, var(--zafin-text-xl, 1.5rem));
+  font-weight: var(--font-weight-bold, 700);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.wiz-chart-body__center span {
+  font-size: var(--text-caption, var(--zafin-text-xs, 0.75rem));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text3);
+  margin-top: 0.15rem;
+}
+
+.wiz-chart-body__center--gauge strong {
+  font-size: var(--text-kpi-md, var(--zafin-text-xl, 1.5rem));
+}
+
+/* Legacy 3D classes map to flat layout (no perspective) */
+.wiz-chart-3d,
+.wiz-chart-3d__stage,
+.wiz-chart-3d__shadow {
+  position: relative;
+  perspective: none;
+  transform: none;
+}
+
+.wiz-chart-3d__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  text-align: center;
+}
+
+.wiz-assessment__gauge .wiz-chart-body,
+.wiz-assessment__gauge .wiz-chart-3d__stage {
+  transform: none;
+}
+
+.wiz-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.wiz-chart-legend__chip {
+  appearance: none;
+  border: 1px solid var(--border-subtle);
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--text2);
+  font: inherit;
+  font-size: 0.68rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+[data-theme="light"] .wiz-chart-legend__chip {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.wiz-chart-legend__chip--active {
+  border-color: var(--wiz-accent-border);
+  background: var(--wiz-accent-soft);
+  color: var(--text);
+}
+
+.wiz-chart-legend__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+.wiz-chart-tooltip {
+  padding: 0.5rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  font-size: 0.78rem;
+}
+
+.wiz-chart-tooltip__label {
+  color: var(--text2);
+  margin-bottom: 0.15rem;
+}
+
+.wiz-chart-tooltip__value {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.wiz-chart-tooltip__sub {
+  margin-top: 0.15rem;
+  color: var(--success);
+  font-size: 0.72rem;
+}
+
+.wiz-assessment__gauge {
+  margin-top: 0.5rem;
+}
+
+.wiz-assessment__gauge .wiz-chart-card {
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.wiz-assessment__gauge .wiz-chart-3d__stage {
+  transform: none;
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "service_id": "network-firewall",
+  "canonical_type": "network/firewall",
+  "arm_type": "Microsoft.Network/azureFirewalls",
+  "display_name": "Azure Firewall",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "AZFW_VNet": {
+      "deployment": "vnet",
+      "threat_intel": true
+    },
+    "AZFW_Hub": {
+      "deployment": "secured_hub",
+      "threat_intel": true
+    }
+  },
+  "pricing": {
+    "billing_model": "deployment_hour_plus_data",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.264406+00:00"
+}

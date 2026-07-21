@@ -1,0 +1,60 @@
+/**
+ * Shared motion — fade-up, pulse-ring, spin.
+ * Respects prefers-reduced-motion.
+ */
+
+@keyframes ds-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ds-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 40%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent);
+  }
+}
+
+@keyframes ds-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-fade-up {
+  animation: ds-fade-up 0.4s ease both;
+}
+
+.animate-pulse-ring {
+  animation: ds-pulse-ring 1.8s ease-out infinite;
+}
+
+.animate-spin,
+.ai-spin {
+  animation: ds-spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up,
+  .animate-pulse-ring,
+  .animate-spin,
+  .ai-spin {
+    animation: none;
+  }
+
+  .animate-fade-up {
+    opacity: 1;
+    transform: none;
+  }
+}

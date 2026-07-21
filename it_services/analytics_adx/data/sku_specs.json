@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "service_id": "analytics-adx",
+  "canonical_type": "analytics/adx",
+  "arm_type": "Microsoft.Kusto/clusters",
+  "display_name": "Azure Data Explorer",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard_E2a_v4": {
+      "vcpus": 2,
+      "memory_gb": 16
+    },
+    "Standard_E4a_v4": {
+      "vcpus": 4,
+      "memory_gb": 32
+    },
+    "Standard_E8a_v4": {
+      "vcpus": 8,
+      "memory_gb": 64
+    }
+  },
+  "pricing": {
+    "billing_model": "cluster_hour",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:08.804673+00:00"
+}

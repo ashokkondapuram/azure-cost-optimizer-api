@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "service": "Log Analytics",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/azure-monitor/logs/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/monitor/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 50,
+    "retention_days_high": 90,
+    "ingestion_gb_high": 10,
+    "savings_factor": 0.3,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "LOG_ANALYTICS_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOG_ANALYTICS_INGESTION": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

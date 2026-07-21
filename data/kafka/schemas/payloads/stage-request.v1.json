@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/payloads/stage-request.v1.json",
+  "title": "SyncStageRequestPayload",
+  "description": "Payload for inventory, cost, metrics, and analysis stage request topics.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "run_params": {
+      "type": "object",
+      "description": "Sync run parameters passed through the pipeline.",
+      "additionalProperties": true,
+      "properties": {
+        "reason": { "type": "string" },
+        "token": { "type": ["string", "null"] },
+        "type_list": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "types": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "resource_types": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "scope_resource_types": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "scope_components": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "include_costs": { "type": "boolean" },
+        "profile": { "type": "string" },
+        "engine_version": { "type": "string" },
+        "force": { "type": "boolean" }
+      }
+    }
+  }
+}

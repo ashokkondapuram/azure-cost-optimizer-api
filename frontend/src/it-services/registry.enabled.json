@@ -1,0 +1,6 @@
+{
+  "drawer_ui_services": [
+    "compute-disk",
+    "containers-aks"
+  ]
+}

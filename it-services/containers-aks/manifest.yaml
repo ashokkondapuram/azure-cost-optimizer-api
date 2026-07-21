@@ -1,0 +1,25 @@
+service_id: containers-aks
+canonical_type: containers/aks
+display_name: AKS cluster
+api_path: /resources/aks
+arm_type: Microsoft.ContainerService/managedClusters
+component: AKS
+drawer_ui: true
+
+backend:
+  package: it_services/containers_aks
+  modules:
+    - it_services/containers_aks/resource_profile.py
+  related_app_modules:
+    - app/resources/containers/aks.py
+    - app/optimizer/resource_engines/containers/aks/
+
+frontend:
+  root: frontend/src/it-services/containers-aks
+  entry: frontend/src/it-services/containers-aks/index.js
+  related_platform_files:
+    - frontend/src/utils/aksNormalize.js
+    - frontend/src/pages/AKSClusters.jsx
+
+platform:
+  - frontend/src/it-services/registry.js

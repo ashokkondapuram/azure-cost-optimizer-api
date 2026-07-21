@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "service": "Azure Service Bus",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/service-bus-messaging/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/service-bus/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 50,
+    "incoming_requests_low": 5000,
+    "active_messages_low": 100,
+    "premium_savings_factor": 0.25,
+    "standard_savings_factor": 0.1,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "SERVICE_BUS_TIER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SERVICE_BUS_TIER": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SERVICE_BUS_IDLE_NAMESPACE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

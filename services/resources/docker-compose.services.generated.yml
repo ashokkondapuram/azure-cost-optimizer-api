@@ -1,0 +1,547 @@
+# Auto-generated — do not edit manually
+services:
+  analytics-adx:
+    build:
+      context: ../..
+      dockerfile: services/resources/analytics-adx/Dockerfile
+    environment:
+      - PORT=8101
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_ANALYTICS_ADX=http://analytics-adx:8101
+    ports:
+      - "127.0.0.1:8101:8101"
+    depends_on:
+      - postgres
+
+  analytics-databricks:
+    build:
+      context: ../..
+      dockerfile: services/resources/analytics-databricks/Dockerfile
+    environment:
+      - PORT=8102
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_ANALYTICS_DATABRICKS=http://analytics-databricks:8102
+    ports:
+      - "127.0.0.1:8102:8102"
+    depends_on:
+      - postgres
+
+  analytics-mlworkspace:
+    build:
+      context: ../..
+      dockerfile: services/resources/analytics-mlworkspace/Dockerfile
+    environment:
+      - PORT=8103
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_ANALYTICS_MLWORKSPACE=http://analytics-mlworkspace:8103
+    ports:
+      - "127.0.0.1:8103:8103"
+    depends_on:
+      - postgres
+
+  analytics-synapse:
+    build:
+      context: ../..
+      dockerfile: services/resources/analytics-synapse/Dockerfile
+    environment:
+      - PORT=8104
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_ANALYTICS_SYNAPSE=http://analytics-synapse:8104
+    ports:
+      - "127.0.0.1:8104:8104"
+    depends_on:
+      - postgres
+
+  appservice-plan:
+    build:
+      context: ../..
+      dockerfile: services/resources/appservice-plan/Dockerfile
+    environment:
+      - PORT=8105
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_APPSERVICE_PLAN=http://appservice-plan:8105
+    ports:
+      - "127.0.0.1:8105:8105"
+    depends_on:
+      - postgres
+
+  appservice-webapp:
+    build:
+      context: ../..
+      dockerfile: services/resources/appservice-webapp/Dockerfile
+    environment:
+      - PORT=8106
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_APPSERVICE_WEBAPP=http://appservice-webapp:8106
+    ports:
+      - "127.0.0.1:8106:8106"
+    depends_on:
+      - postgres
+
+  backup-recoveryvault:
+    build:
+      context: ../..
+      dockerfile: services/resources/backup-recoveryvault/Dockerfile
+    environment:
+      - PORT=8107
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_BACKUP_RECOVERYVAULT=http://backup-recoveryvault:8107
+    ports:
+      - "127.0.0.1:8107:8107"
+    depends_on:
+      - postgres
+
+  compute-disk:
+    build:
+      context: ../..
+      dockerfile: services/resources/compute-disk/Dockerfile
+    environment:
+      - PORT=8108
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_COMPUTE_DISK=http://compute-disk:8108
+    ports:
+      - "127.0.0.1:8108:8108"
+    depends_on:
+      - postgres
+
+  compute-snapshot:
+    build:
+      context: ../..
+      dockerfile: services/resources/compute-snapshot/Dockerfile
+    environment:
+      - PORT=8109
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_COMPUTE_SNAPSHOT=http://compute-snapshot:8109
+    ports:
+      - "127.0.0.1:8109:8109"
+    depends_on:
+      - postgres
+
+  compute-vm:
+    build:
+      context: ../..
+      dockerfile: services/resources/compute-vm/Dockerfile
+    environment:
+      - PORT=8110
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_COMPUTE_VM=http://compute-vm:8110
+    ports:
+      - "127.0.0.1:8110:8110"
+    depends_on:
+      - postgres
+
+  compute-vmss:
+    build:
+      context: ../..
+      dockerfile: services/resources/compute-vmss/Dockerfile
+    environment:
+      - PORT=8111
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_COMPUTE_VMSS=http://compute-vmss:8111
+    ports:
+      - "127.0.0.1:8111:8111"
+    depends_on:
+      - postgres
+
+  containers-acr:
+    build:
+      context: ../..
+      dockerfile: services/resources/containers-acr/Dockerfile
+    environment:
+      - PORT=8112
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_CONTAINERS_ACR=http://containers-acr:8112
+    ports:
+      - "127.0.0.1:8112:8112"
+    depends_on:
+      - postgres
+
+  containers-aks:
+    build:
+      context: ../..
+      dockerfile: services/resources/containers-aks/Dockerfile
+    environment:
+      - PORT=8113
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_CONTAINERS_AKS=http://containers-aks:8113
+    ports:
+      - "127.0.0.1:8113:8113"
+    depends_on:
+      - postgres
+
+  database-cosmosdb:
+    build:
+      context: ../..
+      dockerfile: services/resources/database-cosmosdb/Dockerfile
+    environment:
+      - PORT=8114
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_DATABASE_COSMOSDB=http://database-cosmosdb:8114
+    ports:
+      - "127.0.0.1:8114:8114"
+    depends_on:
+      - postgres
+
+  database-postgresql:
+    build:
+      context: ../..
+      dockerfile: services/resources/database-postgresql/Dockerfile
+    environment:
+      - PORT=8115
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_DATABASE_POSTGRESQL=http://database-postgresql:8115
+    ports:
+      - "127.0.0.1:8115:8115"
+    depends_on:
+      - postgres
+
+  database-redis:
+    build:
+      context: ../..
+      dockerfile: services/resources/database-redis/Dockerfile
+    environment:
+      - PORT=8116
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_DATABASE_REDIS=http://database-redis:8116
+    ports:
+      - "127.0.0.1:8116:8116"
+    depends_on:
+      - postgres
+
+  database-sql:
+    build:
+      context: ../..
+      dockerfile: services/resources/database-sql/Dockerfile
+    environment:
+      - PORT=8117
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_DATABASE_SQL=http://database-sql:8117
+    ports:
+      - "127.0.0.1:8117:8117"
+    depends_on:
+      - postgres
+
+  integration-apim:
+    build:
+      context: ../..
+      dockerfile: services/resources/integration-apim/Dockerfile
+    environment:
+      - PORT=8118
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_INTEGRATION_APIM=http://integration-apim:8118
+    ports:
+      - "127.0.0.1:8118:8118"
+    depends_on:
+      - postgres
+
+  integration-datafactory:
+    build:
+      context: ../..
+      dockerfile: services/resources/integration-datafactory/Dockerfile
+    environment:
+      - PORT=8119
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_INTEGRATION_DATAFACTORY=http://integration-datafactory:8119
+    ports:
+      - "127.0.0.1:8119:8119"
+    depends_on:
+      - postgres
+
+  integration-logicapp:
+    build:
+      context: ../..
+      dockerfile: services/resources/integration-logicapp/Dockerfile
+    environment:
+      - PORT=8120
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_INTEGRATION_LOGICAPP=http://integration-logicapp:8120
+    ports:
+      - "127.0.0.1:8120:8120"
+    depends_on:
+      - postgres
+
+  messaging-eventhub:
+    build:
+      context: ../..
+      dockerfile: services/resources/messaging-eventhub/Dockerfile
+    environment:
+      - PORT=8121
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_MESSAGING_EVENTHUB=http://messaging-eventhub:8121
+    ports:
+      - "127.0.0.1:8121:8121"
+    depends_on:
+      - postgres
+
+  messaging-servicebus:
+    build:
+      context: ../..
+      dockerfile: services/resources/messaging-servicebus/Dockerfile
+    environment:
+      - PORT=8122
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_MESSAGING_SERVICEBUS=http://messaging-servicebus:8122
+    ports:
+      - "127.0.0.1:8122:8122"
+    depends_on:
+      - postgres
+
+  monitoring-appinsights:
+    build:
+      context: ../..
+      dockerfile: services/resources/monitoring-appinsights/Dockerfile
+    environment:
+      - PORT=8123
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_MONITORING_APPINSIGHTS=http://monitoring-appinsights:8123
+    ports:
+      - "127.0.0.1:8123:8123"
+    depends_on:
+      - postgres
+
+  monitoring-loganalytics:
+    build:
+      context: ../..
+      dockerfile: services/resources/monitoring-loganalytics/Dockerfile
+    environment:
+      - PORT=8124
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_MONITORING_LOGANALYTICS=http://monitoring-loganalytics:8124
+    ports:
+      - "127.0.0.1:8124:8124"
+    depends_on:
+      - postgres
+
+  network-appgateway:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-appgateway/Dockerfile
+    environment:
+      - PORT=8125
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_APPGATEWAY=http://network-appgateway:8125
+    ports:
+      - "127.0.0.1:8125:8125"
+    depends_on:
+      - postgres
+
+  network-cdn:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-cdn/Dockerfile
+    environment:
+      - PORT=8126
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_CDN=http://network-cdn:8126
+    ports:
+      - "127.0.0.1:8126:8126"
+    depends_on:
+      - postgres
+
+  network-expressroute:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-expressroute/Dockerfile
+    environment:
+      - PORT=8127
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_EXPRESSROUTE=http://network-expressroute:8127
+    ports:
+      - "127.0.0.1:8127:8127"
+    depends_on:
+      - postgres
+
+  network-firewall:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-firewall/Dockerfile
+    environment:
+      - PORT=8128
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_FIREWALL=http://network-firewall:8128
+    ports:
+      - "127.0.0.1:8128:8128"
+    depends_on:
+      - postgres
+
+  network-frontdoor:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-frontdoor/Dockerfile
+    environment:
+      - PORT=8129
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_FRONTDOOR=http://network-frontdoor:8129
+    ports:
+      - "127.0.0.1:8129:8129"
+    depends_on:
+      - postgres
+
+  network-loadbalancer:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-loadbalancer/Dockerfile
+    environment:
+      - PORT=8130
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_LOADBALANCER=http://network-loadbalancer:8130
+    ports:
+      - "127.0.0.1:8130:8130"
+    depends_on:
+      - postgres
+
+  network-nat:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-nat/Dockerfile
+    environment:
+      - PORT=8131
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_NAT=http://network-nat:8131
+    ports:
+      - "127.0.0.1:8131:8131"
+    depends_on:
+      - postgres
+
+  network-nic:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-nic/Dockerfile
+    environment:
+      - PORT=8132
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_NIC=http://network-nic:8132
+    ports:
+      - "127.0.0.1:8132:8132"
+    depends_on:
+      - postgres
+
+  network-nsg:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-nsg/Dockerfile
+    environment:
+      - PORT=8133
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_NSG=http://network-nsg:8133
+    ports:
+      - "127.0.0.1:8133:8133"
+    depends_on:
+      - postgres
+
+  network-privatedns:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-privatedns/Dockerfile
+    environment:
+      - PORT=8134
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_PRIVATEDNS=http://network-privatedns:8134
+    ports:
+      - "127.0.0.1:8134:8134"
+    depends_on:
+      - postgres
+
+  network-privateendpoint:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-privateendpoint/Dockerfile
+    environment:
+      - PORT=8135
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_PRIVATEENDPOINT=http://network-privateendpoint:8135
+    ports:
+      - "127.0.0.1:8135:8135"
+    depends_on:
+      - postgres
+
+  network-privatelinkservice:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-privatelinkservice/Dockerfile
+    environment:
+      - PORT=8136
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_PRIVATELINKSERVICE=http://network-privatelinkservice:8136
+    ports:
+      - "127.0.0.1:8136:8136"
+    depends_on:
+      - postgres
+
+  network-publicip:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-publicip/Dockerfile
+    environment:
+      - PORT=8137
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_PUBLICIP=http://network-publicip:8137
+    ports:
+      - "127.0.0.1:8137:8137"
+    depends_on:
+      - postgres
+
+  network-trafficmanager:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-trafficmanager/Dockerfile
+    environment:
+      - PORT=8138
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_TRAFFICMANAGER=http://network-trafficmanager:8138
+    ports:
+      - "127.0.0.1:8138:8138"
+    depends_on:
+      - postgres
+
+  network-vnet:
+    build:
+      context: ../..
+      dockerfile: services/resources/network-vnet/Dockerfile
+    environment:
+      - PORT=8139
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_NETWORK_VNET=http://network-vnet:8139
+    ports:
+      - "127.0.0.1:8139:8139"
+    depends_on:
+      - postgres
+
+  search-cognitivesearch:
+    build:
+      context: ../..
+      dockerfile: services/resources/search-cognitivesearch/Dockerfile
+    environment:
+      - PORT=8140
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_SEARCH_COGNITIVESEARCH=http://search-cognitivesearch:8140
+    ports:
+      - "127.0.0.1:8140:8140"
+    depends_on:
+      - postgres
+
+  security-keyvault:
+    build:
+      context: ../..
+      dockerfile: services/resources/security-keyvault/Dockerfile
+    environment:
+      - PORT=8141
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_SECURITY_KEYVAULT=http://security-keyvault:8141
+    ports:
+      - "127.0.0.1:8141:8141"
+    depends_on:
+      - postgres
+
+  storage-account:
+    build:
+      context: ../..
+      dockerfile: services/resources/storage-account/Dockerfile
+    environment:
+      - PORT=8142
+      - DATABASE_URL=${DATABASE_URL}
+      - SERVICE_URL_STORAGE_ACCOUNT=http://storage-account:8142
+    ports:
+      - "127.0.0.1:8142:8142"
+    depends_on:
+      - postgres

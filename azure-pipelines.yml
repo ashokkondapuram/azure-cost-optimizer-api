@@ -1,0 +1,102 @@
+# Build frontend and validate microservices configuration.
+# Production deployment uses docker-compose.microservices.yml (platform gateway + services).
+
+trigger:
+  branches:
+    include:
+      - main
+      - feature-ashok
+      - dev-slot
+      - features/all-improvements
+
+pr: none
+
+variables:
+  RESOURCE_GROUP: costperfoptimizer
+  WEBAPP_NAME: CostOptimizeRecommender
+
+stages:
+
+- stage: Test
+  jobs:
+  - job: Pytest
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '3.13'
+
+    - script: |
+        set -euo pipefail
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pytest tests/test_analysis_cooldown.py \
+          tests/test_component_map.py \
+          tests/test_microservices.py \
+          tests/test_microservice_health.py \
+          tests/test_analysis_failure_rollback.py \
+          -q --tb=short
+      displayName: Run focused pytest suite
+
+- stage: Build
+  dependsOn: Test
+  condition: succeeded()
+  jobs:
+  - job: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: NodeTool@0
+      inputs:
+        versionSpec: 22.x
+
+    - script: |
+        set -euo pipefail
+        python3 -m pip install --upgrade pip
+        pip install -r requirements.txt
+        python3 -m pytest tests/test_microservices.py tests/test_microservice_health.py \
+          tests/test_pydantic_dict_coercion.py tests/test_action_centre_vmss_exclusion.py \
+          tests/test_aks_nap_pools.py tests/test_analysis_cooldown_legacy.py \
+          tests/test_stub_engines_expansion.py -q --tb=short
+      displayName: Run backend tests
+
+    - script: |
+        set -euo pipefail
+        cd frontend
+        npm ci --no-audit --no-fund
+        npm run build
+        test -f build/index.html
+      displayName: Build React frontend
+
+    - script: |
+        set -euo pipefail
+        docker compose -f docker-compose.microservices.yml config >/dev/null
+      displayName: Validate microservices compose file
+
+    - task: ArchiveFiles@2
+      displayName: Zip source for deployment
+      inputs:
+        rootFolderOrFile: $(System.DefaultWorkingDirectory)
+        includeRootFolder: false
+        archiveType: zip
+        archiveFile: $(Build.ArtifactStagingDirectory)/app.zip
+        replaceExistingArchive: true
+        excludePatterns: |
+          **/__pycache__/**
+          **/*.pyc
+          **/node_modules/**
+          deps/**
+          .venv/**
+          .git/**
+          .env
+          *.db
+          .DS_Store
+
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: $(Build.ArtifactStagingDirectory)/app.zip
+        artifact: app
+
+# Legacy single-container App Service deploy removed — use docker-compose.microservices.yml
+# (platform-core, inventory, cost, analysis, metrics, gateway) for production runtime.

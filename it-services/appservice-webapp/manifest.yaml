@@ -1,0 +1,24 @@
+service_id: appservice-webapp
+canonical_type: appservice/webapp
+display_name: App Service
+api_path: /resources/appservices
+arm_type: Microsoft.Web/sites
+component: App Service
+drawer_ui: false
+
+backend:
+  package: it_services/appservice_webapp
+  modules:
+    - it_services/appservice_webapp/resource_profile.py
+  related_app_modules:
+    - app/resources/appservice/webapp.py
+    - app/optimizer/resource_engines/appservice/webapp/
+
+frontend:
+  root: frontend/src/it-services/appservice-webapp
+  entry: frontend/src/it-services/appservice-webapp/index.js
+  related_platform_files:
+    - frontend/src/utils/appServiceNormalize.js
+
+platform:
+  - frontend/src/it-services/registry.js

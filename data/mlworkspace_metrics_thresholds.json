@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "service": "Azure Machine Learning",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/machine-learning/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/machine-learning/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 100,
+    "dev_min_monthly_cost_usd": 75,
+    "savings_factor": 0.25,
+    "dev_savings_factor": 0.3,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "ML_WORKSPACE_COMPUTE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ML_WORKSPACE_COMPUTE": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ML_WORKSPACE_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

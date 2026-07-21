@@ -1,0 +1,6068 @@
+{
+  "version": "2026-07",
+  "generated_at": "2026-07-02T15:26:20.035773+00:00",
+  "source": "azure_retail_prices_api",
+  "free_tier_reference_version": "2026-06",
+  "official_free_services_version": "2026-06",
+  "official_free_services_source": "https://azure.microsoft.com/en-us/pricing/free-services/#List-of-free-services",
+  "official_free_services_count": 63,
+  "service_count": 151,
+  "aliases": {
+    "kubernetes service": "Azure Kubernetes Service",
+    "azure kubernetes service": "Azure Kubernetes Service",
+    "azure cache for redis": "Redis Cache",
+    "azure data factory": "Azure Data Factory v2",
+    "data factory": "Azure Data Factory v2",
+    "azure front door": "Azure Front Door Service",
+    "content delivery network": "Content Delivery Network",
+    "azure app service": "Azure App Service",
+    "app service": "Azure App Service",
+    "azure cognitive search": "Azure Cognitive Search",
+    "virtual machines": "Virtual Machines",
+    "virtual machine scale sets": "Virtual Machines",
+    "backup": "Backup",
+    "recovery services": "Backup",
+    "microsoft.insights": "Application Insights",
+    "azure machine learning": "Azure Machine Learning",
+    "power bi embedded": "Power BI Embedded",
+    "azure hdinsight": "HDInsight",
+    "azure data explorer": "Azure Data Explorer",
+    "azure synapse analytics": "Azure Synapse Analytics",
+    "azure databricks": "Azure Databricks",
+    "event hubs": "Event Hubs",
+    "service bus": "Service Bus",
+    "logic apps": "Logic Apps",
+    "nat gateway": "NAT Gateway",
+    "azure nat gateway": "NAT Gateway",
+    "azure private link": "Azure Private Link",
+    "private link": "Azure Private Link",
+    "vpn gateway": "VPN Gateway",
+    "virtual wan": "Virtual WAN",
+    "expressroute": "ExpressRoute",
+    "azure firewall": "Azure Firewall",
+    "firewall manager": "Azure Firewall Manager",
+    "route server": "Azure Route Server",
+    "ip addresses": "Virtual Network",
+    "bandwidth": "Bandwidth",
+    "virtual network peering": "Virtual Network",
+    "static web apps": "Static Web Apps",
+    "signalr": "SignalR",
+    "web pubsub": "Web PubSub",
+    "redis cache": "Redis Cache",
+    "sentinel": "Sentinel",
+    "microsoft fabric": "Microsoft Fabric"
+  },
+  "services": [
+    {
+      "service_name": "AKS Edge Essentials",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Internet of Things).",
+      "sku_tiers": [
+        {
+          "sku": "Azure Kubernetes Service Edge Essentials",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "AKS on Azure Stack HCI",
+      "pricing_category": "Containers",
+      "service_family": "Containers",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Containers).",
+      "sku_tiers": [
+        {
+          "sku": "AKS on Azure Stack HCI or Windows Server - Software Assurance",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "OEM Bundle",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "SW Bundle 2P AEHC",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 4
+    },
+    {
+      "service_name": "API Management",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "costed",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: API Management (always).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Basic v2",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Consumption",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Developer",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Gateway",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Isolated",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Premium v2",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Secondary",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 13,
+      "free_tier": {
+        "duration": "always",
+        "limit": "1 million monthly calls free with Consumption tier",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/api-management/",
+        "official_name": "API Management",
+        "category": "Integration",
+        "notes": "Consumption tier call allowance."
+      }
+    },
+    {
+      "service_name": "Advanced Container Networking Services",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "App Configuration",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: App Configuration (always).",
+      "sku_tiers": [
+        {
+          "sku": "Developer",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 4,
+      "free_tier": {
+        "duration": "always",
+        "limit": "1,000 requests per day with 10 MB storage",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/app-configuration/",
+        "official_name": "App Configuration",
+        "category": "Developer Tools"
+      }
+    },
+    {
+      "service_name": "Application Gateway",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Large",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Medium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Small",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 5
+    },
+    {
+      "service_name": "Application Insights",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Monitor (always).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Enterprise",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free amounts per feature (see Azure Monitor pricing)",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/monitor/",
+        "official_name": "Monitor",
+        "category": "Management and Governance",
+        "notes": "Shared monitoring free allowance."
+      }
+    },
+    {
+      "service_name": "Automation",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Automation (always).",
+      "sku_tiers": [
+        {
+          "sku": "Azure",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Non-Azure",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 4,
+      "free_tier": {
+        "duration": "always",
+        "limit": "500 minutes of job runtime",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/automation/",
+        "official_name": "Automation",
+        "category": "Management and Governance",
+        "notes": "Process automation free tier per subscription."
+      }
+    },
+    {
+      "service_name": "Azure API Center",
+      "pricing_category": "Integration",
+      "service_family": "Integration",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Integration).",
+      "sku_tiers": [
+        {
+          "sku": "Free",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "apim apic free sku",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: apim apic free sku",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Azure API for FHIR",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Other).",
+      "sku_tiers": [
+        {
+          "sku": "API Requests",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Action",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Blob Storage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Classic Message",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "De-Id",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Export Batch",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Export Streaming",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free - API Requests",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free - API Requests",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Free - Blob Storage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free - Blob Storage",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Free - Notifications",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free - Notifications",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        }
+      ],
+      "sku_count": 21
+    },
+    {
+      "service_name": "Azure Active Directory B2C",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure Active Directory B2C (always).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2,
+      "free_tier": {
+        "duration": "always",
+        "limit": "50,000 active users per month (MAU)",
+        "doc_ref": "https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id",
+        "official_name": "Azure Active Directory B2C",
+        "category": "Identity"
+      }
+    },
+    {
+      "service_name": "Azure Active Directory for External Identities",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "Data Residency Add-on",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P1",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Azure Analysis Services",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "B1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Developer",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S0",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S0 Scale-Out",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S1 Scale-Out",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S4",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S4 Scale-Out",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S8",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 16
+    },
+    {
+      "service_name": "Azure App Service",
+      "pricing_category": "Compute",
+      "service_family": "Compute",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: App Service (always).",
+      "sku_tiers": [
+        {
+          "sku": "B3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "F1",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "I4v4",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "I5v4",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P0v3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P1",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P1 v2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P1 v3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P2v4",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "P3mv3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 17,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Up to 10 web or API apps with 1 GB storage and 1 hour per day",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/app-service/",
+        "official_name": "App Service",
+        "category": "Compute",
+        "notes": "Free plan has daily CPU/minute caps; production SKUs bill hourly."
+      }
+    },
+    {
+      "service_name": "Azure App Testing",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "JMeter",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Playwright Free Test Minutes",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Playwright Free Test Minutes",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Playwright Linux Test Minutes",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Playwright Windows Test Minutes",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 4
+    },
+    {
+      "service_name": "Azure Arc Enabled Databases",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure Arc (always).",
+      "sku_tiers": [
+        {
+          "sku": "Ent edition - Host - PAYG",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Std edition - PAYG",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free Azure control plane for resources outside Azure",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/azure-arc/",
+        "official_name": "Azure Arc",
+        "category": "Hybrid + multicloud"
+      }
+    },
+    {
+      "service_name": "Azure Arc-enabled AKS",
+      "pricing_category": "Containers",
+      "service_family": "Containers",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure Arc (always).",
+      "sku_tiers": [
+        {
+          "sku": "Internal Partner Arc-enabled AKS - Windows Server",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Software Assurance Arc-enabled AKS - Windows Server",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free Azure control plane for resources outside Azure",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/azure-arc/",
+        "official_name": "Azure Arc",
+        "category": "Hybrid + multicloud",
+        "notes": "Underlying AKS clusters, Arc-enabled servers, and extensions bill."
+      }
+    },
+    {
+      "service_name": "Azure Bastion",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Azure Blockchain",
+      "pricing_category": "Blockchain",
+      "service_family": "Blockchain",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Blockchain).",
+      "sku_tiers": [
+        {
+          "sku": "Bandwidth",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Orderer Node",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Orderer Storage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Peer Node",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Peer Storage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 7
+    },
+    {
+      "service_name": "Azure Bot Service",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: AI Bot Service (always).",
+      "sku_tiers": [
+        {
+          "sku": "Agent Tier",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3,
+      "free_tier": {
+        "duration": "always",
+        "limit": "10,000 premium channel messages and unlimited standard channel messages",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/ai-services/ai-bot-service/",
+        "official_name": "AI Bot Service",
+        "category": "Foundry Tools"
+      }
+    },
+    {
+      "service_name": "Azure Chaos Studio",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Management and Governance).",
+      "sku_tiers": [
+        {
+          "sku": "Essential",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Azure Cognitive Search",
+      "pricing_category": "Web",
+      "service_family": "Web",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure AI Search (always).",
+      "sku_tiers": [
+        {
+          "sku": "Agentic Retrieval Low Reasoning",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Agentic Retrieval Medium Reasoning",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Agentic Retrieval Minimum Reasoning",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic CC",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Custom Entity Skills",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Document Cracking",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Free Agentic Retrieval Low Reasoning",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free Agentic Retrieval Low Reasoning",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Free Agentic Retrieval Medium Reasoning",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free Agentic Retrieval Medium Reasoning",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        }
+      ],
+      "sku_count": 22,
+      "free_tier": {
+        "duration": "always",
+        "limit": "50 MB storage for 10,000 hosted documents and 3 indexes per service",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/ai-services/ai-search/",
+        "official_name": "Azure AI Search",
+        "category": "Foundry IQ"
+      }
+    },
+    {
+      "service_name": "Azure Container Apps",
+      "pricing_category": "Compute",
+      "service_family": "Compute",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Container Apps (always).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1,
+      "free_tier": {
+        "duration": "always",
+        "limit": "180,000 vCPU seconds, 360,000 GiB seconds, and 2 million requests",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/container-apps/",
+        "official_name": "Container Apps",
+        "category": "Containers"
+      }
+    },
+    {
+      "service_name": "Azure Cosmos DB",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "costed",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure Cosmos DB (always).",
+      "sku_tiers": [
+        {
+          "sku": "256 GiB",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "AP1",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "AP2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Backup",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Backup Globally Redundant Storage Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Backup Globally Redundant Storage Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Burstable 1 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Burstable 2 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Compute Optimized v6",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D16s",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D2s",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "always",
+        "limit": "1,000 request units per-second provisioned throughput with 25 GB storage",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/cosmos-db/",
+        "official_name": "Azure Cosmos DB",
+        "category": "Databases",
+        "notes": "One free tier account per subscription."
+      }
+    },
+    {
+      "service_name": "Azure DDOS Protection",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Azure DDoS Protection IP Protection",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Network Protection",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Azure DNS",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Private",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Private Record Set",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Private Resolver",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Public",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Public Record Set",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 5
+    },
+    {
+      "service_name": "Azure Data Explorer",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Azure Data Factory",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Data Factory (always).",
+      "sku_tiers": [
+        {
+          "sku": "Cloud",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "On Premises",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2,
+      "free_tier": {
+        "duration": "always",
+        "limit": "5 low-frequency activities",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/data-factory/",
+        "official_name": "Data Factory",
+        "category": "Analytics"
+      }
+    },
+    {
+      "service_name": "Azure Data Factory v2",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Data Factory (always).",
+      "sku_tiers": [
+        {
+          "sku": "A1 v2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A2 v2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A4 v2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A8 v2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Azure Managed VNET",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Cloud",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D1 v2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D16 v3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D2 v2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D2 v3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 28,
+      "free_tier": {
+        "duration": "always",
+        "limit": "5 low-frequency activities",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/data-factory/",
+        "official_name": "Data Factory",
+        "category": "Analytics"
+      }
+    },
+    {
+      "service_name": "Azure Data Share",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "Dataset Snapshots",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Snapshot Execution",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Azure Database Migration Service",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Database Migration Service (always).",
+      "sku_tiers": [
+        {
+          "sku": "1 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "16 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "2 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "4 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "8 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "General Purpose",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free Standard Compute",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/database-migration/",
+        "official_name": "Database Migration Service",
+        "category": "Databases"
+      }
+    },
+    {
+      "service_name": "Azure Database for MariaDB",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Databases).",
+      "sku_tiers": [
+        {
+          "sku": "1 vCore",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "16 vCore",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "2 vCore",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "32 vCore",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "4 vCore",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "64 vCore",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "8 vCore",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Backup GRS",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Backup LRS",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 13
+    },
+    {
+      "service_name": "Azure Database for MySQL",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_12_months",
+      "notes": "Azure free services: Azure Database for MySQL (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "1 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "2 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "8 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Additional IOPS ZRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "B2S",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Backup LRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Backup Storage ZRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "PMD LRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Paid IO LRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "750 hours Flexible Server Burstable B1MS, 32 GB storage and 32 GB backup",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/mysql/",
+        "official_name": "Azure Database for MySQL",
+        "category": "Databases"
+      }
+    },
+    {
+      "service_name": "Azure Database for PostgreSQL",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_12_months",
+      "notes": "Azure free services: Azure Database for PostgreSQL (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "1 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "104 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "16 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "2 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "2m vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "32 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "4 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "48 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "4m vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "64 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "750 hours Flexible Server Burstable B1MS, 32 GB storage and 32 GB backup",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/postgresql/",
+        "official_name": "Azure Database for PostgreSQL",
+        "category": "Databases"
+      }
+    },
+    {
+      "service_name": "Azure Databricks",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "2 Million DBCUs",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "500,000 DBCUs",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Launch Charge Serverless Realtime Inferencing",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "POC Non-Billable Database Serverless Compute",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "POC Non-Billable Interactive Serverless Compute",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "POC Non-Billable Serverless Realtime Inferencing",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium - Free Trial All-purpose Compute",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "trial",
+            "limit": "Time-limited trial SKU",
+            "notes": "Retail meter at $0 during trial; converts to paid after trial ends.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Premium - Free Trial Jobs Compute",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "trial",
+            "limit": "Time-limited trial SKU",
+            "notes": "Retail meter at $0 during trial; converts to paid after trial ends.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Premium Advanced Compute Delta Live Tables",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium Advanced Compute Photon Delta Live Tables",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Azure DevOps",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure DevOps (always).",
+      "sku_tiers": [
+        {
+          "sku": "Advanced",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Linux 8-core",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Windows 16-core",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Windows 8-core",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "macOS Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6,
+      "free_tier": {
+        "duration": "always",
+        "limit": "5 users with unlimited private Git repos",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/devops/",
+        "official_name": "Azure DevOps",
+        "category": "Developer Tools"
+      }
+    },
+    {
+      "service_name": "Azure Firewall",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Basic Secured Virtual Hub",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Premium Secured Virtual Hub",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard Secure Virtual Hub",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 6
+    },
+    {
+      "service_name": "Azure Firewall Manager",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Policy analytics",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Secured Virtual Hub with 3rd Party Integration",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Azure Fluid Relay",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Azure Front Door Service",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Azure Grafana Service",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "Essential",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Azure IoT Operations",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Internet of Things).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Azure IoT Security",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard Trial",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "trial",
+            "limit": "Time-limited trial SKU",
+            "notes": "Retail meter at $0 during trial; converts to paid after trial ends.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        }
+      ],
+      "sku_count": 2,
+      "free_tier": {
+        "duration": "trial",
+        "limit": "Trial SKU meters at $0",
+        "notes": "Standard trial is time-limited; Defender for IoT plans bill after trial.",
+        "doc_ref": "https://learn.microsoft.com/en-us/azure/defender-for-iot/"
+      }
+    },
+    {
+      "service_name": "Azure Kubernetes Service",
+      "pricing_category": "Compute",
+      "service_family": "Compute",
+      "cost_type": "costed",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: Azure Kubernetes Service (AKS) (always).",
+      "sku_tiers": [
+        {
+          "sku": "Automatic",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1,
+      "free_tier": {
+        "duration": "always",
+        "limit": "AKS cluster management is free; node resources bill",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/kubernetes-service/",
+        "official_name": "Azure Kubernetes Service (AKS)",
+        "category": "Compute",
+        "notes": "Node VM charges still apply."
+      }
+    },
+    {
+      "service_name": "Azure Lab Services",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Azure Machine Learning",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Machine Learning (always).",
+      "sku_tiers": [
+        {
+          "sku": "Llama-4-Scout-17B-16E-In",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NC4asT4 v3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NCadisH100v5",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NCadsA100v4",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NDamsrA100v4",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NDisrH100v5",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NDisrMI300Xv5",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NV12adsA10v5",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NV18adsA10v5",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "NV72adsA10v5",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 13,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/machine-learning/",
+        "official_name": "Machine Learning",
+        "category": "Azure Machine learning"
+      }
+    },
+    {
+      "service_name": "Azure Mainframe Modernization Agents",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure retail service (AI + Machine Learning).",
+      "sku_tiers": [
+        {
+          "sku": "Lines of Code",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1,
+      "free_tier": {
+        "duration": "trial",
+        "limit": "Preview/trial metering",
+        "notes": "Retail API shows $0 meters only; production usage bills per agent.",
+        "doc_ref": "https://azure.microsoft.com/products/azure-mainframe-modernization"
+      }
+    },
+    {
+      "service_name": "Azure Managed Instance for Apache Cassandra",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Databases).",
+      "sku_tiers": [
+        {
+          "sku": "Apache_Cassandra_Standard_D16ads_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_D16as_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_D2s_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_D32ads_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_D8as_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_D8s_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_E16as_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_E20s_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_E2as_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Apache_Cassandra_Standard_E2s_v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Azure Maps",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure Maps (always).",
+      "sku_tiers": [
+        {
+          "sku": "Azure Maps Creator",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Geospatial Analytics",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Location Insights",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Maps",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard S1",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6,
+      "free_tier": {
+        "duration": "always",
+        "limit": "1,000 to 5,000 transactions for mapping and location features",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/azure-maps/",
+        "official_name": "Azure Maps",
+        "category": "Internet of Things"
+      }
+    },
+    {
+      "service_name": "Azure Monitor",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: Monitor (always).",
+      "sku_tiers": [
+        {
+          "sku": "100 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "10000 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "300 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "400 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "50000 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Alerts",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Auxiliary Logs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic Logs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Replication",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Restore",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free amounts per feature (see Azure Monitor pricing)",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/monitor/",
+        "official_name": "Monitor",
+        "category": "Management and Governance",
+        "notes": "Ingestion and advanced features bill."
+      }
+    },
+    {
+      "service_name": "Azure NetApp Files",
+      "pricing_category": "Storage",
+      "service_family": "Storage",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Storage).",
+      "sku_tiers": [
+        {
+          "sku": "Backup",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "CRR - DE West Central to UK South",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cross Region Replication",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cross Region Replication - EU North to SE Central",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cross Region Replication - EU West to EU North",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cross Region Replication - KR Central to KR South",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cross Region Replication - SE Central to IT North",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cross Region Replication - US East 2 to US Central",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cross Region Replication - US West 3 to US West 2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Elastic Zone Redundant Storage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 19
+    },
+    {
+      "service_name": "Azure Orbital",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "1 Mbps",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Colocation Antenna",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Colocation Hosting",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Colocation O&M",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Colocation Space",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Colocation Spectrum License",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Narrow Band",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 8
+    },
+    {
+      "service_name": "Azure Policy",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "free",
+      "pricing_model": "always_free",
+      "notes": "Policy evaluation is free; guest configuration features may bill.",
+      "sku_tiers": [
+        {
+          "sku": "K8s",
+          "pricing_model": "always_free",
+          "cost_type": "free"
+        },
+        {
+          "sku": "Premium P1 Tier",
+          "pricing_model": "always_free",
+          "cost_type": "free"
+        },
+        {
+          "sku": "Server",
+          "pricing_model": "always_free",
+          "cost_type": "free"
+        }
+      ],
+      "sku_count": 3,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free access to configuration and change tracking features",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/azure-policy/",
+        "official_name": "Azure Policy",
+        "category": "Management and Governance",
+        "notes": "Azure Policy guest configuration and remediation tasks may bill."
+      }
+    },
+    {
+      "service_name": "Azure Private 5G Core",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Private mobile network edge deployment.",
+      "sku_tiers": [],
+      "sku_count": 0
+    },
+    {
+      "service_name": "Azure Private Link",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure free services: Private Link (always).",
+      "sku_tiers": [],
+      "sku_count": 0,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/private-link/",
+        "official_name": "Private Link",
+        "category": "Networking",
+        "notes": "Official page lists Private Link as free; private endpoints still bill hourly and for data processed."
+      }
+    },
+    {
+      "service_name": "Azure Purview",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "Catalog Insights",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Map Enrichment - Insight Generation",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "PowerBI",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Resource Set",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "SQL Server",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6
+    },
+    {
+      "service_name": "Azure Remote Rendering",
+      "pricing_category": "Mixed Reality",
+      "service_family": "Mixed Reality",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Mixed Reality).",
+      "sku_tiers": [
+        {
+          "sku": "Asset",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Azure Route Server",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Routing Infrastructure Unit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Azure Site Recovery",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Management and Governance).",
+      "sku_tiers": [
+        {
+          "sku": "Azure",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "On-premise",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "System Center",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Azure Spring Cloud",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure retail service (Other).",
+      "sku_tiers": [
+        {
+          "sku": "1 App Instance Hour - Free",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: 1 App Instance Hour - Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Enterprise",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard Consumption",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 5
+    },
+    {
+      "service_name": "Azure Synapse Analytics",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "A4 v2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A8 v2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Azure Hosted IR",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Azure Hosted Managed VNET IR",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D1 v2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D16 v3",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D2 v2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D2 v3",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D3 v2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D32 v3",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Azure Virtual Network Manager",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Per subscription management fee plus per-VNet charges.",
+      "sku_tiers": [],
+      "sku_count": 0
+    },
+    {
+      "service_name": "Azure confidential ledger",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "Additional Storage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "MCCF - 3 nodes",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "MCCF - 5 nodes",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "MCCF - 7 nodes",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "MCCF - 9 nodes",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "MCCF - Additional Storage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 7
+    },
+    {
+      "service_name": "Backup",
+      "pricing_category": "Storage",
+      "service_family": "Storage",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Storage).",
+      "sku_tiers": [
+        {
+          "sku": "ADLS Gen2 Vaulted",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "AKS",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Archive",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Azure Blob",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Azure Files",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Azure Files Vaulted",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Azure VM",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cosmos DB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "On Premises Server",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "PostgreSQL",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 19
+    },
+    {
+      "service_name": "Bandwidth",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Bandwidth (Data Transfer) (always).",
+      "sku_tiers": [
+        {
+          "sku": "China",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Inter Continent",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Intra Continent",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 4,
+      "free_tier": {
+        "duration": "always",
+        "limit": "100 GB outbound",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/virtual-network/",
+        "official_name": "Bandwidth (Data Transfer)",
+        "category": "Networking",
+        "notes": "100 GB outbound; new accounts: 15 GB outbound \u2014 Always-free monthly allowance; separate 15 GB for new accounts in first 12 months."
+      }
+    },
+    {
+      "service_name": "BizTalk Services",
+      "pricing_category": "Integration",
+      "service_family": "Integration",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Integration).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Developer",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Change Tracking and Inventory",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure retail service (Management and Governance).",
+      "sku_tiers": [
+        {
+          "sku": "Azure Node Complimentary Benefits",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Included with Azure Automation free tier (500 job minutes/month)",
+        "notes": "Beyond automation free tier, Update Management bills.",
+        "doc_ref": "https://learn.microsoft.com/en-us/azure/automation/automation-faq"
+      }
+    },
+    {
+      "service_name": "Cloud Services",
+      "pricing_category": "Compute",
+      "service_family": "Compute",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Compute).",
+      "sku_tiers": [
+        {
+          "sku": "A1 v2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "A2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "A4 v2 Low Priority",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D13",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D15 v2 Low Priority",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D2 Low Priority",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D2 v2 Low Priority",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D5 v2 Low Priority",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D64 v3 Low Priority",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "E20 v3",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 22
+    },
+    {
+      "service_name": "Communications Gateway",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Operator connect gateway charges.",
+      "sku_tiers": [],
+      "sku_count": 0
+    },
+    {
+      "service_name": "Community Training",
+      "pricing_category": "Web",
+      "service_family": "Web",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Web).",
+      "sku_tiers": [
+        {
+          "sku": "Commercial",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Nonprofit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Container Instances",
+      "pricing_category": "Containers",
+      "service_family": "Containers",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Containers).",
+      "sku_tiers": [
+        {
+          "sku": "Confidential containers ACI",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "K80",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "P100",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard Spot",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "V100",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 6
+    },
+    {
+      "service_name": "Container Registry",
+      "pricing_category": "Containers",
+      "service_family": "Containers",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_12_months",
+      "notes": "Azure free services: Container Registry (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "1 Standard tier registry with 100 GB storage and 10 webhooks",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/container-registry/",
+        "official_name": "Container Registry",
+        "category": "Containers",
+        "notes": "New-account allowance; Basic SKU has no registry unit charge always."
+      }
+    },
+    {
+      "service_name": "Content Delivery Network",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Custom",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "WAF",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 4
+    },
+    {
+      "service_name": "Data Box",
+      "pricing_category": "Storage",
+      "service_family": "Storage",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Storage).",
+      "sku_tiers": [
+        {
+          "sku": "100 TB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "120 TB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "525 TB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 4
+    },
+    {
+      "service_name": "Data Lake Store",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "1 PB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "1 TB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "10 TB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "100 TB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "5 PB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "500 TB",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Pay-as-you-go",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 7
+    },
+    {
+      "service_name": "Digital Twins",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Internet of Things).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Dynamics 365 for Customer Insights",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Management and Governance).",
+      "sku_tiers": [
+        {
+          "sku": "B0",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Elastic SAN",
+      "pricing_category": "Storage",
+      "service_family": "Storage",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Elastic SAN capacity and IOPS charges.",
+      "sku_tiers": [],
+      "sku_count": 0
+    },
+    {
+      "service_name": "Email",
+      "pricing_category": "Communication",
+      "service_family": "Azure Communication Services",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Azure Communication Services).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Energy Data Manager",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Other).",
+      "sku_tiers": [
+        {
+          "sku": "Developer",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Event Grid",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Event Grid (always).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1,
+      "free_tier": {
+        "duration": "always",
+        "limit": "100,000 operations per month",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/event-grid/",
+        "official_name": "Event Grid",
+        "category": "Integration"
+      }
+    },
+    {
+      "service_name": "Event Hubs",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure retail service (Internet of Things).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Dedicated",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Geo Replication Zone 1",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Geo Replication Zone 2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Geo Replication Zone 3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 7,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Basic tier includes limited throughput units; dedicated clusters bill",
+        "notes": "See Event Hubs pricing for Basic vs Standard.",
+        "doc_ref": "https://learn.microsoft.com/en-us/azure/event-hubs/event-hubs-faq"
+      }
+    },
+    {
+      "service_name": "ExpressRoute",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "1 Gbps Metered Data",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "1 Gbps Unlimited Data",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "10 Gbps",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "10 Gbps Metered Data",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "10 Gbps Unlimited Data",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "100 Gbps",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "100 Gbps Unlimited Data",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "100 Mbps Metered Data",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "100 Mbps Unlimited Data",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "2 Gbps",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Foundry Models",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (AI + Machine Learning).",
+      "sku_tiers": [
+        {
+          "sku": "3.3 70b FT",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "3.3 70b Outp FT DZ",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "4.3 Outp DZ L",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "5 mini pp Inp Gl",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "5 pp cd inp Gl",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "5.1 codex opt Gl",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "5.4 opt Dz",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "5.4 pro Batch inp Dz",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "5.5 ShortCo Batch inp Gl",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Code-Interpreter-global",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Foundry Tools",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure Language (always).",
+      "sku_tiers": [
+        {
+          "sku": "Commit Tier Neural TTS Connected 400M",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier App 20K hours",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier Azure 25M",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier CLU Azure 1M",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier Connected 25M",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier Custom Azure 1000K",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier Custom Connected 1000K",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier Custom Speech to Text Azure 100K",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier Custom Speech to Text Azure 10K",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Commitment Tier Disconnected 16000K",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "always",
+        "limit": "5,000 text records",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/ai-foundry/tools/language",
+        "official_name": "Azure Language",
+        "category": "Foundry Tools",
+        "notes": "5,000 text records; new accounts: 500 pages S0 tier"
+      }
+    },
+    {
+      "service_name": "GitHub",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "100,000 GCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "100,000 GHAICCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "500,000 GCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "500,000 GHAICCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "AI Credit",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Business",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Code Quality for GHE",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Code Scanning for AzDO",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Codespaces",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Development Optimized D32",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "GitHub AE",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "HDInsight",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "A1",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A4m v2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D2a v4/D2as v4",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D32a v4/D32as v4",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "D4ads v5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Dv212",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Dv24",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "E16 v3",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "E16s v3",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "E2 v3",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "High Volume Email",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Other).",
+      "sku_tiers": [
+        {
+          "sku": "Internal",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Insight and Analytics",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Management and Governance).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Intelligent Recommendations",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (AI + Machine Learning).",
+      "sku_tiers": [
+        {
+          "sku": "Modelling",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Serving",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "IoT Central",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure retail service (Internet of Things).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Trial",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "trial",
+            "limit": "Time-limited trial SKU",
+            "notes": "Retail meter at $0 during trial; converts to paid after trial ends.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "IoT Hub",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: IoT Hub (always).",
+      "sku_tiers": [
+        {
+          "sku": "B1",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "B2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "B3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "S1",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 8,
+      "free_tier": {
+        "duration": "always",
+        "limit": "8,000 messages per day and 0.5 KB message meter size of Free edition",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/iot-hub/",
+        "official_name": "IoT Hub",
+        "category": "Internet of Things"
+      }
+    },
+    {
+      "service_name": "Key Vault",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: Key Vault (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard B1",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 3,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "10,000 transactions RSA 2048-bit keys or secret operations, Standard tier",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/key-vault/",
+        "official_name": "Key Vault",
+        "category": "Security",
+        "notes": "New-account allowance per Azure free services page; Standard SKU also has ongoing free operations."
+      }
+    },
+    {
+      "service_name": "Load Balancer",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: Load Balancer (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "Gateway",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Global",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 3,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "750 hours, 15 GB data processing, and up to five rules with Standard Load Balancer",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/load-balancer/",
+        "official_name": "Load Balancer",
+        "category": "Networking",
+        "notes": "New-account allowance; Basic SKU has no hourly charge always."
+      }
+    },
+    {
+      "service_name": "Log Analytics",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "costed",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Monitor (always).",
+      "sku_tiers": [
+        {
+          "sku": "Analytics Logs",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 4,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free amounts per feature (see Azure Monitor pricing)",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/monitor/",
+        "official_name": "Monitor",
+        "category": "Management and Governance",
+        "notes": "Shared with Application Insights."
+      }
+    },
+    {
+      "service_name": "Logic Apps",
+      "pricing_category": "Integration",
+      "service_family": "Integration",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Logic Apps (always).",
+      "sku_tiers": [
+        {
+          "sku": "Automation",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Base",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Connectors",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Hybrid",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Scale",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 9,
+      "free_tier": {
+        "duration": "always",
+        "limit": "4,000 built-in actions with the Consumption plan",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/logic-apps/",
+        "official_name": "Logic Apps",
+        "category": "Integration"
+      }
+    },
+    {
+      "service_name": "MS Bing Services",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Other).",
+      "sku_tiers": [
+        {
+          "sku": "Browse",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Classic",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Images",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "News",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S1",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S1 Japan",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S15",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S16",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S17",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Machine Learning Studio",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Machine Learning (always).",
+      "sku_tiers": [
+        {
+          "sku": "S2",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "S3",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/machine-learning/",
+        "official_name": "Machine Learning",
+        "category": "Azure Machine learning"
+      }
+    },
+    {
+      "service_name": "Messaging",
+      "pricing_category": "Communication",
+      "service_family": "Azure Communication Services",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Azure Communication Services).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Whatsapp",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Microsoft Azure Payment HSM",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "payShield10K_LMK1_CPS250",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "payShield10K_LMK1_CPS2500",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "payShield10K_LMK1_CPS60",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "payShield10K_LMK2_CPS250",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "payShield10K_LMK2_CPS2500",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "payShield10K_LMK2_CPS60",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 6
+    },
+    {
+      "service_name": "Microsoft Defender for Cloud",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: Security Center (always).",
+      "sku_tiers": [
+        {
+          "sku": "10,000 DCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "100,000 DCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "150,000 DCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "25,000 DCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "275,000 DCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "350,000 DCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "75,000 DCUs",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Defender EASM 30 Day Trial",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "trial",
+            "limit": "Time-limited trial SKU",
+            "notes": "Retail meter at $0 during trial; converts to paid after trial ends.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Defender EASM Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free policy assessment and recommendations",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/defender-for-cloud/",
+        "official_name": "Security Center",
+        "category": "Security",
+        "notes": "Defender plans bill per resource."
+      }
+    },
+    {
+      "service_name": "Microsoft Discovery",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (AI + Machine Learning).",
+      "sku_tiers": [
+        {
+          "sku": "User Messages",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Microsoft Dragon Copilot",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Other).",
+      "sku_tiers": [
+        {
+          "sku": "Physician PAYG",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Rad PAYG",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Microsoft Entra Domain Services",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "Enterprise",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "Microsoft Fabric",
+      "pricing_category": "Data",
+      "service_family": "Data",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Data).",
+      "sku_tiers": [
+        {
+          "sku": "Capacity Overage Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Cosmos Database in Microsoft Fabric Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Orchestration Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Warehouse (Accelerated) Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Eventhouse Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Eventstream Connector Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Fabric Capacity",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Fabric meter 201 Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Graph data science Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Map services Capacity Usage",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Microsoft Genomics",
+      "pricing_category": "AI",
+      "service_family": "AI + Machine Learning",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (AI + Machine Learning).",
+      "sku_tiers": [
+        {
+          "sku": "Alignment and Variant Calling",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Microsoft Graph Services",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "M365 APIs Extended Usage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Outlook Ext Use",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "SharePoint Online and OneDrive Enterprise Set Sensitivity Label",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard APIs - SharePoint",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Teams Calling Ext Use",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Teams Change Notification API",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Teams Export API",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Teams Msg Ext Use",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Teams PATCH API",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Teams Presence Ext Use",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 10
+    },
+    {
+      "service_name": "Microsoft Graph data connect",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Microsoft Planetary Computer Pro",
+      "pricing_category": "Data",
+      "service_family": "Data",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Data).",
+      "sku_tiers": [
+        {
+          "sku": "Bandwidth",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Geospatial Data Operations",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Geospatial Storage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Ingest and Transform",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 4
+    },
+    {
+      "service_name": "Microsoft Playwright Testing",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Linux",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "MacOS",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Reporting",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Reporting - Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Reporting - Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Windows",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Free tier test minutes per month",
+        "notes": "Paid SKUs bill for additional parallel workers and minutes.",
+        "doc_ref": "https://learn.microsoft.com/en-us/azure/playwright-testing/how-to-try-playwright-testing-free"
+      }
+    },
+    {
+      "service_name": "Microsoft Purview",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "Advanced Resource Set",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Audit Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Communication Compliance Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Communication Compliance Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Catalog Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Lifecycle Management Premium",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Management Advanced",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Management Basic",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Data Management Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "In Transit Protection",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 16
+    },
+    {
+      "service_name": "Microsoft Security Copilot",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "Overage",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Provisioned",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "NAT Gateway",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Hourly and data processed charges.",
+      "sku_tiers": [],
+      "sku_count": 0
+    },
+    {
+      "service_name": "Network Traversal",
+      "pricing_category": "Communication",
+      "service_family": "Azure Communication Services",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Azure Communication Services).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Network Watcher",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: Network Watcher (always).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1,
+      "free_tier": {
+        "duration": "always",
+        "limit": "5 GB storage with 1,000 checks, 10 tests, and 10 connection metrics",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/network-watcher/",
+        "official_name": "Network Watcher",
+        "category": "Networking",
+        "notes": "Packet capture and flow logs bill."
+      }
+    },
+    {
+      "service_name": "Notification Hubs",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Notification Hubs (always).",
+      "sku_tiers": [
+        {
+          "sku": "1P Direct Send",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Availability Zones SKU",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Free",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "Private Link",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6,
+      "free_tier": {
+        "duration": "always",
+        "limit": "1 million push notifications with free namespace",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/notification-hubs/",
+        "official_name": "Notification Hubs",
+        "category": "Mobile"
+      }
+    },
+    {
+      "service_name": "Phone Numbers",
+      "pricing_category": "Communication",
+      "service_family": "Azure Communication Services",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Azure Communication Services).",
+      "sku_tiers": [
+        {
+          "sku": "AR",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "AU",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "BE",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "BR",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "CA",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "CN",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "CO",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DE",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DK",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "ES",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "PlayFab",
+      "pricing_category": "Gaming",
+      "service_family": "Gaming",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Gaming).",
+      "sku_tiers": [
+        {
+          "sku": "Consumption Extended Catalog",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Data Connection Azure Blob Storage Inter-continental",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Experimentation",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Friends",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Game Configuration",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Game Save",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Game Server Hosting",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Leaderboards",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Matchmaking",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Consumption Extended Networking",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "Power BI",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "EM1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "EM2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "EM3",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "P3",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 4,
+      "free_tier": {
+        "duration": "none",
+        "limit": "Power BI service licensing is not an always-free Azure meter",
+        "notes": "Retail catalog lists embedded capacities; Power BI Pro/Premium are Microsoft 365 or capacity licenses.",
+        "doc_ref": "https://learn.microsoft.com/en-us/power-bi/enterprise/service-premium-license-plan"
+      }
+    },
+    {
+      "service_name": "Power BI Embedded",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "A1",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A2",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A3",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A4",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A5",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "A6",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Workspace Collection",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 7
+    },
+    {
+      "service_name": "Private Mobile Network",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Large",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Quantum Computing",
+      "pricing_category": "Quantum",
+      "service_family": "Quantum Computing",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Quantum Computing).",
+      "sku_tiers": [
+        {
+          "sku": "Learn and Develop",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Performance at Scale",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2
+    },
+    {
+      "service_name": "Redis Cache",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Databases).",
+      "sku_tiers": [
+        {
+          "sku": "A1500",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "B0",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "B1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "B100",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "B1000",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "B20",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "B500",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "C1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "C2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "C3",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 30
+    },
+    {
+      "service_name": "SAP Embrace",
+      "pricing_category": "Other",
+      "service_family": "Other",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Other).",
+      "sku_tiers": [
+        {
+          "sku": "Enterprise Version",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard Version",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 3
+    },
+    {
+      "service_name": "SMS",
+      "pricing_category": "Communication",
+      "service_family": "Azure Communication Services",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure retail service (Azure Communication Services).",
+      "sku_tiers": [
+        {
+          "sku": "CA",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "ROW",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Trial",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "trial",
+            "limit": "Time-limited trial SKU",
+            "notes": "Retail meter at $0 during trial; converts to paid after trial ends.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "UK",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "US",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6
+    },
+    {
+      "service_name": "SQL Data Warehouse",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Databases).",
+      "sku_tiers": [
+        {
+          "sku": "DWU100",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU1200",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU1500",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU18000",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU2000",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU300",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU3000",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU400",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "DWU500",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 9
+    },
+    {
+      "service_name": "SQL Database",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "costed",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure SQL Database (always).",
+      "sku_tiers": [
+        {
+          "sku": "1 DTU",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "1 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "100 DTU Pack",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "12 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "125 DTU Pack",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "14 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "18 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "18 vCore Zone Redundancy",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "2 vCore Zone Redundancy",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "20 vCore",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Up to 10 databases with 100,000 vCore seconds of serverless tier and 32 GB storage each",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/azure-sql/database/",
+        "official_name": "Azure SQL Database",
+        "category": "Databases",
+        "notes": "Always-free allowance per Azure free services page."
+      }
+    },
+    {
+      "service_name": "SQL Managed Instance",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_12_months",
+      "notes": "Azure free services: Azure SQL Managed Instance (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "1 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "1 vCore Zone Redundancy",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "16 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "16 vCore Zone Redundancy",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "24 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "24 vCore Zone Redundancy",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "32 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "32 vCore Zone Redundancy",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "4 vCore",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "4 vCore Zone Redundancy",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "720 vCore hours of 4-vCore or 8-vCore General Purpose instance with 64 GB data and backup storage",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/azure-sql/managed-instance/",
+        "official_name": "Azure SQL Managed Instance",
+        "category": "Databases"
+      }
+    },
+    {
+      "service_name": "SQL Server Stretch Database",
+      "pricing_category": "Databases",
+      "service_family": "Databases",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Databases).",
+      "sku_tiers": [
+        {
+          "sku": "DSU100",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "DSU1000",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "DSU1200",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "DSU1500",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "DSU2000",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "DSU300",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "DSU500",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "DSU600",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 8
+    },
+    {
+      "service_name": "Scheduler",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "free",
+      "pricing_model": "always_free",
+      "notes": "Azure Scheduler is retired; legacy meter may show $0.",
+      "sku_tiers": [
+        {
+          "sku": "Free",
+          "pricing_model": "always_free",
+          "cost_type": "free",
+          "free_tier": {
+            "duration": "always",
+            "limit": "Free SKU: Free",
+            "notes": "Free tier SKU; overages or paid SKUs may bill.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "P10 Premium",
+          "pricing_model": "always_free",
+          "cost_type": "free"
+        },
+        {
+          "sku": "P20 Premium",
+          "pricing_model": "always_free",
+          "cost_type": "free"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "always_free",
+          "cost_type": "free"
+        }
+      ],
+      "sku_count": 4,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Retired service",
+        "notes": "Azure Scheduler is retired; use Logic Apps or Functions.",
+        "doc_ref": "https://learn.microsoft.com/en-us/azure/scheduler/scheduler-overview"
+      }
+    },
+    {
+      "service_name": "Sentinel",
+      "pricing_category": "Management",
+      "service_family": "Management and Governance",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Management and Governance).",
+      "sku_tiers": [
+        {
+          "sku": "100 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "1000 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "10000 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "200 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "2000 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "25000 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "300 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "400 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "50 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "500 GB Commitment Tier",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 26
+    },
+    {
+      "service_name": "Service Bus",
+      "pricing_category": "Integration",
+      "service_family": "Integration",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_12_months",
+      "notes": "Azure free services: Service Bus (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Geo Replication Zone 1",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Geo Replication Zone 2",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Geo Replication Zone 3",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Hybrid Connections",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "WCF Relay",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 8,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "750 hours and 13 million operations Standard tier base unit",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/service-bus/",
+        "official_name": "Service Bus",
+        "category": "Integration"
+      }
+    },
+    {
+      "service_name": "SignalR",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Azure SignalR Service (always).",
+      "sku_tiers": [
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2,
+      "free_tier": {
+        "duration": "always",
+        "limit": "20 concurrent connections per unit and 20,000 messages",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/signalr-service/",
+        "official_name": "Azure SignalR Service",
+        "category": "Web"
+      }
+    },
+    {
+      "service_name": "Static Web Apps",
+      "pricing_category": "Web",
+      "service_family": "Web",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure free services: Static Web Apps (always).",
+      "sku_tiers": [],
+      "sku_count": 0,
+      "free_tier": {
+        "duration": "always",
+        "limit": "100 GB bandwidth per subscription, 2 custom domains and 0.5 GB storage per app",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/app-service/static/",
+        "official_name": "Static Web Apps",
+        "category": "Compute"
+      }
+    },
+    {
+      "service_name": "Storage",
+      "pricing_category": "Storage",
+      "service_family": "Storage",
+      "cost_type": "costed",
+      "pricing_model": "free_tier_12_months",
+      "notes": "Azure free services: Archive Storage (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "Archive GRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Archive RA-GRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cold LRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cold RA-GRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cold ZRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cool - 1 PB LRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cool GRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cool LRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Cool RA-GRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "E10 LRS",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "10 GB LRS storage, 10 GB write/retrieval, and 100 reads",
+        "doc_ref": null,
+        "official_name": "Archive Storage",
+        "category": "Storage",
+        "notes": "Azure free account allowances for 12 months."
+      }
+    },
+    {
+      "service_name": "Stream Analytics",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Analytics).",
+      "sku_tiers": [
+        {
+          "sku": "Dedicated",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Dedicated V2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard V2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 5
+    },
+    {
+      "service_name": "Syntex",
+      "pricing_category": "Productivity",
+      "service_family": "Microsoft Syntex",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Microsoft Syntex).",
+      "sku_tiers": [
+        {
+          "sku": "4K Video",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "API Transactions",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Cold",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Content Assembly",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Egress",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Image Tagging",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Optical Character Recognition",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Pre-built understanding",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Restore",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Restored",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 25
+    },
+    {
+      "service_name": "Time Series Insights",
+      "pricing_category": "IoT",
+      "service_family": "Internet of Things",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Internet of Things).",
+      "sku_tiers": [
+        {
+          "sku": "Data Processing",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Pay as you go",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S1",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "S2",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 4
+    },
+    {
+      "service_name": "Traffic Manager",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "Azure Endpoint",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Azure Region",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Nested Endpoint",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Non-Azure Endpoint",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Non-Azure Region",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Traffic View",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 6
+    },
+    {
+      "service_name": "Trusted Signing",
+      "pricing_category": "Security",
+      "service_family": "Security",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure retail service (Security).",
+      "sku_tiers": [
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 1,
+      "free_tier": {
+        "duration": "always",
+        "limit": "Limited free certificate profiles per month",
+        "notes": "Premium profiles and additional signatures bill.",
+        "doc_ref": "https://learn.microsoft.com/en-us/azure/trusted-signing/"
+      }
+    },
+    {
+      "service_name": "VPN Gateway",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_12_months",
+      "notes": "Azure free services: VPN Gateway (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "Advanced Connectivity Add-On",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "High Performance",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "VpnGw1",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "VpnGw1AZ",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "VpnGw2",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "VpnGw2AZ",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "VpnGw3",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "VpnGw3AZ",
+          "pricing_model": "free_tier_12_months",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 14,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "750 hours VpnGw1 Gateway Type",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/vpn-gateway/",
+        "official_name": "VPN Gateway",
+        "category": "Networking"
+      }
+    },
+    {
+      "service_name": "Virtual Machines",
+      "pricing_category": "Compute",
+      "service_family": "Compute",
+      "cost_type": "costed",
+      "pricing_model": "reserved_capable",
+      "notes": "Azure free services: Virtual Machines\u2014Linux (12 months new account).",
+      "sku_tiers": [
+        {
+          "sku": "B2pls v2 Spot",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "B4ls v2 Spot",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D14 Spot",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D16as v4 Low Priority",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D16ds v4",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D192s v6",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D2 v4 Low Priority",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D2a v4 Spot",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D2ads v6",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "D32alds v6 Spot",
+          "pricing_model": "reserved_capable",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 30,
+      "free_tier": {
+        "duration": "12_months_new_account",
+        "limit": "750 hours each of B2pts v2 (Arm-based) and B2ats v2 (AMD-based) burstable VMs",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/virtual-machines/linux/",
+        "official_name": "Virtual Machines\u2014Linux",
+        "category": "Compute"
+      }
+    },
+    {
+      "service_name": "Virtual Machines Licenses",
+      "pricing_category": "Compute",
+      "service_family": "Compute",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Compute).",
+      "sku_tiers": [
+        {
+          "sku": "14 vCPU VM",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "192 vCPU VM",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "192-vCPU VM",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "24 vCPU VM",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "7 vCPU VM",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "8 vCPU VM",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "832-vCPU VM",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Tracking On Premises",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 8
+    },
+    {
+      "service_name": "Virtual Network",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure free services: Virtual Network (always).",
+      "sku_tiers": [
+        {
+          "sku": "A4",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Basic",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Global",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Inter-Region",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Intra-Region",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Managed IP",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Service endpoint Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard Service Endpoint",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 9,
+      "free_tier": {
+        "duration": "always",
+        "limit": "50 virtual networks",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/virtual-network/",
+        "official_name": "Virtual Network",
+        "category": "Networking",
+        "notes": "Base VNet resources are free; public IPs, gateways, and data transfer bill."
+      }
+    },
+    {
+      "service_name": "Virtual WAN",
+      "pricing_category": "Networking",
+      "service_family": "Networking",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Networking).",
+      "sku_tiers": [
+        {
+          "sku": "App Gateway Unit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "ExpressRoute Additional Scale Unit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "ExpressRoute Connection Unit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "ExpressRoute Scale Unit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Firewall NVA Data Processing",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Hub to Hub Transfer",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "NVA Infrastructure Unit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Routing Infrastructure Unit",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard Hub",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Standard Hub with Firewall policies for Third party security provider(s)",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 15
+    },
+    {
+      "service_name": "Visual Studio Codespaces",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "Standard",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 1
+    },
+    {
+      "service_name": "Visual Studio Subscription",
+      "pricing_category": "Developer Tools",
+      "service_family": "Developer Tools",
+      "cost_type": "costed",
+      "pricing_model": "pay_as_you_go",
+      "notes": "Azure retail service (Developer Tools).",
+      "sku_tiers": [
+        {
+          "sku": "Enterprise Annual",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Enterprise Monthly",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Professional Annual",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        },
+        {
+          "sku": "Professional Monthly",
+          "pricing_model": "pay_as_you_go",
+          "cost_type": "costed"
+        }
+      ],
+      "sku_count": 4
+    },
+    {
+      "service_name": "Voice",
+      "pricing_category": "Communication",
+      "service_family": "Azure Communication Services",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_limited",
+      "notes": "Azure retail service (Azure Communication Services).",
+      "sku_tiers": [
+        {
+          "sku": "A2AGroupCalling",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Mixed Audio and Video",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "ROW",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Single Channel Mixed Audio",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Trial",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional",
+          "free_tier": {
+            "duration": "trial",
+            "limit": "Time-limited trial SKU",
+            "notes": "Retail meter at $0 during trial; converts to paid after trial ends.",
+            "doc_ref": "https://azure.microsoft.com/pricing/free-services"
+          }
+        },
+        {
+          "sku": "US",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Unmixed Audio Insights Streaming",
+          "pricing_model": "free_tier_limited",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 8
+    },
+    {
+      "service_name": "Web PubSub",
+      "pricing_category": "Analytics",
+      "service_family": "Analytics",
+      "cost_type": "conditional",
+      "pricing_model": "free_tier_monthly",
+      "notes": "Azure free services: Web PubSub (always).",
+      "sku_tiers": [
+        {
+          "sku": "Premium",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Standard",
+          "pricing_model": "free_tier_monthly",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 2,
+      "free_tier": {
+        "duration": "always",
+        "limit": "20,000 messages per unit per day and 20 concurrent connections per unit (1 unit max)",
+        "doc_ref": "https://azure.microsoft.com/en-us/products/web-pubsub/",
+        "official_name": "Web PubSub",
+        "category": "Web"
+      }
+    },
+    {
+      "service_name": "Windows Virtual Desktop",
+      "pricing_category": "Desktop",
+      "service_family": "Windows Virtual Desktop",
+      "cost_type": "conditional",
+      "pricing_model": "hybrid",
+      "notes": "Azure retail service (Windows Virtual Desktop).",
+      "sku_tiers": [
+        {
+          "sku": "AVD for Azure Stack HCI",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "App Hosting",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "App to Desktop Upgrade",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        },
+        {
+          "sku": "Desktop & App Hosting",
+          "pricing_model": "hybrid",
+          "cost_type": "conditional"
+        }
+      ],
+      "sku_count": 4
+    }
+  ]
+}

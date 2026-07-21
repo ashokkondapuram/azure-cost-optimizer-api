@@ -1,0 +1,3 @@
+# Manual gateway overrides (merged with routes.generated.yaml at runtime)
+
+routes: []

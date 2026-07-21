@@ -1,0 +1,328 @@
+/**
+ * Zafin dark shell — component overrides for dark-only UI (zafin.com navy aesthetic).
+ */
+
+/* ── Wiz shell surfaces ─────────────────────────────────────── */
+
+.wiz-stat {
+  background: rgba(18, 26, 54, 0.85);
+  border-color: var(--border);
+}
+
+.wiz-stat--clickable:hover {
+  background: rgba(0, 115, 255, 0.12);
+  border-color: rgba(0, 115, 255, 0.35);
+}
+
+.wiz-card__head {
+  background: rgba(18, 26, 54, 0.6);
+}
+
+.wiz-service-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.wiz-hero {
+  background:
+    radial-gradient(ellipse 80% 120% at 0% 0%, rgba(0, 115, 255, 0.18), transparent 55%),
+    radial-gradient(ellipse 60% 80% at 100% 0%, rgba(0, 156, 255, 0.12), transparent 50%),
+    var(--surface);
+  border-color: var(--border);
+}
+
+.wiz-panel {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+/* ── Command bar & finding cards ───────────────────────────── */
+
+.wiz-command-bar {
+  background: rgba(18, 26, 54, 0.95);
+  border-color: var(--border);
+  backdrop-filter: blur(8px);
+}
+
+.wiz-finding-card {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+
+/* ── Charts ────────────────────────────────────────────────── */
+
+.wiz-chart-card {
+  background: var(--surface);
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.wiz-chart-legend__chip {
+  background: rgba(18, 26, 54, 0.9);
+  border-color: var(--border);
+}
+
+/* ── Insight drawer — dark panels (not white) ─────────────── */
+
+.insight-drawer--v2 {
+  background: var(--surface);
+  border-left-color: var(--border);
+  box-shadow: -16px 0 48px rgba(0, 0, 0, 0.45);
+}
+
+.insight-drawer--v2 .insight-drawer__shell {
+  background: var(--bg2);
+}
+
+.insight-drawer__nav--v2.insight-drawer__nav--vertical {
+  background: var(--surface);
+  border-right-color: var(--border);
+}
+
+.insight-drawer__tab-panel-v2 {
+  background: var(--surface);
+}
+
+.insight-drawer--v2 .insight-drawer__tab-panel-v2 .advanced-insight {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+
+.insight-drawer--v2 .insight-drawer__action-item {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+
+.insight-drawer--v2 .insight-drawer__context-note {
+  background: rgba(0, 115, 255, 0.1);
+  color: var(--text2);
+}
+
+/* ── Page heroes ───────────────────────────────────────────── */
+
+.dashboard-hero,
+.page-hero {
+  background: var(--hero-surface);
+  border-color: var(--border);
+}
+
+.waste-heatmap-hero .dashboard-hero__title {
+  background: linear-gradient(120deg, #f0f4ff 0%, #f97316 120%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.waste-hero__footer {
+  background: rgba(15, 22, 48, 0.85);
+  border-top-color: rgba(249, 115, 22, 0.25);
+}
+
+.waste-hero__hotspot {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+
+/* ── Cards & tables ─────────────────────────────────────────── */
+
+.card,
+.modal,
+.modal-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.rec-detail-card {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+.rec-detail-card__rec {
+  background: rgba(0, 115, 255, 0.1);
+  border-color: rgba(0, 156, 255, 0.28);
+}
+
+.rec-ai-insight,
+.ai-insight-callout {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 115, 255, 0.1) 0%,
+    rgba(0, 156, 255, 0.06) 100%
+  );
+  border-color: rgba(0, 156, 255, 0.22);
+}
+
+.advanced-analysis-finding {
+  background: var(--surface2);
+  border-color: var(--border);
+}
+
+/* ── Sidebar ───────────────────────────────────────────────── */
+
+.sidebar {
+  background: var(--sidebar-bg);
+  border-right-color: var(--border);
+}
+
+.sidebar-section {
+  color: var(--text-muted);
+}
+
+.nav-item {
+  color: #e4eaf6;
+}
+
+.nav-item svg {
+  opacity: 1;
+  color: #c8d2e6;
+}
+
+.nav-item:hover {
+  background: rgba(0, 115, 255, 0.1);
+  color: #ffffff;
+}
+
+.nav-item.active {
+  background: rgba(0, 115, 255, 0.16);
+  color: #ffffff;
+}
+
+.nav-item.active svg {
+  color: var(--primary-light);
+}
+
+.sidebar-nav__link--featured:not(.active) {
+  color: #f0f4ff;
+  border-color: rgba(0, 115, 255, 0.35);
+}
+
+.insight-drawer__nav--v2 .insight-drawer__nav-item {
+  color: #d5dced;
+}
+
+.insight-drawer__nav--v2 .insight-drawer__nav-item--active {
+  color: #ffffff;
+}
+
+.btn-ghost {
+  color: #e4eaf6;
+}
+
+/* ── Forms ─────────────────────────────────────────────────── */
+
+input,
+select,
+textarea {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text3);
+}
+
+/* ── Login ─────────────────────────────────────────────────── */
+
+.login-page {
+  background: var(--bg);
+}
+
+.login-card {
+  background: var(--login-card-bg);
+  border-color: var(--border);
+}
+
+/* ── Recharts tooltips ───────────────────────────────────────── */
+
+.waste-chart-tooltip,
+.recharts-default-tooltip {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+}
+
+/* ── Scrollbars (webkit) ─────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text3);
+}
+
+/* ── Global progress ─────────────────────────────────────────── */
+
+.global-progress__bar {
+  background: linear-gradient(90deg, var(--zafin-blue), var(--zafin-cyan));
+}
+
+/* ── Empty / query states ──────────────────────────────────── */
+
+.empty-state {
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.query-error {
+  border-color: color-mix(in srgb, var(--danger) 35%, var(--border));
+}
+
+/* ── Zafin prose on dark ───────────────────────────────────── */
+
+.zafin-prose {
+  color: var(--text2);
+}
+
+.zafin-prose p,
+.zafin-prose strong,
+.zafin-prose b {
+  color: var(--text);
+}
+
+.zafin-prose h2,
+.zafin-prose h3,
+.zafin-prose h4 {
+  color: var(--text);
+}
+
+/* ── Data tables ─────────────────────────────────────────────── */
+
+.wiz-table-wrap {
+  background: var(--surface);
+}
+
+.wiz-table-wrap tbody tr:hover {
+  background: var(--row-hover);
+}
+
+.wiz-row--selected {
+  background: rgba(0, 115, 255, 0.14) !important;
+}
+
+/* ── Severity chips active state ───────────────────────────── */
+
+.insight-severity-chip--active {
+  color: #fff;
+}
+
+/* ── Main column ambient glow ────────────────────────────────── */
+
+.main-column::before {
+  background:
+    radial-gradient(ellipse 90% 55% at 12% -8%, rgba(0, 115, 255, 0.12), transparent 58%),
+    radial-gradient(ellipse 70% 50% at 100% 0%, rgba(0, 156, 255, 0.08), transparent 52%),
+    radial-gradient(ellipse 60% 45% at 50% 110%, rgba(3, 15, 65, 0.5), transparent 55%);
+}

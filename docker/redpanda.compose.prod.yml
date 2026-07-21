@@ -1,0 +1,73 @@
+# Production-oriented Redpanda overlay for CostOptimizeRecommender.
+#
+# Usage (microservices stack):
+#   docker compose -f docker-compose.microservices.yml -f docker/redpanda.compose.prod.yml up -d redpanda redpanda-init
+#
+# Usage (Desktop stack):
+#   docker compose -f docker/desktop/docker-compose.yml -f docker/redpanda.compose.prod.yml up -d redpanda redpanda-init
+#
+# TLS / SASL (production cluster — placeholders only, no secrets here):
+#   1. Issue broker + client certs (or use your PKI / Azure Key Vault).
+#   2. Mount certs into the container, e.g. /etc/redpanda/certs/.
+#   3. Replace PLAINTEXT listeners with TLS + SASL, for example:
+#        --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+#        --advertise-kafka-addr internal://redpanda:9092,external://<broker-host>:9092
+#      Enable TLS on internal/external listeners and SCRAM-SHA-512 for clients.
+#   4. Set application env (from secret manager, not compose):
+#        KAFKA_SECURITY_PROTOCOL=SASL_SSL
+#        KAFKA_SASL_MECHANISM=SCRAM-SHA-512
+#        KAFKA_SASL_USERNAME=<from-secret-manager>
+#        KAFKA_SASL_PASSWORD=<from-secret-manager>
+#   5. Schema Registry: enable HTTPS on :8081; restrict with API key or mTLS.
+#
+# Multi-broker: increase KAFKA_TOPIC_REPLICATION_FACTOR (e.g. 3) and run a
+# Redpanda cluster (3+ nodes). Single-node overlay keeps replication_factor=1.
+
+services:
+  redpanda:
+    environment:
+      # Passed through for documentation; Redpanda reads CLI flags below.
+      REDPANDA_MODE: production
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://127.0.0.1:9092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://127.0.0.1:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+      # Production mode (not dev-container): persistent tuning, no dev shortcuts.
+      - --smp 2
+      - --memory 2G
+      - --reserve-memory 512M
+      - --default-log-level=info
+      # Align with KAFKA_MESSAGE_MAX_BYTES (20 MiB) for data.* and api.*.completed payloads.
+      - --set redpanda.kafka_batch_max_bytes=20971520
+      # Default log retention (7 days); per-topic retention.ms overrides in kafka-topics.yaml.
+      - --set redpanda.log_retention_ms=604800000
+      # Internal __consumer_offsets topic sizing for higher consumer group fan-out.
+      - --set redpanda.group_topic_partitions=16
+      # Backpressure: cap concurrent Kafka connections per broker core.
+      - --set redpanda.kafka_connections_max=2048
+      # Producer/consumer fetch defaults — large enough for chunked data pipeline.
+      - --set redpanda.kafka_request_max_bytes=20971520
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health --exit-when-healthy >/dev/null 2>&1 || rpk cluster info >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 15s
+      retries: 10
+      start_period: 60s
+
+  redpanda-init:
+    environment:
+      KAFKA_TOPIC_REPLICATION_FACTOR: ${KAFKA_TOPIC_REPLICATION_FACTOR:-1}

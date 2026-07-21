@@ -1,0 +1,1857 @@
+{
+  "schema_version": "2.0",
+  "schemaVersion": "2.0",
+  "resource_type": "compute/disk",
+  "resourceType": "Microsoft.Compute/disks",
+  "arm_type": "microsoft.compute/disks",
+  "assessmentName": "Azure Managed Disk Production Optimization",
+  "versionDate": "2026-07-16",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/virtual-machines/managed-disks-overview",
+    "arm_api": "https://learn.microsoft.com/en-us/rest/api/compute/disks/get",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-compute-disks-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/managed-disks/",
+    "thresholds_ref": "inline optimization_thresholds in this file",
+    "evidence_contracts_ref": "data/rule_evidence_contracts.json",
+    "engine_ref": "it_services/compute_disk/engine/analysis.py"
+  },
+  "strategy": {
+    "mode": "db_backed_python_engine",
+    "runtimeDataSource": "database_snapshot",
+    "analyzerUsesStoredMetricsOnly": true,
+    "recommendationRuntimeAzureCallsAllowed": false,
+    "refreshCadence": {
+      "resourceProperties": "daily",
+      "metrics": "hourly_or_daily",
+      "costManagement": "daily",
+      "retailPrices": "daily"
+    }
+  },
+  "azure_properties": {
+    "description": "Synced from ARM — non-empty when resource exists",
+    "sync_property_paths": [
+      "diskSizeGB",
+      "diskState",
+      "diskIOPSReadWrite",
+      "diskMBpsReadWrite",
+      "managedBy",
+      "managedByExtended",
+      "shareInfo",
+      "encryption",
+      "provisioningState",
+      "timeCreated",
+      "lastOwnershipUpdateTime",
+      "creationData",
+      "tier",
+      "burstingEnabled"
+    ],
+    "groups": [
+      {
+        "group": "configuration",
+        "properties": [
+          {
+            "arm_path": "properties.diskSizeGB",
+            "label": "Disk size",
+            "type": "number",
+            "unit": "GB",
+            "assessment_use": "capacity"
+          },
+          {
+            "arm_path": "sku.name",
+            "label": "SKU",
+            "type": "string",
+            "assessment_use": "tier_pricing"
+          },
+          {
+            "arm_path": "properties.tier",
+            "label": "Performance tier",
+            "type": "string",
+            "assessment_use": "tier_pricing"
+          },
+          {
+            "arm_path": "properties.diskState",
+            "label": "Disk state",
+            "type": "string",
+            "assessment_use": "attachment"
+          },
+          {
+            "arm_path": "properties.provisioningState",
+            "label": "Provisioning state",
+            "type": "string",
+            "assessment_use": "lifecycle"
+          },
+          {
+            "arm_path": "properties.timeCreated",
+            "label": "Created",
+            "type": "datetime",
+            "assessment_use": "staleness"
+          },
+          {
+            "arm_path": "properties.burstingEnabled",
+            "label": "Bursting enabled",
+            "type": "boolean",
+            "assessment_use": "performance"
+          },
+          {
+            "arm_path": "properties.hyperVGeneration",
+            "label": "Hyper-V generation",
+            "type": "string",
+            "assessment_use": "compatibility"
+          },
+          {
+            "arm_path": "properties.optimizedForFrequentAttach",
+            "label": "Optimized for frequent attach",
+            "type": "boolean",
+            "assessment_use": "configuration"
+          },
+          {
+            "arm_path": "properties.supportsHibernation",
+            "label": "Supports hibernation",
+            "type": "boolean",
+            "assessment_use": "configuration"
+          },
+          {
+            "arm_path": "location",
+            "label": "Region",
+            "type": "string",
+            "assessment_use": "pricing"
+          },
+          {
+            "arm_path": "zones",
+            "label": "Availability zones",
+            "type": "array",
+            "assessment_use": "reliability"
+          }
+        ]
+      },
+      {
+        "group": "capacity",
+        "properties": [
+          {
+            "arm_path": "properties.diskIOPSReadWrite",
+            "label": "Provisioned IOPS",
+            "type": "number",
+            "unit": "IOPS",
+            "assessment_use": "performance"
+          },
+          {
+            "arm_path": "properties.diskMBpsReadWrite",
+            "label": "Provisioned throughput",
+            "type": "number",
+            "unit": "MB/s",
+            "assessment_use": "performance"
+          },
+          {
+            "arm_path": "properties.completionPercent",
+            "label": "Completion percent",
+            "type": "number",
+            "unit": "%",
+            "assessment_use": "lifecycle"
+          }
+        ]
+      },
+      {
+        "group": "attachment",
+        "properties": [
+          {
+            "arm_path": "properties.managedBy",
+            "label": "Attached to",
+            "type": "string",
+            "assessment_use": "association"
+          },
+          {
+            "arm_path": "properties.managedByExtended",
+            "label": "Attached to (extended)",
+            "type": "object",
+            "assessment_use": "association"
+          },
+          {
+            "arm_path": "properties.shareInfo",
+            "label": "Shared disk info",
+            "type": "array",
+            "assessment_use": "association"
+          },
+          {
+            "arm_path": "properties.lastOwnershipUpdateTime",
+            "label": "Last ownership update",
+            "type": "datetime",
+            "assessment_use": "staleness"
+          },
+          {
+            "arm_path": "properties.creationData",
+            "label": "Creation source",
+            "type": "object",
+            "assessment_use": "lineage"
+          }
+        ]
+      },
+      {
+        "group": "security",
+        "properties": [
+          {
+            "arm_path": "properties.encryption",
+            "label": "Encryption settings",
+            "type": "object",
+            "assessment_use": "security"
+          },
+          {
+            "arm_path": "properties.securityProfile",
+            "label": "Security profile",
+            "type": "object",
+            "assessment_use": "security"
+          },
+          {
+            "arm_path": "properties.networkAccessPolicy",
+            "label": "Network access policy",
+            "type": "string",
+            "assessment_use": "security"
+          },
+          {
+            "arm_path": "properties.publicNetworkAccess",
+            "label": "Public network access",
+            "type": "string",
+            "assessment_use": "security"
+          },
+          {
+            "arm_path": "properties.diskAccessId",
+            "label": "Disk access resource",
+            "type": "string",
+            "assessment_use": "security"
+          }
+        ]
+      }
+    ]
+  },
+  "azure_metrics": {
+    "description": "From Azure Monitor — non-empty when disk has I/O activity",
+    "period_default": "P7D",
+    "metrics": [
+      {
+        "metric_name": "Composite Disk Read Bytes/sec",
+        "fact_key": "disk_read_bps",
+        "aggregation": "Average",
+        "period": "P7D",
+        "unit": "B/s",
+        "rules": [
+          "DISK_OVERSIZE",
+          "DISK_UNUSED_EXTENDED",
+          "DISK_OVERSIZE_EXTENDED"
+        ]
+      },
+      {
+        "metric_name": "Composite Disk Write Bytes/sec",
+        "fact_key": "disk_write_bps",
+        "aggregation": "Average",
+        "period": "P7D",
+        "unit": "B/s",
+        "rules": [
+          "DISK_OVERSIZE",
+          "DISK_UNUSED_EXTENDED",
+          "DISK_OVERSIZE_EXTENDED"
+        ]
+      },
+      {
+        "metric_name": "Composite Disk Read Operations/sec",
+        "fact_key": "disk_read_iops",
+        "aggregation": "Average",
+        "period": "P7D",
+        "unit": "ops/s",
+        "rules": [
+          "DISK_OVERSIZE_EXTENDED",
+          "DISK_UNDERPROVISIONED",
+          "DISK_ULTRA_DOWNGRADE_PREMIUM",
+          "DISK_ULTRA_DOWNGRADE_SSD",
+          "DISK_PREMIUM_DOWNGRADE_HDD",
+          "DISK_SSD_DOWNGRADE_HDD"
+        ]
+      },
+      {
+        "metric_name": "Composite Disk Write Operations/sec",
+        "fact_key": "disk_write_iops",
+        "aggregation": "Average",
+        "period": "P7D",
+        "unit": "ops/s",
+        "rules": [
+          "DISK_OVERSIZE_EXTENDED",
+          "DISK_UNDERPROVISIONED",
+          "DISK_ULTRA_DOWNGRADE_PREMIUM",
+          "DISK_ULTRA_DOWNGRADE_SSD",
+          "DISK_PREMIUM_DOWNGRADE_HDD",
+          "DISK_SSD_DOWNGRADE_HDD"
+        ]
+      },
+      {
+        "metric_name": "DiskPaidBurstIOPS",
+        "fact_key": "disk_paid_burst_iops",
+        "aggregation": "Average",
+        "period": "P7D",
+        "unit": "ops/s",
+        "rules": []
+      }
+    ],
+    "derived_metrics": {
+      "disk_iops_utilization_pct": {
+        "source": "disk_read_iops + disk_write_iops vs provisioned IOPS",
+        "aggregation": "peak",
+        "period": "P7D",
+        "unit": "%"
+      },
+      "disk_throughput_utilization_pct": {
+        "source": "disk_read_bps + disk_write_bps vs provisioned MB/s",
+        "aggregation": "peak",
+        "period": "P7D",
+        "unit": "%"
+      },
+      "disk_used_pct": {
+        "source": "capacity enrichment from disk tier specs",
+        "aggregation": "avg",
+        "period": "P7D",
+        "unit": "%"
+      },
+      "disk_queue_depth": {
+        "source": "enriched from VM OS disk metrics when attached",
+        "aggregation": "max",
+        "period": "P7D",
+        "unit": "count"
+      }
+    }
+  },
+  "cost_management": {
+    "description": "From Cost Management API and Azure Retail Prices — aligned with resource_retail_cost.py envelope",
+    "fields": [
+      {
+        "field": "billed_mtd",
+        "label": "Billed month-to-date",
+        "source": "cost_management",
+        "cost_query": "PreTaxCost",
+        "granularity": "MTD",
+        "currency": "billing",
+        "normalized_key": "monthly_cost_usd",
+        "required_for": [
+          "all_cost_rules"
+        ]
+      },
+      {
+        "field": "retail_monthly",
+        "label": "Retail monthly estimate",
+        "source": "azure_retail_prices",
+        "sku_from": "sku.name + properties.diskSizeGB + location",
+        "currency": "USD",
+        "normalized_key": "retail_monthly",
+        "fallback_source": "catalog_thresholds",
+        "required_for": [
+          "tier_downgrade_rules"
+        ]
+      },
+      {
+        "field": "retail_currency",
+        "label": "Retail price currency",
+        "source": "azure_retail_prices",
+        "normalized_key": "retail_currency"
+      },
+      {
+        "field": "retail_source",
+        "label": "Retail price data source",
+        "source": "azure_retail_prices",
+        "normalized_key": "retail_source",
+        "values": [
+          "azure_retail_prices",
+          "catalog_thresholds"
+        ]
+      },
+      {
+        "field": "retail_pending",
+        "label": "Retail estimate pending",
+        "source": "derived",
+        "normalized_key": "retail_pending",
+        "type": "boolean"
+      },
+      {
+        "field": "savings_estimate",
+        "label": "Estimated monthly savings",
+        "source": "azure_retail_pricing.estimate_disk_tier_savings",
+        "inputs": [
+          "billed_mtd",
+          "retail_monthly",
+          "current_tier",
+          "target_tier",
+          "diskSizeGB",
+          "location"
+        ]
+      }
+    ]
+  },
+  "rules": [
+    {
+      "rule_id": "DISK_UNATTACHED",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "thresholds_ref": "max_unattached_disk_days",
+      "recommendation": {
+        "action": "Delete or snapshot unattached disk",
+        "target_tier": null,
+        "savings_from": "billed_mtd"
+      },
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "evidence_factors": [
+        "Disk state is Unattached",
+        "Days since last ownership update exceeds threshold",
+        "Billed MTD cost confirms ongoing storage charge"
+      ],
+      "engine": "standard"
+    },
+    {
+      "rule_id": "DISK_OVERSIZE",
+      "category": "cost",
+      "determines": [
+        "cost",
+        "performance"
+      ],
+      "thresholds_ref": "optimization_thresholds.disk_io_idle_bps",
+      "recommendation": {
+        "action": "Downgrade to lower performance tier",
+        "target_tier": "StandardSSD_LRS",
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Combined read/write throughput below idle threshold",
+        "Peak IOPS utilization below downgrade block threshold",
+        "Premium tier relative cost vs Standard SSD retail estimate"
+      ],
+      "engine": "standard"
+    },
+    {
+      "rule_id": "DISK_UNUSED_EXTENDED",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "thresholds_ref": "optimization_thresholds.max_unattached_disk_days",
+      "recommendation": {
+        "action": "Delete unused disk or snapshot for retention",
+        "target_tier": null,
+        "savings_from": "billed_mtd"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "evidence_factors": [
+        "Disk state Unattached for longer than max_unattached_disk_days",
+        "Optional: combined I/O below disk_io_idle_bps confirms no activity",
+        "Last attached VM name from lastOwnershipUpdateTime when available",
+        "Billed MTD equals full monthly storage cost"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_OVERSIZE_EXTENDED",
+      "category": "cost",
+      "determines": [
+        "cost",
+        "performance"
+      ],
+      "thresholds_ref": "optimization_thresholds.disk_io_idle_bps",
+      "recommendation": {
+        "action": "Downgrade to Standard SSD",
+        "target_tier": "StandardSSD_LRS",
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "SKU contains PREMIUM (Premium_LRS or Premium_ZRS)",
+        "Combined read+write throughput below disk_io_idle_bps (default 1,024 B/s)",
+        "Peak IOPS utilization below 50% of provisioned capacity",
+        "Peak IOPS utilization below disk_iops_block_downgrade_pct block threshold",
+        "Retail monthly estimate for StandardSSD_LRS shows positive savings vs billed MTD"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_UNDERPROVISIONED",
+      "category": "performance",
+      "determines": [
+        "performance"
+      ],
+      "thresholds_ref": "optimization_thresholds.disk_iops_high_util_pct",
+      "recommendation": {
+        "action": "Increase disk size or move to Ultra SSD",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "provisioned_iops",
+          "label": "Provisioned IOPS",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "IOPS",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Premium or Ultra SKU with attached state",
+        "Peak IOPS or throughput utilization at or above disk_iops_high_util_pct (80%)",
+        "Provisioned IOPS from properties.diskIOPSReadWrite",
+        "Headroom below recommended 20-40% buffer"
+      ],
+      "engine": "standard"
+    },
+    {
+      "rule_id": "DISK_CAPACITY_RIGHTSIZE_EXTENDED",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "thresholds_ref": "optimization_thresholds.capacity_used_pct_max",
+      "recommendation": {
+        "action": "Downsize to next smaller disk SKU",
+        "target_tier": "same_tier_smaller_size",
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Attached disk with disk_used_pct available from enrichment",
+        "Used capacity percent at or below capacity_used_pct_max (30%)",
+        "Estimated savings from 25% capacity reduction factor",
+        "Billed MTD used as savings baseline when positive"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_QUEUE_DEPTH_EXTENDED",
+      "category": "performance",
+      "determines": [
+        "performance"
+      ],
+      "thresholds_ref": "optimization_thresholds.disk_queue_depth_contention",
+      "recommendation": {
+        "action": "Investigate I/O contention before downgrade",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "disk_queue_depth metric exceeds disk_queue_depth_contention (10)",
+        "Blocks conflicting tier-downgrade recommendations",
+        "Attached disk state required"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_NEW_GRACE_PERIOD",
+      "category": "governance",
+      "determines": [],
+      "thresholds_ref": "optimization_thresholds.new_disk_grace_period_days",
+      "recommendation": {
+        "action": "Skip optimization — disk too new",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [],
+      "evidence_factors": [
+        "properties.timeCreated within new_disk_grace_period_days (7 days)",
+        "Guard rule — suppresses all other recommendations for new disks"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_ULTRA_DOWNGRADE_PREMIUM",
+      "category": "cost",
+      "determines": [
+        "cost",
+        "performance"
+      ],
+      "thresholds_ref": "rule_configurations.DISK_ULTRA_DOWNGRADE_PREMIUM.iops_utilization_threshold_pct",
+      "recommendation": {
+        "action": "Downgrade Ultra SSD to Premium SSD",
+        "target_tier": "Premium_LRS",
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "UltraSSD_LRS SKU attached to VM",
+        "Peak IOPS utilization below 50%",
+        "Peak throughput utilization below 50% when available",
+        "Retail savings at least $50/month"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_ULTRA_DOWNGRADE_SSD",
+      "category": "cost",
+      "determines": [
+        "cost",
+        "performance"
+      ],
+      "thresholds_ref": "rule_configurations.DISK_ULTRA_DOWNGRADE_SSD.iops_utilization_threshold_pct",
+      "recommendation": {
+        "action": "Downgrade Ultra SSD to Standard SSD",
+        "target_tier": "StandardSSD_LRS",
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "UltraSSD_LRS SKU with very low utilization",
+        "Peak IOPS utilization below 30%",
+        "Peak throughput utilization below 30% when available",
+        "Retail savings at least $100/month"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_PREMIUM_DOWNGRADE_HDD",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "thresholds_ref": "rule_configurations.DISK_PREMIUM_DOWNGRADE_HDD.iops_utilization_threshold_pct",
+      "recommendation": {
+        "action": "Downgrade unattached Premium to Standard HDD",
+        "target_tier": "Standard_LRS",
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Premium SKU in Unattached state only",
+        "Peak IOPS utilization below 15%",
+        "Peak throughput utilization below 15% when available",
+        "Retail savings at least $10/month"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "DISK_SSD_DOWNGRADE_HDD",
+      "category": "cost",
+      "determines": [
+        "cost",
+        "performance"
+      ],
+      "thresholds_ref": "rule_configurations.DISK_SSD_DOWNGRADE_HDD.iops_utilization_threshold_pct",
+      "recommendation": {
+        "action": "Downgrade Standard SSD to Standard HDD",
+        "target_tier": "Standard_LRS",
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "StandardSSD SKU with I/O profile matching HDD capabilities",
+        "Peak IOPS utilization below 20%",
+        "Peak throughput utilization below 20% when available",
+        "Retail savings at least $2/month"
+      ],
+      "engine": "extended"
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "unattached_stale",
+      "description": "Unattached disk retained beyond staleness threshold",
+      "applies_when": {
+        "diskState": "Unattached",
+        "unattached_days_gte": 30
+      },
+      "properties_required": [
+        "diskState",
+        "diskSizeGB",
+        "sku.name",
+        "timeCreated",
+        "lastOwnershipUpdateTime"
+      ],
+      "metrics_required": [
+        "disk_read_bps",
+        "disk_write_bps"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "rule_id": "DISK_UNUSED_EXTENDED",
+      "evidence_factors": [
+        "Unattached state",
+        "Age exceeds max_unattached_disk_days",
+        "Billed MTD > 0"
+      ]
+    },
+    {
+      "case_id": "attached_idle_large_disk",
+      "description": "Large attached disk with sustained idle I/O",
+      "applies_when": {
+        "diskState": "Attached",
+        "diskSizeGB_gte": 128,
+        "combined_io_bps_lt": 1024
+      },
+      "properties_required": [
+        "diskState",
+        "diskSizeGB",
+        "sku.name",
+        "managedBy"
+      ],
+      "metrics_required": [
+        "disk_read_bps",
+        "disk_write_bps"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "rule_id": "DISK_UNUSED_EXTENDED",
+      "evidence_factors": [
+        "Attached but idle I/O",
+        "Size above disk_idle_min_size_gb",
+        "Peak IOPS allows downgrade"
+      ]
+    },
+    {
+      "case_id": "premium_low_io",
+      "description": "Premium disk with sustained low I/O — tier downgrade candidate",
+      "applies_when": {
+        "tier": "Premium_LRS",
+        "combined_io_bps_lt": 1024,
+        "peak_iops_util_pct_lt": 50
+      },
+      "properties_required": [
+        "diskSizeGB",
+        "diskState",
+        "sku.name",
+        "diskIOPSReadWrite"
+      ],
+      "metrics_required": [
+        "disk_read_bps",
+        "disk_write_bps",
+        "disk_read_iops",
+        "disk_write_iops"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "rule_id": "DISK_OVERSIZE_EXTENDED",
+      "evidence_factors": [
+        "Peak IOPS utilization below threshold",
+        "Average throughput idle",
+        "Premium tier relative cost vs Standard SSD retail"
+      ]
+    },
+    {
+      "case_id": "premium_underprovisioned",
+      "description": "Premium or Ultra disk saturated — needs upgrade not downgrade",
+      "applies_when": {
+        "sku_contains": "PREMIUM|ULTRA",
+        "peak_iops_util_pct_gte": 80
+      },
+      "properties_required": [
+        "diskSizeGB",
+        "diskState",
+        "sku.name",
+        "diskIOPSReadWrite",
+        "diskMBpsReadWrite"
+      ],
+      "metrics_required": [
+        "disk_read_iops",
+        "disk_write_iops"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "rule_id": "DISK_UNDERPROVISIONED",
+      "evidence_factors": [
+        "IOPS utilization at or above 80%",
+        "Provisioned IOPS headroom exhausted"
+      ]
+    },
+    {
+      "case_id": "low_capacity_utilization",
+      "description": "Provisioned disk size far exceeds measured capacity usage",
+      "applies_when": {
+        "disk_used_pct_lte": 30,
+        "diskState": "Attached"
+      },
+      "properties_required": [
+        "diskSizeGB",
+        "sku.name",
+        "diskState"
+      ],
+      "metrics_required": [
+        "disk_used_pct"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "rule_id": "DISK_CAPACITY_RIGHTSIZE_EXTENDED",
+      "evidence_factors": [
+        "Used capacity below 30%",
+        "Savings from smaller SKU tier"
+      ]
+    },
+    {
+      "case_id": "queue_depth_contention",
+      "description": "Disk I/O queue depth indicates contention — blocks downgrade",
+      "applies_when": {
+        "disk_queue_depth_gt": 10,
+        "diskState": "Attached"
+      },
+      "properties_required": [
+        "diskState",
+        "sku.name"
+      ],
+      "metrics_required": [
+        "disk_queue_depth"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "rule_id": "DISK_QUEUE_DEPTH_EXTENDED",
+      "evidence_factors": [
+        "Queue depth above contention threshold",
+        "Investigate before tier changes"
+      ]
+    },
+    {
+      "case_id": "ultra_to_premium",
+      "description": "Ultra SSD with moderate utilization — Premium is more cost-effective",
+      "applies_when": {
+        "tier": "UltraSSD_LRS",
+        "peak_iops_util_pct_lt": 50
+      },
+      "properties_required": [
+        "diskSizeGB",
+        "diskState",
+        "sku.name"
+      ],
+      "metrics_required": [
+        "disk_read_iops",
+        "disk_write_iops"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "rule_id": "DISK_ULTRA_DOWNGRADE_PREMIUM",
+      "evidence_factors": [
+        "Ultra utilization below 50%",
+        "Premium retail savings >= $50/month"
+      ]
+    },
+    {
+      "case_id": "ultra_to_standard_ssd",
+      "description": "Ultra SSD with very low utilization",
+      "applies_when": {
+        "tier": "UltraSSD_LRS",
+        "peak_iops_util_pct_lt": 30
+      },
+      "properties_required": [
+        "diskSizeGB",
+        "diskState",
+        "sku.name"
+      ],
+      "metrics_required": [
+        "disk_read_iops",
+        "disk_write_iops"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "rule_id": "DISK_ULTRA_DOWNGRADE_SSD",
+      "evidence_factors": [
+        "Ultra utilization below 30%",
+        "Standard SSD meets workload",
+        "Savings >= $100/month"
+      ]
+    },
+    {
+      "case_id": "premium_unattached_to_hdd",
+      "description": "Unattached Premium disk with minimal measured I/O",
+      "applies_when": {
+        "tier": "Premium_LRS",
+        "diskState": "Unattached",
+        "peak_iops_util_pct_lt": 15
+      },
+      "properties_required": [
+        "diskSizeGB",
+        "diskState",
+        "sku.name"
+      ],
+      "metrics_required": [
+        "disk_read_iops",
+        "disk_write_iops"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "rule_id": "DISK_PREMIUM_DOWNGRADE_HDD",
+      "evidence_factors": [
+        "Unattached Premium only",
+        "Very low I/O profile",
+        "HDD full compatibility"
+      ]
+    },
+    {
+      "case_id": "standard_ssd_to_hdd",
+      "description": "Standard SSD workload fits Standard HDD profile",
+      "applies_when": {
+        "tier": "StandardSSD_LRS",
+        "peak_iops_util_pct_lt": 20
+      },
+      "properties_required": [
+        "diskSizeGB",
+        "diskState",
+        "sku.name"
+      ],
+      "metrics_required": [
+        "disk_read_iops",
+        "disk_write_iops",
+        "disk_read_bps",
+        "disk_write_bps"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "rule_id": "DISK_SSD_DOWNGRADE_HDD",
+      "evidence_factors": [
+        "StandardSSD I/O below HDD capability",
+        "Savings >= $2/month"
+      ]
+    },
+    {
+      "case_id": "new_disk_grace",
+      "description": "Recently created disk — skip optimization",
+      "applies_when": {
+        "age_days_lt": 7
+      },
+      "properties_required": [
+        "timeCreated"
+      ],
+      "metrics_required": [],
+      "cost_required": [],
+      "rule_id": "DISK_NEW_GRACE_PERIOD",
+      "evidence_factors": [
+        "Disk created within 7-day grace period"
+      ]
+    },
+    {
+      "case_id": "unattached_legacy",
+      "description": "Unattached disk — standard engine rule",
+      "applies_when": {
+        "diskState": "Unattached"
+      },
+      "properties_required": [
+        "diskState",
+        "diskSizeGB",
+        "sku.name"
+      ],
+      "metrics_required": [],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "rule_id": "DISK_UNATTACHED",
+      "evidence_factors": [
+        "Unattached state",
+        "Ongoing billed cost"
+      ]
+    }
+  ],
+  "supportedDiskMetricsFallback": [
+    {
+      "restApiName": "Composite Disk Read Bytes/sec",
+      "factKey": "disk_read_bps"
+    },
+    {
+      "restApiName": "Composite Disk Write Bytes/sec",
+      "factKey": "disk_write_bps"
+    },
+    {
+      "restApiName": "Composite Disk Read Operations/sec",
+      "factKey": "disk_read_iops"
+    },
+    {
+      "restApiName": "Composite Disk Write Operations/sec",
+      "factKey": "disk_write_iops"
+    },
+    {
+      "restApiName": "DiskPaidBurstIOPS",
+      "factKey": "disk_paid_burst_iops"
+    }
+  ],
+  "derivedMetrics": {
+    "disk_iops_utilization_pct": "peak(read_iops + write_iops) / provisioned_iops * 100",
+    "disk_throughput_utilization_pct": "peak(read_bps + write_bps) / provisioned_mbps * 100",
+    "disk_used_pct": "measured_capacity_used / diskSizeGB * 100"
+  },
+  "costOptimizationSignals": [
+    "disk_read_bps",
+    "disk_write_bps",
+    "disk_read_iops",
+    "disk_write_iops",
+    "disk_iops_utilization_pct",
+    "disk_throughput_utilization_pct",
+    "disk_used_pct",
+    "billed_mtd",
+    "retail_monthly"
+  ],
+  "pythonAssessment": {
+    "mode": "deterministic_db_rule_evaluation_only",
+    "requiredNormalizedInput": [
+      "resource",
+      "properties",
+      "metrics",
+      "cost",
+      "signals"
+    ],
+    "defaultScoring": {
+      "startScore": 100,
+      "deductions": {
+        "critical": 40,
+        "high": 25,
+        "medium": 10
+      },
+      "caps": {
+        "missingRequiredMetrics": 74,
+        "missingCostData": 74,
+        "anyCriticalSecurityFinding": 40,
+        "anyHighSecurityFinding": 55,
+        "anyHighReliabilityFinding": 60,
+        "unknownProductionOwner": 65
+      }
+    },
+    "classificationLevels": [
+      {
+        "level": "best",
+        "scoreRange": [
+          90,
+          100
+        ]
+      },
+      {
+        "level": "good",
+        "scoreRange": [
+          70,
+          89
+        ]
+      },
+      {
+        "level": "warning",
+        "scoreRange": [
+          50,
+          69
+        ]
+      },
+      {
+        "level": "bad",
+        "scoreRange": [
+          30,
+          49
+        ]
+      },
+      {
+        "level": "worst",
+        "scoreRange": [
+          0,
+          29
+        ]
+      }
+    ],
+    "deterministicCases": {
+      "warning": [
+        {
+          "field": "signals.missingRequiredMetrics",
+          "operator": "is_true",
+          "value": true
+        },
+        {
+          "field": "signals.missingCostData",
+          "operator": "is_true",
+          "value": true
+        }
+      ],
+      "best": [
+        {
+          "field": "signals.requiredMetricsPresent",
+          "operator": "is_true",
+          "value": true
+        },
+        {
+          "field": "signals.costDataComplete",
+          "operator": "is_true",
+          "value": true
+        }
+      ]
+    }
+  },
+  "optimization_thresholds": {
+    "iops_downgrade_max": 500.0,
+    "iops_high_util_pct": 80.0,
+    "throughput_downgrade_bps": 62914560,
+    "capacity_used_pct_max": 30.0,
+    "capacity_high_pct": 80.0,
+    "disk_queue_depth_contention": 10.0,
+    "idle_capacity_pct": 50.0,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 3.0,
+    "iops_utilization_low_pct": 15.0,
+    "iops_utilization_medium_pct": 30.0,
+    "throughput_utilization_low_pct": 15.0,
+    "throughput_utilization_medium_pct": 30.0,
+    "ultra_downgrade_block_iops_pct": 70.0,
+    "premium_downgrade_block_iops_pct": 50.0,
+    "standard_ssd_downgrade_block_iops_pct": 40.0,
+    "min_metrics_days_for_recommendation": 7,
+    "new_disk_grace_period_days": 7,
+    "disk_io_idle_bps": 1024.0,
+    "disk_iops_block_downgrade_pct": 15.0,
+    "max_unattached_disk_days": 14,
+    "disk_idle_min_size_gb": 128,
+    "premium_downgrade_peak_iops_pct": 50.0
+  },
+  "rule_configurations": {
+    "DISK_NEW_GRACE_PERIOD": {
+      "grace_period_days": 7,
+      "description": "Skip optimization for disks created less than 7 days ago - workload may not be stable"
+    },
+    "DISK_ULTRA_DOWNGRADE_PREMIUM": {
+      "iops_utilization_threshold_pct": 50,
+      "throughput_utilization_threshold_pct": 50,
+      "min_monthly_savings_usd": 50,
+      "description": "Recommend downgrading UltraSSD to Premium when IOPS/throughput utilization < 50%"
+    },
+    "DISK_ULTRA_DOWNGRADE_SSD": {
+      "iops_utilization_threshold_pct": 30,
+      "throughput_utilization_threshold_pct": 30,
+      "min_monthly_savings_usd": 100,
+      "description": "Recommend downgrading UltraSSD to StandardSSD when IOPS/throughput utilization < 30%"
+    },
+    "DISK_PREMIUM_DOWNGRADE_HDD": {
+      "iops_utilization_threshold_pct": 15,
+      "throughput_utilization_threshold_pct": 15,
+      "min_monthly_savings_usd": 10,
+      "description": "Recommend downgrading Premium to Standard HDD for unattached disks with utilization < 15%"
+    },
+    "DISK_SSD_DOWNGRADE_HDD": {
+      "iops_utilization_threshold_pct": 20,
+      "throughput_utilization_threshold_pct": 20,
+      "min_monthly_savings_usd": 2,
+      "description": "Recommend downgrading StandardSSD to Standard HDD when IOPS/throughput utilization < 20%"
+    }
+  },
+  "disk_types": {
+    "Standard_LRS": {
+      "tier": "hdd",
+      "relative_cost": 1.0
+    },
+    "StandardSSD_LRS": {
+      "tier": "standard_ssd",
+      "relative_cost": 3.0
+    },
+    "StandardSSD_ZRS": {
+      "tier": "standard_ssd",
+      "relative_cost": 3.2
+    },
+    "Premium_LRS": {
+      "tier": "premium_ssd",
+      "relative_cost": 8.0
+    },
+    "Premium_ZRS": {
+      "tier": "premium_ssd",
+      "relative_cost": 8.5
+    },
+    "PremiumV2_LRS": {
+      "tier": "premium_ssd_v2",
+      "relative_cost": 9.0
+    },
+    "UltraSSD_LRS": {
+      "tier": "ultra",
+      "relative_cost": 50.0
+    }
+  },
+  "cost_policy": {
+    "source": "azure_cost_management",
+    "primary_field": "billed_mtd",
+    "retail_field": "retail_monthly",
+    "normalized_billed_key": "monthly_cost_usd"
+  },
+  "disk_tier_specs": {
+    "Standard_LRS": {
+      "tier": "hdd",
+      "default_iops": 500,
+      "default_mbps": 60,
+      "size_ranges": [
+        {
+          "min_gb": 0,
+          "max_gb": 32,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 33,
+          "max_gb": 128,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 129,
+          "max_gb": null,
+          "iops": 500,
+          "mbps": 60
+        }
+      ]
+    },
+    "StandardSSD_LRS": {
+      "tier": "standard_ssd",
+      "default_iops": 500,
+      "default_mbps": 60,
+      "size_ranges": [
+        {
+          "min_gb": 0,
+          "max_gb": 128,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 129,
+          "max_gb": 512,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 513,
+          "max_gb": 1024,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 1025,
+          "max_gb": 4096,
+          "iops": 3500,
+          "mbps": 180
+        },
+        {
+          "min_gb": 4097,
+          "max_gb": 8192,
+          "iops": 7500,
+          "mbps": 250
+        },
+        {
+          "min_gb": 8193,
+          "max_gb": 16384,
+          "iops": 11500,
+          "mbps": 400
+        },
+        {
+          "min_gb": 16385,
+          "max_gb": 32767,
+          "iops": 20000,
+          "mbps": 750
+        }
+      ]
+    },
+    "Premium_LRS": {
+      "tier": "premium_ssd",
+      "default_iops": 3500,
+      "default_mbps": 170,
+      "size_ranges": [
+        {
+          "min_gb": 0,
+          "max_gb": 128,
+          "iops": 3500,
+          "mbps": 170
+        },
+        {
+          "min_gb": 129,
+          "max_gb": 256,
+          "iops": 3500,
+          "mbps": 170
+        },
+        {
+          "min_gb": 257,
+          "max_gb": 512,
+          "iops": 3500,
+          "mbps": 170
+        },
+        {
+          "min_gb": 513,
+          "max_gb": 1024,
+          "iops": 7500,
+          "mbps": 250
+        },
+        {
+          "min_gb": 1025,
+          "max_gb": 2048,
+          "iops": 11500,
+          "mbps": 400
+        },
+        {
+          "min_gb": 2049,
+          "max_gb": 4096,
+          "iops": 20000,
+          "mbps": 750
+        },
+        {
+          "min_gb": 4097,
+          "max_gb": 8192,
+          "iops": 20000,
+          "mbps": 900
+        },
+        {
+          "min_gb": 8193,
+          "max_gb": 16384,
+          "iops": 20000,
+          "mbps": 1250
+        },
+        {
+          "min_gb": 16385,
+          "max_gb": 32767,
+          "iops": 20000,
+          "mbps": 1250
+        }
+      ]
+    },
+    "Premium_ZRS": {
+      "tier": "premium_ssd",
+      "default_iops": 3500,
+      "default_mbps": 170,
+      "size_ranges": [
+        {
+          "min_gb": 0,
+          "max_gb": 128,
+          "iops": 3500,
+          "mbps": 170
+        },
+        {
+          "min_gb": 129,
+          "max_gb": 256,
+          "iops": 3500,
+          "mbps": 170
+        },
+        {
+          "min_gb": 257,
+          "max_gb": 512,
+          "iops": 3500,
+          "mbps": 170
+        },
+        {
+          "min_gb": 513,
+          "max_gb": 1024,
+          "iops": 7500,
+          "mbps": 250
+        },
+        {
+          "min_gb": 1025,
+          "max_gb": 2048,
+          "iops": 11500,
+          "mbps": 400
+        },
+        {
+          "min_gb": 2049,
+          "max_gb": 4096,
+          "iops": 20000,
+          "mbps": 750
+        },
+        {
+          "min_gb": 4097,
+          "max_gb": 8192,
+          "iops": 20000,
+          "mbps": 900
+        },
+        {
+          "min_gb": 8193,
+          "max_gb": 16384,
+          "iops": 20000,
+          "mbps": 1250
+        },
+        {
+          "min_gb": 16385,
+          "max_gb": 32767,
+          "iops": 20000,
+          "mbps": 1250
+        }
+      ]
+    },
+    "UltraSSD_LRS": {
+      "tier": "ultra",
+      "default_iops": 160000,
+      "default_mbps": 2000
+    },
+    "StandardSSD_ZRS": {
+      "tier": "standard_ssd",
+      "default_iops": 500,
+      "default_mbps": 60,
+      "size_ranges": [
+        {
+          "min_gb": 0,
+          "max_gb": 128,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 129,
+          "max_gb": 512,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 513,
+          "max_gb": 1024,
+          "iops": 500,
+          "mbps": 60
+        },
+        {
+          "min_gb": 1025,
+          "max_gb": 4096,
+          "iops": 3500,
+          "mbps": 180
+        },
+        {
+          "min_gb": 4097,
+          "max_gb": 8192,
+          "iops": 7500,
+          "mbps": 250
+        },
+        {
+          "min_gb": 8193,
+          "max_gb": 16384,
+          "iops": 11500,
+          "mbps": 400
+        },
+        {
+          "min_gb": 16385,
+          "max_gb": 32767,
+          "iops": 20000,
+          "mbps": 750
+        }
+      ]
+    }
+  },
+  "performance_tier_limits": {
+    "documentation": "properties.tier on Disk — does not apply to Ultra SSD",
+    "P1": {
+      "iops": 120,
+      "mbps": 25
+    },
+    "P2": {
+      "iops": 120,
+      "mbps": 25
+    },
+    "P3": {
+      "iops": 120,
+      "mbps": 25
+    },
+    "P4": {
+      "iops": 120,
+      "mbps": 25
+    },
+    "P6": {
+      "iops": 240,
+      "mbps": 50
+    },
+    "P10": {
+      "iops": 500,
+      "mbps": 100
+    },
+    "P15": {
+      "iops": 1100,
+      "mbps": 125
+    },
+    "P20": {
+      "iops": 2300,
+      "mbps": 150
+    },
+    "P30": {
+      "iops": 5000,
+      "mbps": 200
+    },
+    "P40": {
+      "iops": 7500,
+      "mbps": 250
+    },
+    "P50": {
+      "iops": 7500,
+      "mbps": 250
+    },
+    "P60": {
+      "iops": 16000,
+      "mbps": 500
+    },
+    "P70": {
+      "iops": 18000,
+      "mbps": 750
+    },
+    "P80": {
+      "iops": 20000,
+      "mbps": 900
+    },
+    "S4": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S6": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S10": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S15": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S20": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S30": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S40": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S50": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "S60": {
+      "iops": 1300,
+      "mbps": 300
+    },
+    "S70": {
+      "iops": 2000,
+      "mbps": 400
+    },
+    "S80": {
+      "iops": 2000,
+      "mbps": 500
+    },
+    "E4": {
+      "iops": 120,
+      "mbps": 25
+    },
+    "E6": {
+      "iops": 240,
+      "mbps": 50
+    },
+    "E10": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "E15": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "E20": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "E30": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "E40": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "E50": {
+      "iops": 500,
+      "mbps": 60
+    },
+    "E60": {
+      "iops": 2000,
+      "mbps": 400
+    },
+    "E70": {
+      "iops": 4000,
+      "mbps": 600
+    },
+    "E80": {
+      "iops": 6000,
+      "mbps": 750
+    }
+  },
+  "downgrade_rules": {
+    "UltraSSD_to_Premium": {
+      "source_tier": "ultra",
+      "target_tier": "premium_ssd",
+      "iops_utilization_max": 50,
+      "throughput_utilization_max": 50,
+      "min_months_data": 1,
+      "min_monthly_savings_usd": 50,
+      "description": "Downgrade UltraSSD to Premium when IOPS/throughput utilization is consistently <50%"
+    },
+    "UltraSSD_to_StandardSSD": {
+      "source_tier": "ultra",
+      "target_tier": "standard_ssd",
+      "iops_utilization_max": 30,
+      "throughput_utilization_max": 30,
+      "min_months_data": 1,
+      "min_monthly_savings_usd": 100,
+      "description": "Direct downgrade from UltraSSD to StandardSSD when utilization is very low"
+    },
+    "Premium_to_StandardSSD": {
+      "source_tier": "premium_ssd",
+      "target_tier": "standard_ssd",
+      "iops_utilization_max": 30,
+      "throughput_utilization_max": 30,
+      "min_months_data": 1,
+      "min_monthly_savings_usd": 5,
+      "description": "Downgrade Premium to StandardSSD when IOPS/throughput utilization is consistently <30% (aggressive)"
+    },
+    "StandardSSD_to_Standard": {
+      "source_tier": "standard_ssd",
+      "target_tier": "hdd",
+      "iops_utilization_max": 20,
+      "throughput_utilization_max": 20,
+      "min_months_data": 1,
+      "min_monthly_savings_usd": 2,
+      "description": "Downgrade StandardSSD to Standard HDD when IOPS/throughput utilization is consistently <20%"
+    },
+    "Premium_to_Standard": {
+      "source_tier": "premium_ssd",
+      "target_tier": "hdd",
+      "iops_utilization_max": 15,
+      "throughput_utilization_max": 15,
+      "min_months_data": 1,
+      "min_monthly_savings_usd": 10,
+      "description": "Direct downgrade from Premium to Standard HDD when utilization is very low"
+    }
+  },
+  "pricing": {
+    "regional_multiplier_min": 1.0,
+    "regional_multiplier_max": 1.625,
+    "per_gb_month_usd_baseline": 0.04,
+    "snapshot_per_gb_month_usd": 0.06
+  }
+}

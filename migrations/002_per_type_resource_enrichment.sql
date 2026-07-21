@@ -1,0 +1,37 @@
+-- Per-resource-type enrichment tables (Workstream 2 refactor)
+-- Applied automatically via app.database.migrate_schema() on startup.
+-- Replaces unified resource_enrichment with resource_enrichment_{type_slug} tables.
+
+-- Example table (same DDL for every registered canonical type):
+--
+-- CREATE TABLE IF NOT EXISTS resource_enrichment_compute_vm (
+--     id                   VARCHAR PRIMARY KEY,
+--     resource_id          VARCHAR NOT NULL,
+--     arm_id               VARCHAR NOT NULL,
+--     subscription_id      VARCHAR NOT NULL,
+--     properties_json      TEXT DEFAULT '{}',
+--     metrics_json         TEXT DEFAULT '{}',
+--     cost_json            TEXT DEFAULT '{}',
+--     recommendations_json TEXT DEFAULT '{}',
+--     enriched_at          TIMESTAMPTZ,
+--     metrics_at           TIMESTAMPTZ,
+--     cost_at              TIMESTAMPTZ,
+--     analysis_at          TIMESTAMPTZ,
+--     created_at           TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'utc'),
+--     updated_at           TIMESTAMPTZ DEFAULT (NOW() AT TIME ZONE 'utc'),
+--     CONSTRAINT uq_re_compute_vm_sub_arm UNIQUE (subscription_id, arm_id)
+-- );
+-- CREATE INDEX IF NOT EXISTS ix_re_compute_vm_snapshot ON resource_enrichment_compute_vm (resource_id);
+-- CREATE INDEX IF NOT EXISTS ix_re_compute_vm_arm ON resource_enrichment_compute_vm (arm_id);
+
+-- Priority types (also created for all types in app.resources.registry):
+--   resource_enrichment_compute_vm
+--   resource_enrichment_compute_disk
+--   resource_enrichment_containers_aks
+--   resource_enrichment_database_cosmosdb
+--   resource_enrichment_storage_account
+--   resource_enrichment_network_loadbalancer
+--   resource_enrichment_other  (fallback for unregistered types)
+
+-- Legacy unified table is migrated row-by-row on startup, then dropped:
+--   DROP TABLE IF EXISTS resource_enrichment;

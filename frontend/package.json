@@ -1,0 +1,56 @@
+{
+  "name": "azure-cost-optimizer-ui",
+  "version": "5.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@csstools/normalize.css": "^12.1.1",
+    "@tanstack/react-query": "^5.40.0",
+    "axios": "^1.7.2",
+    "clsx": "^2.1.1",
+    "http-proxy-middleware": "^3.0.0",
+    "lucide-react": "^0.395.0",
+    "react": "^18.3.1",
+    "react-az-icons": "^0.2.0",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.23.1",
+    "react-scripts": "5.0.1",
+    "react-window": "^1.8.11",
+    "recharts": "^2.12.7",
+    "sanitize.css": "^13.0.0",
+    "swagger-ui-react": "^5.17.14"
+  },
+  "scripts": {
+    "sync:service-display-defaults": "node scripts/sync-service-display-defaults.js",
+    "prestart": "npm run sync:service-display-defaults",
+    "prebuild": "npm run sync:service-display-defaults",
+    "pretest": "npm run sync:service-display-defaults",
+    "start": "NODE_OPTIONS=--openssl-legacy-provider craco start",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider craco build",
+    "test": "craco test",
+    "lint": "eslint src --ext .js,.jsx"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0"
+  }
+}

@@ -1,0 +1,33 @@
+service_id: compute-disk
+canonical_type: compute/disk
+display_name: Managed disk
+api_path: /resources/disks
+arm_type: Microsoft.Compute/disks
+component: Managed Disks
+drawer_ui: true
+
+backend:
+  package: it_services/compute_disk
+  modules:
+    - it_services/compute_disk/resource_profile.py
+    - it_services/compute_disk/disk_analysis_config.py
+    - it_services/compute_disk/managed_disk_catalog.py
+    - it_services/compute_disk/data/managed_disk_metrics_thresholds.json
+  related_app_modules:
+    - it_services/compute_disk/engine/
+    - app/resources/compute/disk.py
+    - it_services/compute_disk/disk_utilization.py
+    - it_services/compute_disk/disk_staleness.py
+  compatibility_shims:
+    - app/disk_analysis_config.py
+    - app/managed_disk_catalog.py
+    - app/resources/compute/disk.py
+
+frontend:
+  root: frontend/src/it-services/compute-disk
+  entry: frontend/src/it-services/compute-disk/index.js
+  related_platform_files:
+    - frontend/src/pages/VirtualMachines.jsx
+
+platform:
+  - frontend/src/it-services/registry.js

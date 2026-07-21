@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "service_id": "integration-apim",
+  "canonical_type": "integration/apim",
+  "arm_type": "Microsoft.ApiManagement/service",
+  "display_name": "API Management",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Developer": {
+      "units": 1,
+      "sla": false,
+      "vnet": false
+    },
+    "Basic": {
+      "units": 2,
+      "sla": true,
+      "vnet": false
+    },
+    "Standard": {
+      "units": 4,
+      "sla": true,
+      "vnet": true
+    },
+    "Premium": {
+      "units": 12,
+      "sla": true,
+      "vnet": true,
+      "multi_region": true
+    }
+  },
+  "pricing": {
+    "billing_model": "unit_hour",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.135894+00:00"
+}

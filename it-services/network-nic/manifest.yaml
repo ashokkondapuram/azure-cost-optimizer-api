@@ -1,0 +1,22 @@
+service_id: network-nic
+canonical_type: network/nic
+display_name: Network interface
+api_path: /resources/nics
+arm_type: Microsoft.Network/networkInterfaces
+component: Network Interfaces
+drawer_ui: false
+
+backend:
+  package: it_services/network_nic
+  modules:
+    - it_services/network_nic/resource_profile.py
+  related_app_modules:
+    - app/resources/network/nic.py
+    - app/optimizer/resource_engines/network/nic/
+
+frontend:
+  root: frontend/src/it-services/network-nic
+  entry: frontend/src/it-services/network-nic/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

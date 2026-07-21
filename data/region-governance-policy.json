@@ -1,0 +1,133 @@
+{
+  "schema_version": 1,
+  "policy_name": "Zafin Canada data residency",
+  "description": "Organizational region approval for production workloads. Unlisted regions are unclassified and flagged for review.",
+  "primary_approved_region": "canadacentral",
+  "secondary_approved_region": "canadaeast",
+  "data_residency_boundary": "Canada",
+  "classifications": {
+    "approved": {
+      "regions": [
+        "canadacentral",
+        "canadaeast"
+      ],
+      "use_for": [
+        "production",
+        "non_production"
+      ],
+      "data_residency": "Canada"
+    },
+    "conditional": {
+      "regions": [],
+      "requires_approval": true,
+      "use_for": [
+        "non_production"
+      ]
+    },
+    "blocked": {
+      "regions": [],
+      "reason": "Explicitly blocked by organizational policy"
+    }
+  },
+  "recommended_target": {
+    "production": "canadacentral",
+    "non_production": "canadacentral",
+    "disaster_recovery": "canadaeast"
+  },
+  "azure_region_catalog": {
+    "canadacentral": {
+      "display_name": "Canada Central",
+      "geography": "Canada",
+      "paired_region": "canadaeast",
+      "availability_zones": true
+    },
+    "canadaeast": {
+      "display_name": "Canada East",
+      "geography": "Canada",
+      "paired_region": "canadacentral",
+      "availability_zones": false
+    },
+    "eastus": {
+      "display_name": "East US",
+      "geography": "United States",
+      "paired_region": "westus",
+      "availability_zones": true
+    },
+    "eastus2": {
+      "display_name": "East US 2",
+      "geography": "United States",
+      "paired_region": "centralus",
+      "availability_zones": true
+    },
+    "westus2": {
+      "display_name": "West US 2",
+      "geography": "United States",
+      "paired_region": "westcentralus",
+      "availability_zones": true
+    },
+    "centralus": {
+      "display_name": "Central US",
+      "geography": "United States",
+      "paired_region": "eastus2",
+      "availability_zones": true
+    },
+    "northeurope": {
+      "display_name": "North Europe",
+      "geography": "Europe",
+      "paired_region": "westeurope",
+      "availability_zones": true
+    },
+    "westeurope": {
+      "display_name": "West Europe",
+      "geography": "Europe",
+      "paired_region": "northeurope",
+      "availability_zones": true
+    },
+    "uksouth": {
+      "display_name": "UK South",
+      "geography": "United Kingdom",
+      "paired_region": "ukwest",
+      "availability_zones": true
+    },
+    "australiaeast": {
+      "display_name": "Australia East",
+      "geography": "Australia",
+      "paired_region": "australiasoutheast",
+      "availability_zones": true
+    }
+  },
+  "service_overrides": {
+    "Microsoft.ServiceBus/namespaces": {
+      "recommended_region": "canadacentral",
+      "secondary_region": "canadaeast",
+      "region_move_allowed": false,
+      "migration_required": true,
+      "migration_notes": "Service Bus namespaces cannot change region in place. Plan a new namespace in the approved region, migrate queues/topics/subscriptions, update connection strings, and decommission the old namespace.",
+      "available_regions_note": "Service Bus is available in all Azure public regions; organizational approval limits deployment to Canada Central and Canada East."
+    },
+    "Microsoft.ServiceBus/namespaces/queues": {
+      "recommended_region": "canadacentral",
+      "region_move_allowed": false,
+      "inherits_namespace_region": true
+    },
+    "Microsoft.ServiceBus/namespaces/topics": {
+      "recommended_region": "canadacentral",
+      "region_move_allowed": false,
+      "inherits_namespace_region": true
+    },
+    "Microsoft.Compute/disks": {
+      "recommended_region": "canadacentral",
+      "secondary_region": "canadaeast",
+      "region_move_allowed": false,
+      "migration_required": true,
+      "migration_notes": "Managed disks cannot change region in place. Snapshot the disk, copy to Canada Central, and attach to a VM in that region."
+    }
+  },
+  "signal_mapping": {
+    "regionApproved": "resource.location is in classifications.approved.regions",
+    "regionClassification": "approved | conditional | blocked | unclassified",
+    "recommendedRegion": "primary_approved_region or service_overrides.recommended_region",
+    "regionMoveAllowed": "service_overrides.region_move_allowed (default false for immovable services)",
+    "currentRegion": "resource.location normalized"
+  }
+}

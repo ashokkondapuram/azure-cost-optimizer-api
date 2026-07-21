@@ -1,0 +1,22 @@
+service_id: compute-vmss
+canonical_type: compute/vmss
+display_name: Virtual machine scale set
+api_path: /resources/vmss
+arm_type: Microsoft.Compute/virtualMachineScaleSets
+component: Virtual Machine Scale Sets
+drawer_ui: false
+
+backend:
+  package: it_services/compute_vmss
+  modules:
+    - it_services/compute_vmss/resource_profile.py
+  related_app_modules:
+    - app/resources/compute/vmss.py
+    - app/optimizer/resource_engines/compute/vmss/
+
+frontend:
+  root: frontend/src/it-services/compute-vmss
+  entry: frontend/src/it-services/compute-vmss/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

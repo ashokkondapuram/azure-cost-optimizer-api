@@ -1,0 +1,24 @@
+service_id: network-vnet
+canonical_type: network/vnet
+display_name: Virtual network
+api_path: /resources/vnets
+arm_type: Microsoft.Network/virtualNetworks
+component: Networking Extended
+drawer_ui: false
+
+backend:
+  package: it_services/network_vnet
+  modules:
+    - it_services/network_vnet/resource_profile.py
+  related_app_modules:
+    - app/resources/network/vnet.py
+    - app/optimizer/resource_engines/network/vnet/
+
+frontend:
+  root: frontend/src/it-services/network-vnet
+  entry: frontend/src/it-services/network-vnet/index.js
+  related_platform_files:
+    - frontend/src/utils/vnetNormalize.js
+
+platform:
+  - frontend/src/it-services/registry.js

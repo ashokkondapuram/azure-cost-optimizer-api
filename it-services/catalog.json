@@ -1,0 +1,426 @@
+{
+  "schema_version": 1,
+  "description": "IT service file-organization catalog (not runtime microservices)",
+  "services": [
+    {
+      "service_id": "analytics-adx",
+      "canonical_type": "analytics/adx",
+      "display_name": "Azure Data Explorer",
+      "api_path": "/resources/adx",
+      "manifest": "it-services/analytics-adx/manifest.yaml",
+      "backend_package": "it_services/analytics_adx",
+      "frontend_root": "frontend/src/it-services/analytics-adx",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "analytics-databricks",
+      "canonical_type": "analytics/databricks",
+      "display_name": "Azure Databricks",
+      "api_path": "/resources/databricks",
+      "manifest": "it-services/analytics-databricks/manifest.yaml",
+      "backend_package": "it_services/analytics_databricks",
+      "frontend_root": "frontend/src/it-services/analytics-databricks",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "analytics-mlworkspace",
+      "canonical_type": "analytics/mlworkspace",
+      "display_name": "Azure ML workspace",
+      "api_path": "/resources/mlworkspace",
+      "manifest": "it-services/analytics-mlworkspace/manifest.yaml",
+      "backend_package": "it_services/analytics_mlworkspace",
+      "frontend_root": "frontend/src/it-services/analytics-mlworkspace",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "analytics-synapse",
+      "canonical_type": "analytics/synapse",
+      "display_name": "Azure Synapse",
+      "api_path": "/resources/synapse",
+      "manifest": "it-services/analytics-synapse/manifest.yaml",
+      "backend_package": "it_services/analytics_synapse",
+      "frontend_root": "frontend/src/it-services/analytics-synapse",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "appservice-plan",
+      "canonical_type": "appservice/plan",
+      "display_name": "App Service plan",
+      "api_path": "/resources/appserviceplans",
+      "manifest": "it-services/appservice-plan/manifest.yaml",
+      "backend_package": "it_services/appservice_plan",
+      "frontend_root": "frontend/src/it-services/appservice-plan",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "appservice-webapp",
+      "canonical_type": "appservice/webapp",
+      "display_name": "App Service",
+      "api_path": "/resources/appservices",
+      "manifest": "it-services/appservice-webapp/manifest.yaml",
+      "backend_package": "it_services/appservice_webapp",
+      "frontend_root": "frontend/src/it-services/appservice-webapp",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "backup-recoveryvault",
+      "canonical_type": "backup/recoveryvault",
+      "display_name": "Recovery Services vault",
+      "api_path": "/resources/recoveryvault",
+      "manifest": "it-services/backup-recoveryvault/manifest.yaml",
+      "backend_package": "it_services/backup_recoveryvault",
+      "frontend_root": "frontend/src/it-services/backup-recoveryvault",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "compute-disk",
+      "canonical_type": "compute/disk",
+      "display_name": "Managed disk",
+      "api_path": "/resources/disks",
+      "manifest": "it-services/compute-disk/manifest.yaml",
+      "backend_package": "it_services/compute_disk",
+      "frontend_root": "frontend/src/it-services/compute-disk",
+      "drawer_ui": true
+    },
+    {
+      "service_id": "compute-snapshot",
+      "canonical_type": "compute/snapshot",
+      "display_name": "Disk snapshot",
+      "api_path": "/resources/snapshots",
+      "manifest": "it-services/compute-snapshot/manifest.yaml",
+      "backend_package": "it_services/compute_snapshot",
+      "frontend_root": "frontend/src/it-services/compute-snapshot",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "compute-vm",
+      "canonical_type": "compute/vm",
+      "display_name": "Virtual machine",
+      "api_path": "/resources/vms",
+      "manifest": "it-services/compute-vm/manifest.yaml",
+      "backend_package": "it_services/compute_vm",
+      "frontend_root": "frontend/src/it-services/compute-vm",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "compute-vmss",
+      "canonical_type": "compute/vmss",
+      "display_name": "Virtual machine scale set",
+      "api_path": "/resources/vmss",
+      "manifest": "it-services/compute-vmss/manifest.yaml",
+      "backend_package": "it_services/compute_vmss",
+      "frontend_root": "frontend/src/it-services/compute-vmss",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "containers-acr",
+      "canonical_type": "containers/acr",
+      "display_name": "Container registry",
+      "api_path": "/resources/acr",
+      "manifest": "it-services/containers-acr/manifest.yaml",
+      "backend_package": "it_services/containers_acr",
+      "frontend_root": "frontend/src/it-services/containers-acr",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "containers-aks",
+      "canonical_type": "containers/aks",
+      "display_name": "AKS cluster",
+      "api_path": "/resources/aks",
+      "manifest": "it-services/containers-aks/manifest.yaml",
+      "backend_package": "it_services/containers_aks",
+      "frontend_root": "frontend/src/it-services/containers-aks",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "database-cosmosdb",
+      "canonical_type": "database/cosmosdb",
+      "display_name": "Cosmos DB account",
+      "api_path": "/resources/cosmosdb",
+      "manifest": "it-services/database-cosmosdb/manifest.yaml",
+      "backend_package": "it_services/database_cosmosdb",
+      "frontend_root": "frontend/src/it-services/database-cosmosdb",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "database-postgresql",
+      "canonical_type": "database/postgresql",
+      "display_name": "PostgreSQL flexible server",
+      "api_path": "/resources/postgresql",
+      "manifest": "it-services/database-postgresql/manifest.yaml",
+      "backend_package": "it_services/database_postgresql",
+      "frontend_root": "frontend/src/it-services/database-postgresql",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "database-redis",
+      "canonical_type": "database/redis",
+      "display_name": "Azure Cache for Redis",
+      "api_path": "/resources/redis",
+      "manifest": "it-services/database-redis/manifest.yaml",
+      "backend_package": "it_services/database_redis",
+      "frontend_root": "frontend/src/it-services/database-redis",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "database-sql",
+      "canonical_type": "database/sql",
+      "display_name": "SQL server",
+      "api_path": "/resources/sql",
+      "manifest": "it-services/database-sql/manifest.yaml",
+      "backend_package": "it_services/database_sql",
+      "frontend_root": "frontend/src/it-services/database-sql",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "integration-apim",
+      "canonical_type": "integration/apim",
+      "display_name": "API Management",
+      "api_path": "/resources/apim",
+      "manifest": "it-services/integration-apim/manifest.yaml",
+      "backend_package": "it_services/integration_apim",
+      "frontend_root": "frontend/src/it-services/integration-apim",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "integration-datafactory",
+      "canonical_type": "integration/datafactory",
+      "display_name": "Data Factory",
+      "api_path": "/resources/datafactory",
+      "manifest": "it-services/integration-datafactory/manifest.yaml",
+      "backend_package": "it_services/integration_datafactory",
+      "frontend_root": "frontend/src/it-services/integration-datafactory",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "integration-logicapp",
+      "canonical_type": "integration/logicapp",
+      "display_name": "Logic App",
+      "api_path": "/resources/logicapps",
+      "manifest": "it-services/integration-logicapp/manifest.yaml",
+      "backend_package": "it_services/integration_logicapp",
+      "frontend_root": "frontend/src/it-services/integration-logicapp",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "messaging-eventhub",
+      "canonical_type": "messaging/eventhub",
+      "display_name": "Event Hubs namespace",
+      "api_path": "/resources/eventhubs",
+      "manifest": "it-services/messaging-eventhub/manifest.yaml",
+      "backend_package": "it_services/messaging_eventhub",
+      "frontend_root": "frontend/src/it-services/messaging-eventhub",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "messaging-servicebus",
+      "canonical_type": "messaging/servicebus",
+      "display_name": "Service Bus namespace",
+      "api_path": "/resources/servicebus",
+      "manifest": "it-services/messaging-servicebus/manifest.yaml",
+      "backend_package": "it_services/messaging_servicebus",
+      "frontend_root": "frontend/src/it-services/messaging-servicebus",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "monitoring-appinsights",
+      "canonical_type": "monitoring/appinsights",
+      "display_name": "Application Insights",
+      "api_path": "/resources/appinsights",
+      "manifest": "it-services/monitoring-appinsights/manifest.yaml",
+      "backend_package": "it_services/monitoring_appinsights",
+      "frontend_root": "frontend/src/it-services/monitoring-appinsights",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "monitoring-loganalytics",
+      "canonical_type": "monitoring/loganalytics",
+      "display_name": "Log Analytics workspace",
+      "api_path": "/resources/loganalytics",
+      "manifest": "it-services/monitoring-loganalytics/manifest.yaml",
+      "backend_package": "it_services/monitoring_loganalytics",
+      "frontend_root": "frontend/src/it-services/monitoring-loganalytics",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-appgateway",
+      "canonical_type": "network/appgateway",
+      "display_name": "Application gateway",
+      "api_path": "/resources/appgateways",
+      "manifest": "it-services/network-appgateway/manifest.yaml",
+      "backend_package": "it_services/network_appgateway",
+      "frontend_root": "frontend/src/it-services/network-appgateway",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-cdn",
+      "canonical_type": "network/cdn",
+      "display_name": "CDN profile",
+      "api_path": "/resources/cdn",
+      "manifest": "it-services/network-cdn/manifest.yaml",
+      "backend_package": "it_services/network_cdn",
+      "frontend_root": "frontend/src/it-services/network-cdn",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-expressroute",
+      "canonical_type": "network/expressroute",
+      "display_name": "ExpressRoute circuit",
+      "api_path": "/resources/expressroute",
+      "manifest": "it-services/network-expressroute/manifest.yaml",
+      "backend_package": "it_services/network_expressroute",
+      "frontend_root": "frontend/src/it-services/network-expressroute",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-firewall",
+      "canonical_type": "network/firewall",
+      "display_name": "Azure Firewall",
+      "api_path": "/resources/firewall",
+      "manifest": "it-services/network-firewall/manifest.yaml",
+      "backend_package": "it_services/network_firewall",
+      "frontend_root": "frontend/src/it-services/network-firewall",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-frontdoor",
+      "canonical_type": "network/frontdoor",
+      "display_name": "Azure Front Door",
+      "api_path": "/resources/frontdoor",
+      "manifest": "it-services/network-frontdoor/manifest.yaml",
+      "backend_package": "it_services/network_frontdoor",
+      "frontend_root": "frontend/src/it-services/network-frontdoor",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-loadbalancer",
+      "canonical_type": "network/loadbalancer",
+      "display_name": "Load balancer",
+      "api_path": "/resources/loadbalancers",
+      "manifest": "it-services/network-loadbalancer/manifest.yaml",
+      "backend_package": "it_services/network_loadbalancer",
+      "frontend_root": "frontend/src/it-services/network-loadbalancer",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-nat",
+      "canonical_type": "network/nat",
+      "display_name": "NAT gateway",
+      "api_path": "/resources/natgateways",
+      "manifest": "it-services/network-nat/manifest.yaml",
+      "backend_package": "it_services/network_nat",
+      "frontend_root": "frontend/src/it-services/network-nat",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-nic",
+      "canonical_type": "network/nic",
+      "display_name": "Network interface",
+      "api_path": "/resources/nics",
+      "manifest": "it-services/network-nic/manifest.yaml",
+      "backend_package": "it_services/network_nic",
+      "frontend_root": "frontend/src/it-services/network-nic",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-nsg",
+      "canonical_type": "network/nsg",
+      "display_name": "Network security group",
+      "api_path": "/resources/nsgs",
+      "manifest": "it-services/network-nsg/manifest.yaml",
+      "backend_package": "it_services/network_nsg",
+      "frontend_root": "frontend/src/it-services/network-nsg",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-privatedns",
+      "canonical_type": "network/privatedns",
+      "display_name": "Private DNS zone",
+      "api_path": "/resources/privatedns",
+      "manifest": "it-services/network-privatedns/manifest.yaml",
+      "backend_package": "it_services/network_privatedns",
+      "frontend_root": "frontend/src/it-services/network-privatedns",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-privateendpoint",
+      "canonical_type": "network/privateendpoint",
+      "display_name": "Private endpoint",
+      "api_path": "/resources/privateendpoints",
+      "manifest": "it-services/network-privateendpoint/manifest.yaml",
+      "backend_package": "it_services/network_privateendpoint",
+      "frontend_root": "frontend/src/it-services/network-privateendpoint",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-privatelinkservice",
+      "canonical_type": "network/privatelinkservice",
+      "display_name": "Private link service",
+      "api_path": "/resources/privatelinkservices",
+      "manifest": "it-services/network-privatelinkservice/manifest.yaml",
+      "backend_package": "it_services/network_privatelinkservice",
+      "frontend_root": "frontend/src/it-services/network-privatelinkservice",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-publicip",
+      "canonical_type": "network/publicip",
+      "display_name": "Public IP address",
+      "api_path": "/resources/publicips",
+      "manifest": "it-services/network-publicip/manifest.yaml",
+      "backend_package": "it_services/network_publicip",
+      "frontend_root": "frontend/src/it-services/network-publicip",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-trafficmanager",
+      "canonical_type": "network/trafficmanager",
+      "display_name": "Traffic Manager profile",
+      "api_path": "/resources/trafficmanager",
+      "manifest": "it-services/network-trafficmanager/manifest.yaml",
+      "backend_package": "it_services/network_trafficmanager",
+      "frontend_root": "frontend/src/it-services/network-trafficmanager",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "network-vnet",
+      "canonical_type": "network/vnet",
+      "display_name": "Virtual network",
+      "api_path": "/resources/vnets",
+      "manifest": "it-services/network-vnet/manifest.yaml",
+      "backend_package": "it_services/network_vnet",
+      "frontend_root": "frontend/src/it-services/network-vnet",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "search-cognitivesearch",
+      "canonical_type": "search/cognitivesearch",
+      "display_name": "Cognitive Search",
+      "api_path": "/resources/cognitivesearch",
+      "manifest": "it-services/search-cognitivesearch/manifest.yaml",
+      "backend_package": "it_services/search_cognitivesearch",
+      "frontend_root": "frontend/src/it-services/search-cognitivesearch",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "security-keyvault",
+      "canonical_type": "security/keyvault",
+      "display_name": "Key vault",
+      "api_path": "/resources/keyvaults",
+      "manifest": "it-services/security-keyvault/manifest.yaml",
+      "backend_package": "it_services/security_keyvault",
+      "frontend_root": "frontend/src/it-services/security-keyvault",
+      "drawer_ui": false
+    },
+    {
+      "service_id": "storage-account",
+      "canonical_type": "storage/account",
+      "display_name": "Storage account",
+      "api_path": "/resources/storage",
+      "manifest": "it-services/storage-account/manifest.yaml",
+      "backend_package": "it_services/storage_account",
+      "frontend_root": "frontend/src/it-services/storage-account",
+      "drawer_ui": false
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "service_id": "compute-snapshot",
+  "canonical_type": "compute/snapshot",
+  "arm_type": "Microsoft.Compute/snapshots",
+  "display_name": "Disk snapshot",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard_LRS": {
+      "tier": "hdd",
+      "per_gb_month_usd": 0.06
+    },
+    "Standard_ZRS": {
+      "tier": "hdd",
+      "zone_redundant": true,
+      "per_gb_month_usd": 0.06
+    },
+    "Premium_LRS": {
+      "tier": "premium_ssd",
+      "per_gb_month_usd": 0.12
+    }
+  },
+  "pricing": {
+    "billing_model": "per_gb_month",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:08.931318+00:00"
+}

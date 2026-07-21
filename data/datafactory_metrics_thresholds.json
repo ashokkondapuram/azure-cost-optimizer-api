@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "service": "Azure Data Factory",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/data-factory/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/data-factory/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 75,
+    "pipeline_runs_low": 10,
+    "savings_factor": 0.2,
+    "idle_savings_factor": 0.3,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "DATA_FACTORY_IR_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATA_FACTORY_PIPELINE": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATA_FACTORY_IDLE_PIPELINES_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "service_id": "compute-disk",
+  "canonical_type": "compute/disk",
+  "arm_type": "Microsoft.Compute/disks",
+  "display_name": "Managed disk",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/virtual-machines/managed-disks-overview",
+    "disks_get": "https://learn.microsoft.com/en-us/rest/api/compute/disks/get?view=rest-compute-2026-03-02",
+    "disk_types": "https://learn.microsoft.com/en-us/azure/virtual-machines/disks-types",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-compute-disks-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/managed-disks/"
+  },
+  "skus": {
+    "Standard_LRS": {
+      "tier": "hdd",
+      "relative_cost": 1.0
+    },
+    "StandardSSD_LRS": {
+      "tier": "standard_ssd",
+      "relative_cost": 3.0
+    },
+    "StandardSSD_ZRS": {
+      "tier": "standard_ssd",
+      "relative_cost": 3.2
+    },
+    "Premium_LRS": {
+      "tier": "premium_ssd",
+      "relative_cost": 8.0
+    },
+    "Premium_ZRS": {
+      "tier": "premium_ssd",
+      "relative_cost": 8.5
+    },
+    "PremiumV2_LRS": {
+      "tier": "premium_ssd_v2",
+      "relative_cost": 9.0
+    },
+    "UltraSSD_LRS": {
+      "tier": "ultra",
+      "relative_cost": 50.0
+    },
+    "P1": {
+      "tier": "P1",
+      "sizeGiB": 4,
+      "baseIops": 120,
+      "baseThroughputMBps": 25,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P2": {
+      "tier": "P2",
+      "sizeGiB": 8,
+      "baseIops": 120,
+      "baseThroughputMBps": 25,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P3": {
+      "tier": "P3",
+      "sizeGiB": 16,
+      "baseIops": 120,
+      "baseThroughputMBps": 25,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P4": {
+      "tier": "P4",
+      "sizeGiB": 32,
+      "baseIops": 120,
+      "baseThroughputMBps": 25,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P6": {
+      "tier": "P6",
+      "sizeGiB": 64,
+      "baseIops": 240,
+      "baseThroughputMBps": 50,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P10": {
+      "tier": "P10",
+      "sizeGiB": 128,
+      "baseIops": 500,
+      "baseThroughputMBps": 100,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P15": {
+      "tier": "P15",
+      "sizeGiB": 256,
+      "baseIops": 1100,
+      "baseThroughputMBps": 125,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P20": {
+      "tier": "P20",
+      "sizeGiB": 512,
+      "baseIops": 2300,
+      "baseThroughputMBps": 150,
+      "maxBurstIops": 3500,
+      "maxBurstThroughputMBps": 170,
+      "maxBurstDurationMinutes": 30,
+      "reservationEligible": false
+    },
+    "P30": {
+      "tier": "P30",
+      "sizeGiB": 1024,
+      "baseIops": 5000,
+      "baseThroughputMBps": 200,
+      "expandedIops": 8000,
+      "expandedThroughputMBps": 300,
+      "maxBurstIops": 30000,
+      "maxBurstThroughputMBps": 1000,
+      "maxBurstDurationMinutes": "unlimited_on_demand_when_enabled",
+      "reservationEligible": true
+    },
+    "P40": {
+      "tier": "P40",
+      "sizeGiB": 2048,
+      "baseIops": 7500,
+      "baseThroughputMBps": 250,
+      "expandedIops": 16000,
+      "expandedThroughputMBps": 600,
+      "maxBurstIops": 30000,
+      "maxBurstThroughputMBps": 1000,
+      "maxBurstDurationMinutes": "unlimited_on_demand_when_enabled",
+      "reservationEligible": true
+    },
+    "P50": {
+      "tier": "P50",
+      "sizeGiB": 4096,
+      "baseIops": 7500,
+      "baseThroughputMBps": 250,
+      "expandedIops": 20000,
+      "expandedThroughputMBps": 900,
+      "maxBurstIops": 30000,
+      "maxBurstThroughputMBps": 1000,
+      "maxBurstDurationMinutes": "unlimited_on_demand_when_enabled",
+      "reservationEligible": true
+    },
+    "P60": {
+      "tier": "P60",
+      "sizeGiB": 8192,
+      "baseIops": 16000,
+      "baseThroughputMBps": 500,
+      "expandedIops": 20000,
+      "expandedThroughputMBps": 900,
+      "maxBurstIops": 30000,
+      "maxBurstThroughputMBps": 1000,
+      "maxBurstDurationMinutes": "unlimited_on_demand_when_enabled",
+      "reservationEligible": true
+    },
+    "P70": {
+      "tier": "P70",
+      "sizeGiB": 16384,
+      "baseIops": 18000,
+      "baseThroughputMBps": 750,
+      "expandedIops": 20000,
+      "expandedThroughputMBps": 900,
+      "maxBurstIops": 30000,
+      "maxBurstThroughputMBps": 1000,
+      "maxBurstDurationMinutes": "unlimited_on_demand_when_enabled",
+      "reservationEligible": true
+    },
+    "P80": {
+      "tier": "P80",
+      "sizeGiB": 32767,
+      "baseIops": 20000,
+      "baseThroughputMBps": 900,
+      "expandedIops": 20000,
+      "expandedThroughputMBps": 900,
+      "maxBurstIops": 30000,
+      "maxBurstThroughputMBps": 1000,
+      "maxBurstDurationMinutes": "unlimited_on_demand_when_enabled",
+      "reservationEligible": true
+    }
+  },
+  "pricing": {
+    "regional_multiplier_min": 1.0,
+    "regional_multiplier_max": 1.625,
+    "per_gb_month_usd_baseline": 0.04,
+    "snapshot_per_gb_month_usd": 0.06
+  },
+  "optimization_thresholds": {
+    "iops_downgrade_max": 500.0,
+    "iops_high_util_pct": 80.0,
+    "throughput_downgrade_bps": 62914560,
+    "capacity_used_pct_max": 30.0,
+    "capacity_high_pct": 80.0,
+    "disk_queue_depth_contention": 10.0,
+    "idle_capacity_pct": 50.0,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 3.0,
+    "iops_utilization_low_pct": 15.0,
+    "iops_utilization_medium_pct": 30.0,
+    "throughput_utilization_low_pct": 15.0,
+    "throughput_utilization_medium_pct": 30.0,
+    "ultra_downgrade_block_iops_pct": 70.0,
+    "premium_downgrade_block_iops_pct": 50.0,
+    "standard_ssd_downgrade_block_iops_pct": 40.0,
+    "min_metrics_days_for_recommendation": 7,
+    "new_disk_grace_period_days": 7
+  },
+  "synced_at": "2026-07-10T17:49:08.826956+00:00"
+}

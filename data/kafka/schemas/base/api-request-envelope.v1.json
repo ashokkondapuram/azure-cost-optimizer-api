@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/api-request-envelope.v1.json",
+  "title": "ApiRequestEnvelope",
+  "description": "Minimal envelope for rate-limited Azure API work items. Partition key: subscription_id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "api_domain",
+    "subscription_id",
+    "operation",
+    "params",
+    "created_at",
+    "source_service",
+    "retry_count",
+    "idempotency_key"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Unique API work item identifier."
+    },
+    "api_domain": {
+      "type": "string",
+      "enum": ["cost", "metrics", "inventory"],
+      "description": "Azure API domain for routing and rate limiting."
+    },
+    "subscription_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Azure subscription GUID (lowercase). Kafka message key."
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1,
+      "description": "API operation name (for example fetch_cost_by_resource)."
+    },
+    "params": {
+      "type": "object",
+      "description": "Operation-specific parameters.",
+      "additionalProperties": true
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Optional link to pipeline_id, job_id, or parent request."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO-8601 timestamp."
+    },
+    "source_service": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Platform service that enqueued the work item."
+    },
+    "retry_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of prior delivery attempts for this work item."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Dedup key, typically {subscription_id}:{operation}:{correlation_id}."
+    }
+  }
+}

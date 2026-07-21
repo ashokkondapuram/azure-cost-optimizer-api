@@ -1,0 +1,59 @@
+{
+  "schema_version": 2,
+  "service_id": "storage-account",
+  "canonical_type": "storage/account",
+  "arm_type": "Microsoft.Storage/storageAccounts",
+  "display_name": "Storage account",
+  "service": "Azure Storage Accounts",
+  "source": "data/storage_account_metrics_thresholds.json",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/storage/common/storage-account-overview",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-storage-storageaccounts-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/storage/"
+  },
+  "metric_aggregations": {
+    "UsedCapacity": "Average",
+    "Transactions": "Total",
+    "Egress": "Total"
+  },
+  "access_tiers": {
+    "Hot": { "per_gb_month_usd": 0.024, "display_name": "Hot", "description": "Frequently accessed data" },
+    "Cool": { "per_gb_month_usd": 0.012, "display_name": "Cool", "description": "Infrequently accessed data (30+ days)" },
+    "Archive": { "per_gb_month_usd": 0.004, "display_name": "Archive", "description": "Rarely accessed data (180+ days)" }
+  },
+  "replication": {
+    "STANDARD_LRS": { "multiplier": 1.0, "display_name": "Standard locally redundant (LRS)", "short_name": "Standard LRS" },
+    "STANDARD_ZRS": { "multiplier": 1.25, "display_name": "Standard zone-redundant (ZRS)", "short_name": "Standard ZRS" },
+    "STANDARD_GRS": { "multiplier": 2.0, "display_name": "Standard geo-redundant (GRS)", "short_name": "Standard GRS" },
+    "STANDARD_GZRS": { "multiplier": 2.0, "display_name": "Standard geo-zone-redundant (GZRS)", "short_name": "Standard GZRS" },
+    "STANDARD_RAGRS": { "multiplier": 2.0, "display_name": "Standard read-access geo-redundant (RA-GRS)", "short_name": "Standard RA-GRS" },
+    "STANDARD_RAGZRS": { "multiplier": 2.0, "display_name": "Standard read-access geo-zone-redundant (RA-GZRS)", "short_name": "Standard RA-GZRS" }
+  },
+  "optimization_thresholds": {
+    "cool_tier_days_since_access": 30,
+    "archive_tier_days_since_access": 90,
+    "lifecycle_cool_after_days": 30,
+    "lifecycle_archive_after_days": 90,
+    "egress_bytes_monthly": 107374182400,
+    "egress_gb_monthly": 100,
+    "capacity_review_gb": 1024,
+    "transaction_low_count": 5000,
+    "storage_utilization_low_pct": 25,
+    "availability_min_pct": 99.5,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5.0
+  },
+  "recommendations": {
+    "lifecycle": "Add lifecycle rules to move blobs to Cool after {cool_days} days and Archive after {archive_days} days.",
+    "cool_tier": "Add a lifecycle policy to move infrequently accessed blobs to Cool after {cool_days} days (about {savings_pct}% lower storage rate than Hot).",
+    "egress": "Reduce egress cost with Azure CDN for public content, private endpoints for in-VNet access, or co-locate consumers in the same region.",
+    "redundancy_downgrade": "Switch non-critical workloads to {target_sku} unless geo-failover is required.",
+    "redundancy_upgrade": "Validate resilience requirements — consider geo-redundant storage for production data.",
+    "hot_tier_review": "Confirm Hot tier is appropriate for actively accessed data, or tier cold blobs to Cool."
+  },
+  "display": {
+    "missing_value": "Not synced",
+    "zero_capacity": "0 GB used",
+    "zero_transactions": "0 transactions"
+  }
+}

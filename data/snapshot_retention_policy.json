@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "service": "Azure Disk Snapshots",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/virtual-machines/snapshot-copy-managed-disk",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/managed-disks/"
+  },
+  "retention_policy": {
+    "daily_days": 7,
+    "weekly_weeks": 4,
+    "yearly_months": 12,
+    "max_snapshots_per_disk": 200
+  },
+  "pricing": {
+    "per_gb_month_usd_min": 0.05,
+    "per_gb_month_usd_max": 0.07,
+    "per_gb_month_usd_baseline": 0.06,
+    "archive_savings_pct": 0.95,
+    "incremental_efficiency_pct": 0.85
+  },
+  "optimization_thresholds": {
+    "retention_review_days": 90,
+    "archive_candidate_days": 180,
+    "delete_candidate_days": 365,
+    "min_size_gb": 10.0,
+    "incremental_low_pct": 10.0,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 2.0
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "service_id": "network-publicip",
+  "canonical_type": "network/publicip",
+  "arm_type": "Microsoft.Network/publicIPAddresses",
+  "display_name": "Public IP address",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/public-ip-addresses",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-publicipaddresses-metrics",
+    "basic_retirement": "https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/public-ip-basic-upgrade-guidance",
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Basic": {
+      "retiring": true,
+      "migrate_to": "Standard",
+      "zone_redundant": false
+    },
+    "Standard": {
+      "retiring": false,
+      "zone_redundant": true
+    },
+    "Standard_v2": {
+      "retiring": false,
+      "zone_redundant": true,
+      "ipv6": true
+    }
+  },
+  "pricing": {
+    "hourly_usd_baseline": 0.004,
+    "regional_multiplier_min": 1.0,
+    "regional_multiplier_max": 1.625
+  },
+  "optimization_thresholds": {
+    "idle_byte_threshold": 100,
+    "idle_packet_threshold": 100,
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 2.0
+  },
+  "synced_at": "2026-07-10T17:49:10.346441+00:00"
+}

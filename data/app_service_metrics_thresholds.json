@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "service": "App Service",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "APP_IDLE": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "WEBAPP_STOPPED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "WEBAPP_ALWAYS_ON_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_ALWAYS_ON_OFF": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ASP_EMPTY": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ASP_OVERPROVISIONED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PLAN_EMPTY": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PLAN_UNDERUTILIZED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_SERVICE_PLAN_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "WEBAPP_PLAN_LOAD_LOW_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ASP_CONSOLIDATION_CANDIDATE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

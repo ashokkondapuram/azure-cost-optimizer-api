@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "service_id": "messaging-servicebus",
+  "canonical_type": "messaging/servicebus",
+  "arm_type": "Microsoft.ServiceBus/namespaces",
+  "display_name": "Service Bus namespace",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Basic": {
+      "queues": true,
+      "topics": false
+    },
+    "Standard": {
+      "queues": true,
+      "topics": true
+    },
+    "Premium": {
+      "messaging_units": true,
+      "dedicated": true
+    }
+  },
+  "pricing": {
+    "billing_model": "messaging_operations",
+    "currency": "USD"
+  },
+  "region_governance": {
+    "policy_file": "region-governance-policy.json",
+    "recommended_region": "canadacentral",
+    "secondary_region": "canadaeast",
+    "approved_regions": ["canadacentral", "canadaeast"],
+    "region_move_allowed": false,
+    "migration_required": true
+  },
+  "optimization_thresholds": {
+    "cost": {
+      "idle_incoming_messages_max": 100,
+      "idle_days_with_cost": 14,
+      "premium_incoming_messages_max": 5000,
+      "premium_cpu_utilization_max_pct": 30,
+      "premium_memory_utilization_max_pct": 40,
+      "monthly_cost_increase_pct": 20
+    },
+    "performance": {
+      "server_errors_min": 1,
+      "throttled_requests_min": 1,
+      "active_messages_high": 10000
+    },
+    "reliability": {
+      "deadletter_messages_min": 1,
+      "zone_redundant_preferred": true
+    },
+    "security": {
+      "public_network_access_disabled": true
+    }
+  },
+  "pillar_triggers": {
+    "policy_file": "assessment-pillar-triggers.json",
+    "cost": ["servicebus_premium_rightsize", "servicebus_idle_namespace"],
+    "performance": ["servicebus_throttle_or_errors"],
+    "reliability": ["servicebus_deadletter_high", "best_unapproved_region"],
+    "security": ["sec_public_access"]
+  },
+  "synced_at": "2026-07-10T17:49:10.184323+00:00"
+}

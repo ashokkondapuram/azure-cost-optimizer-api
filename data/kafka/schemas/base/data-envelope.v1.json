@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/base/data-envelope.v1.json",
+  "title": "SyncDataEnvelope",
+  "description": "Azure fetch results for Redpanda data pipeline persistence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "message_id",
+    "stage",
+    "subscription_id",
+    "pipeline_id",
+    "records",
+    "meta",
+    "run_params",
+    "created_at",
+    "source_service",
+    "idempotency_key"
+  ],
+  "properties": {
+    "message_id": { "type": "string", "format": "uuid" },
+    "stage": {
+      "type": "string",
+      "enum": ["inventory", "cost", "metrics", "analysis"]
+    },
+    "subscription_id": { "type": "string", "format": "uuid" },
+    "pipeline_id": { "type": "string", "format": "uuid" },
+    "records": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "meta": { "type": "object" },
+    "run_params": { "type": "object" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "source_service": { "type": "string", "minLength": 1 },
+    "idempotency_key": { "type": "string", "minLength": 1 }
+  }
+}

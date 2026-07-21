@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "service": "Application Insights",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/monitor/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 30,
+    "request_count_low": 1000,
+    "savings_factor": 0.25,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 3
+  },
+  "analysis_rules": {
+    "APP_INSIGHTS_SAMPLING_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_INSIGHTS_SAMPLING": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_INSIGHTS_LOW_TRAFFIC_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

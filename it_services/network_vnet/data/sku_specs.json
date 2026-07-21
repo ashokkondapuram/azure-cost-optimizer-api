@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "service_id": "network-vnet",
+  "canonical_type": "network/vnet",
+  "arm_type": "Microsoft.Network/virtualNetworks",
+  "display_name": "Virtual network",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard": {
+      "peering_ingress_per_gb_usd": 0.01,
+      "peering_egress_per_gb_usd": 0.01
+    }
+  },
+  "pricing": {
+    "billing_model": "peering_and_ip",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.384067+00:00"
+}

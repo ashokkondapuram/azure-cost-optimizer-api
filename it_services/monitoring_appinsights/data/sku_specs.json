@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "service_id": "monitoring-appinsights",
+  "canonical_type": "monitoring/appinsights",
+  "arm_type": "Microsoft.Insights/components",
+  "display_name": "Application Insights",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "PerGB2018": {
+      "billing": "per_gb_ingested"
+    }
+  },
+  "pricing": {
+    "billing_model": "ingestion",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.189258+00:00"
+}

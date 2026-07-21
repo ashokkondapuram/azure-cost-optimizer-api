@@ -1,0 +1,446 @@
+# Microservices-only local development stack.
+# Usage:
+#   cp docker/.env.example docker/.env
+#   docker compose -f docker-compose.microservices.yml up gateway
+#
+# Shared Python deps (built once for platform-* services):
+#   DOCKER_BUILDKIT=1 docker compose -f docker-compose.microservices.yml build python-base
+
+x-postgres-env: &postgres-env
+  POSTGRES_USER: ${POSTGRES_USER:-costoptimizer}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-costoptimizer}
+  POSTGRES_DB: ${POSTGRES_DB:-costoptimizer}
+
+x-postgres-command: &postgres-command
+  - postgres
+  - -c
+  - max_connections=${POSTGRES_MAX_CONNECTIONS:-200}
+  - -c
+  - shared_buffers=${POSTGRES_SHARED_BUFFERS:-256MB}
+  - -c
+  - work_mem=${POSTGRES_WORK_MEM:-4MB}
+
+x-kafka-env: &kafka-env
+  KAFKA_ENABLED: ${KAFKA_ENABLED:-true}
+  KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-redpanda:9092}
+  KAFKA_CLIENT_ID: ${KAFKA_CLIENT_ID:-costoptimizer}
+  KAFKA_CONSUMER_GROUP_PREFIX: ${KAFKA_CONSUMER_GROUP_PREFIX:-costoptimizer}
+  KAFKA_SECURITY_PROTOCOL: ${KAFKA_SECURITY_PROTOCOL:-PLAINTEXT}
+  KAFKA_AUTO_OFFSET_RESET: ${KAFKA_AUTO_OFFSET_RESET:-earliest}
+  KAFKA_POLL_TIMEOUT_SEC: ${KAFKA_POLL_TIMEOUT_SEC:-1.0}
+  KAFKA_SESSION_TIMEOUT_MS: ${KAFKA_SESSION_TIMEOUT_MS:-30000}
+  KAFKA_CONNECT_RETRY_DELAY_SEC: ${KAFKA_CONNECT_RETRY_DELAY_SEC:-5.0}
+  KAFKA_CONNECT_RETRY_MAX_DELAY_SEC: ${KAFKA_CONNECT_RETRY_MAX_DELAY_SEC:-60.0}
+  KAFKA_TOPIC_PARTITIONS: ${KAFKA_TOPIC_PARTITIONS:-6}
+  KAFKA_TOPIC_REPLICATION_FACTOR: ${KAFKA_TOPIC_REPLICATION_FACTOR:-1}
+  KAFKA_TOPIC_RETENTION_MS: ${KAFKA_TOPIC_RETENTION_MS:-604800000}
+  KAFKA_TOPICS_MANIFEST: /app/data/kafka-topics.yaml
+  KAFKA_SCHEMA_REGISTRY_URL: ${KAFKA_SCHEMA_REGISTRY_URL:-http://redpanda:8081}
+  KAFKA_SCHEMA_REGISTRY_ENABLED: ${KAFKA_SCHEMA_REGISTRY_ENABLED:-true}
+  KAFKA_SCHEMA_VALIDATION_ENABLED: ${KAFKA_SCHEMA_VALIDATION_ENABLED:-true}
+  KAFKA_SCHEMAS_MANIFEST: /app/data/kafka/schemas/schemas-manifest.yaml
+  KAFKA_SCHEMAS_DIR: /app/data/kafka/schemas
+  KAFKA_DATA_PIPELINE_ENABLED: ${KAFKA_DATA_PIPELINE_ENABLED:-true}
+  KAFKA_ENSURE_TOPICS_ON_STARTUP: ${KAFKA_ENSURE_TOPICS_ON_STARTUP:-true}
+  KAFKA_MESSAGE_MAX_BYTES: ${KAFKA_MESSAGE_MAX_BYTES:-20971520}
+  KAFKA_CHUNK_TARGET_BYTES: ${KAFKA_CHUNK_TARGET_BYTES:-768000}
+  KAFKA_PUBLISH_MAX_RETRIES: ${KAFKA_PUBLISH_MAX_RETRIES:-3}
+  KAFKA_PUBLISH_RETRY_BACKOFF_SEC: ${KAFKA_PUBLISH_RETRY_BACKOFF_SEC:-1.0}
+  KAFKA_PUBLISH_DELIVERY_TIMEOUT_SEC: ${KAFKA_PUBLISH_DELIVERY_TIMEOUT_SEC:-10.0}
+  KAFKA_API_THROTTLE_ENABLED: ${KAFKA_API_THROTTLE_ENABLED:-true}
+  KAFKA_API_DLQ_ENABLED: ${KAFKA_API_DLQ_ENABLED:-true}
+  KAFKA_API_COST_RATE_PER_SEC: ${KAFKA_API_COST_RATE_PER_SEC:-2}
+  KAFKA_API_COST_BURST: ${KAFKA_API_COST_BURST:-4}
+  KAFKA_API_COST_WORKER_CONCURRENCY: ${KAFKA_API_COST_WORKER_CONCURRENCY:-3}
+  KAFKA_API_METRICS_RATE_PER_SEC: ${KAFKA_API_METRICS_RATE_PER_SEC:-3}
+  KAFKA_API_METRICS_BURST: ${KAFKA_API_METRICS_BURST:-6}
+  KAFKA_API_METRICS_WORKER_CONCURRENCY: ${KAFKA_API_METRICS_WORKER_CONCURRENCY:-3}
+  KAFKA_API_INVENTORY_RATE_PER_SEC: ${KAFKA_API_INVENTORY_RATE_PER_SEC:-4}
+  KAFKA_API_INVENTORY_BURST: ${KAFKA_API_INVENTORY_BURST:-8}
+  KAFKA_API_INVENTORY_WORKER_CONCURRENCY: ${KAFKA_API_INVENTORY_WORKER_CONCURRENCY:-4}
+  KAFKA_API_AGGREGATE_TIMEOUT_SEC: ${KAFKA_API_AGGREGATE_TIMEOUT_SEC:-900}
+
+x-backend-env: &backend-env
+  APP_ENV: ${APP_ENV:-development}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  AUTH_ENABLED: ${AUTH_ENABLED:-true}
+  CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://127.0.0.1:3000,http://localhost:3000}
+  REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-60}
+  DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-8}
+  DATABASE_MAX_OVERFLOW: ${DATABASE_MAX_OVERFLOW:-12}
+  DATABASE_POOL_TIMEOUT_SEC: ${DATABASE_POOL_TIMEOUT_SEC:-30}
+  DATABASE_POOL_RECYCLE_SEC: ${DATABASE_POOL_RECYCLE_SEC:-1800}
+  AUTH_USER_CACHE_SECONDS: ${AUTH_USER_CACHE_SECONDS:-60}
+  SESSION_IDLE_MINUTES: ${SESSION_IDLE_MINUTES:-1}
+  ENRICHMENT_MAX_AGE_HOURS: ${ENRICHMENT_MAX_AGE_HOURS:-6}
+  COST_SYNC_INTERVAL_MINUTES: ${COST_SYNC_INTERVAL_MINUTES:-60}
+  COST_SYNC_STARTUP_DELAY_SEC: ${COST_SYNC_STARTUP_DELAY_SEC:-0}
+  METRICS_SYNC_INTERVAL_MINUTES: ${METRICS_SYNC_INTERVAL_MINUTES:-30}
+  METRICS_SYNC_STARTUP_DELAY_SEC: ${METRICS_SYNC_STARTUP_DELAY_SEC:-120}
+  METRICS_SYNC_WORKER_ENABLED: ${METRICS_SYNC_WORKER_ENABLED:-true}
+  INVENTORY_SYNC_INTERVAL_MINUTES: ${INVENTORY_SYNC_INTERVAL_MINUTES:-15}
+  INVENTORY_SYNC_STARTUP_DELAY_SEC: ${INVENTORY_SYNC_STARTUP_DELAY_SEC:-60}
+  ANALYSIS_SYNC_INTERVAL_MINUTES: ${ANALYSIS_SYNC_INTERVAL_MINUTES:-10}
+  ANALYSIS_SYNC_STARTUP_DELAY_SEC: ${ANALYSIS_SYNC_STARTUP_DELAY_SEC:-180}
+  SCHEDULED_OPERATIONS_ENABLED: ${SCHEDULED_OPERATIONS_ENABLED:-false}
+  ANALYSIS_MONITOR_METRICS_TIMESPAN: ${ANALYSIS_MONITOR_METRICS_TIMESPAN:-P7D}
+  ANALYSIS_MONITOR_METRICS_LIMIT_PER_TYPE: ${ANALYSIS_MONITOR_METRICS_LIMIT_PER_TYPE:-0}
+  ANALYSIS_MONITOR_METRICS_WORKERS: ${ANALYSIS_MONITOR_METRICS_WORKERS:-6}
+  ANALYSIS_MONITOR_METRICS_TIMEOUT_SEC: ${ANALYSIS_MONITOR_METRICS_TIMEOUT_SEC:-120}
+  SYNC_MONITOR_METRICS_TIMEOUT_SEC: ${SYNC_MONITOR_METRICS_TIMEOUT_SEC:-30}
+  SYNC_MONITOR_METRICS_MAX_RETRIES: ${SYNC_MONITOR_METRICS_MAX_RETRIES:-0}
+  SYNC_MONITOR_METRICS_MAX_WORKERS: ${SYNC_MONITOR_METRICS_MAX_WORKERS:-3}
+  SYNC_MONITOR_METRICS_LIMIT_PER_TYPE: ${SYNC_MONITOR_METRICS_LIMIT_PER_TYPE:-0}
+  METRICS_SYNC_TIMEOUT_SEC: ${METRICS_SYNC_TIMEOUT_SEC:-30}
+  METRICS_SYNC_MAX_RETRIES: ${METRICS_SYNC_MAX_RETRIES:-0}
+  METRICS_SYNC_MAX_WORKERS: ${METRICS_SYNC_MAX_WORKERS:-3}
+  MICROSERVICES_ONLY: "1"
+  PYTHONPATH: /app
+  DATABASE_URL: postgresql://${POSTGRES_USER:-costoptimizer}:${POSTGRES_PASSWORD:-costoptimizer}@postgres:5432/${POSTGRES_DB:-costoptimizer}?sslmode=disable
+  <<: *kafka-env
+
+x-platform-service-volumes: &platform-service-volumes
+  - ./app:/app/app:ro
+  - ./data:/app/data:ro
+  - ./it_services:/app/it_services:ro
+  - ./packages:/app/packages:ro
+
+services:
+  python-base:
+    build:
+      context: .
+      dockerfile: docker/desktop/Dockerfile.python-base
+    image: costoptimize/python-base:dev
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - docker/.env
+    environment:
+      <<: *postgres-env
+    command: *postgres-command
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-costoptimizer}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:${REDPANDA_VERSION:-v25.3.1}
+    container_name: costopt-redpanda
+    hostname: redpanda
+    # Production tuning: docker compose -f docker-compose.microservices.yml -f docker/redpanda.compose.prod.yml up
+    command:
+      - redpanda
+      - start
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://127.0.0.1:9092
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr internal://redpanda:8082,external://127.0.0.1:18082
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --rpc-addr redpanda:33145
+      - --advertise-rpc-addr redpanda:33145
+      - --mode dev-container
+      - --smp 1
+      - --default-log-level=info
+      - --set redpanda.kafka_batch_max_bytes=20971520
+    ports:
+      - "127.0.0.1:${KAFKA_PORT:-9092}:19092"
+      - "127.0.0.1:${KAFKA_SCHEMA_REGISTRY_PORT:-18081}:18081"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster info >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 45s
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:${REDPANDA_CONSOLE_VERSION:-v3.8.0}
+    container_name: costopt-redpanda-console
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml && /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:9092"]
+        schemaRegistry:
+          enabled: true
+          urls: ["http://redpanda:8081"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+    ports:
+      - "127.0.0.1:${KAFKA_UI_PORT:-8085}:8080"
+    depends_on:
+      redpanda:
+        condition: service_started
+
+  redpanda-init:
+    image: costoptimize/python-base:dev
+    container_name: costopt-redpanda-init
+    restart: "no"
+    working_dir: /app
+    volumes:
+      - .:/app:ro
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      KAFKA_SCHEMA_REGISTRY_URL: http://redpanda:8081
+      KAFKA_TOPICS_MANIFEST: /app/data/kafka-topics.yaml
+      KAFKA_SCHEMAS_MANIFEST: /app/data/kafka/schemas/schemas-manifest.yaml
+    command:
+      - python
+      - scripts/kafka_init.py
+      - --brokers
+      - redpanda:9092
+      - --registry-url
+      - http://redpanda:8081
+      - --wait-sec
+      - "90"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      python-base:
+        condition: service_started
+
+  platform-core:
+    build:
+      context: .
+      dockerfile: services/platform-auth/Dockerfile
+    env_file:
+      - docker/.env
+    environment:
+      <<: *backend-env
+      PORT: ${CORE_SERVICE_PORT:-8010}
+    volumes: *platform-service-volumes
+    ports:
+      - "127.0.0.1:${CORE_SERVICE_PORT:-8010}:${CORE_SERVICE_PORT:-8010}"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${CORE_SERVICE_PORT:-8010}/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  platform-cost:
+    build:
+      context: .
+      dockerfile: services/platform-cost/Dockerfile
+      target: prod
+    env_file:
+      - docker/.env
+    environment:
+      <<: *backend-env
+      PORT: ${COST_SERVICE_PORT:-8011}
+      SCHEDULED_OPERATIONS_ENABLED: "true"
+      COST_EXPLORER_WORKER_ENABLED: "true"
+    volumes: *platform-service-volumes
+    ports:
+      - "127.0.0.1:${COST_SERVICE_PORT:-8011}:${COST_SERVICE_PORT:-8011}"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${COST_SERVICE_PORT:-8011}/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  platform-inventory:
+    build:
+      context: .
+      dockerfile: services/platform-inventory/Dockerfile
+      target: prod
+    env_file:
+      - docker/.env
+    environment:
+      <<: *backend-env
+      PORT: ${INVENTORY_SERVICE_PORT:-8012}
+      SCHEDULED_OPERATIONS_ENABLED: "true"
+      RESOURCE_DISCOVERY_WORKER_ENABLED: "true"
+    volumes: *platform-service-volumes
+    ports:
+      - "127.0.0.1:${INVENTORY_SERVICE_PORT:-8012}:${INVENTORY_SERVICE_PORT:-8012}"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${INVENTORY_SERVICE_PORT:-8012}/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  platform-analysis:
+    build:
+      context: .
+      dockerfile: services/platform-analysis/Dockerfile
+      target: prod
+    env_file:
+      - docker/.env
+    environment:
+      <<: *backend-env
+      PORT: ${ANALYSIS_SERVICE_PORT:-8013}
+      SCHEDULED_OPERATIONS_ENABLED: "true"
+      SCHEDULED_SYNC_ENABLED: "false"
+      SCHEDULED_COMPONENT_SYNC_ENABLED: "false"
+      SCHEDULED_ANALYSIS_AFTER_SYNC: "false"
+      SCHEDULED_PIPELINE_ENABLED: "false"
+      SCHEDULED_ENGINE_SCORING_ENABLED: "false"
+    volumes: *platform-service-volumes
+    ports:
+      - "127.0.0.1:${ANALYSIS_SERVICE_PORT:-8013}:${ANALYSIS_SERVICE_PORT:-8013}"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${ANALYSIS_SERVICE_PORT:-8013}/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  platform-metrics:
+    build:
+      context: .
+      dockerfile: services/platform-metrics/Dockerfile
+      target: prod
+    env_file:
+      - docker/.env
+    environment:
+      <<: *backend-env
+      PORT: ${METRICS_SERVICE_PORT:-8014}
+      SCHEDULED_OPERATIONS_ENABLED: "true"
+      METRICS_SYNC_WORKER_ENABLED: "true"
+    volumes: *platform-service-volumes
+    ports:
+      - "127.0.0.1:${METRICS_SERVICE_PORT:-8014}:${METRICS_SERVICE_PORT:-8014}"
+    depends_on:
+      python-base:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_started
+      redpanda-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${METRICS_SERVICE_PORT:-8014}/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+
+  compute-disk:
+    build:
+      context: .
+      dockerfile: services/resources/compute-disk/Dockerfile
+    env_file:
+      - docker/.env
+    environment:
+      <<: *backend-env
+      PORT: ${COMPUTE_DISK_SERVICE_PORT:-8108}
+    ports:
+      - "127.0.0.1:${COMPUTE_DISK_SERVICE_PORT:-8108}:${COMPUTE_DISK_SERVICE_PORT:-8108}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  security-keyvault:
+    build:
+      context: .
+      dockerfile: services/resources/security-keyvault/Dockerfile
+    env_file:
+      - docker/.env
+    environment:
+      <<: *backend-env
+      PORT: ${SECURITY_KEYVAULT_SERVICE_PORT:-8141}
+    ports:
+      - "127.0.0.1:${SECURITY_KEYVAULT_SERVICE_PORT:-8141}:${SECURITY_KEYVAULT_SERVICE_PORT:-8141}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: .
+      dockerfile: services/platform-gateway/Dockerfile
+      target: prod
+    env_file:
+      - docker/.env
+    environment:
+      MICROSERVICES_ONLY: "1"
+      KAFKA_ENABLED: "false"
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-redpanda:9092}
+      KAFKA_TOPICS_MANIFEST: /app/data/kafka-topics.yaml
+      CORE_SERVICE_URL: http://platform-core:${CORE_SERVICE_PORT:-8010}
+      INVENTORY_SERVICE_URL: http://platform-inventory:${INVENTORY_SERVICE_PORT:-8012}
+      COST_SERVICE_URL: http://platform-cost:${COST_SERVICE_PORT:-8011}
+      ANALYSIS_SERVICE_URL: http://platform-analysis:${ANALYSIS_SERVICE_PORT:-8013}
+      METRICS_SERVICE_URL: http://platform-metrics:${METRICS_SERVICE_PORT:-8014}
+      SERVICE_URL_COMPUTE_DISK: http://compute-disk:${COMPUTE_DISK_SERVICE_PORT:-8108}
+      SERVICE_URL_SECURITY_KEYVAULT: http://security-keyvault:${SECURITY_KEYVAULT_SERVICE_PORT:-8141}
+      GATEWAY_UPSTREAM_TIMEOUT_SECONDS: ${GATEWAY_UPSTREAM_TIMEOUT_SECONDS:-120}
+      GATEWAY_OPTIMIZE_TIMEOUT_SECONDS: ${GATEWAY_OPTIMIZE_TIMEOUT_SECONDS:-300}
+      GATEWAY_SYNC_ACCEPT_TIMEOUT_SECONDS: ${GATEWAY_SYNC_ACCEPT_TIMEOUT_SECONDS:-30}
+      PORT: ${GATEWAY_PORT:-8080}
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8080}:${GATEWAY_PORT:-8080}"
+    depends_on:
+      python-base:
+        condition: service_started
+      platform-core:
+        condition: service_healthy
+      platform-cost:
+        condition: service_healthy
+      platform-inventory:
+        condition: service_healthy
+      platform-analysis:
+        condition: service_healthy
+      platform-metrics:
+        condition: service_healthy
+      compute-disk:
+        condition: service_started
+      security-keyvault:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:${GATEWAY_PORT:-8080}/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  pgdata:
+  redpanda_data:

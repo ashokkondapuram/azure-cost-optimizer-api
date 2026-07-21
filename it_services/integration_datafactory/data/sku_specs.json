@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "service_id": "integration-datafactory",
+  "canonical_type": "integration/datafactory",
+  "arm_type": "Microsoft.DataFactory/factories",
+  "display_name": "Data Factory",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard": {
+      "billing": "activity_run"
+    }
+  },
+  "pricing": {
+    "billing_model": "activity_execution",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.166968+00:00"
+}

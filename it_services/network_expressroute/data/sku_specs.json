@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "service_id": "network-expressroute",
+  "canonical_type": "network/expressroute",
+  "arm_type": "Microsoft.Network/expressRouteCircuits",
+  "display_name": "ExpressRoute circuit",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard": {
+      "bandwidth_mbps": [
+        50,
+        100,
+        200,
+        500,
+        1000,
+        2000,
+        5000,
+        10000
+      ]
+    },
+    "Premium": {
+      "bandwidth_mbps": [
+        50,
+        100,
+        200,
+        500,
+        1000,
+        2000,
+        5000,
+        10000
+      ],
+      "expressroute_global_reach": true
+    }
+  },
+  "pricing": {
+    "billing_model": "port_monthly",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.261480+00:00"
+}

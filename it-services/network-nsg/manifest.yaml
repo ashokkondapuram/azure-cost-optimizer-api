@@ -1,0 +1,22 @@
+service_id: network-nsg
+canonical_type: network/nsg
+display_name: Network security group
+api_path: /resources/nsgs
+arm_type: Microsoft.Network/networkSecurityGroups
+component: Network Security Groups
+drawer_ui: false
+
+backend:
+  package: it_services/network_nsg
+  modules:
+    - it_services/network_nsg/resource_profile.py
+  related_app_modules:
+    - app/resources/network/nsg.py
+    - app/optimizer/resource_engines/network/nsg/
+
+frontend:
+  root: frontend/src/it-services/network-nsg
+  entry: frontend/src/it-services/network-nsg/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

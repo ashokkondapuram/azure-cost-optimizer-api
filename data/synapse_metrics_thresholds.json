@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "service": "Azure Synapse Analytics",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/synapse-analytics/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-synapse-analytics/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 200,
+    "idle_min_monthly_cost_usd": 150,
+    "savings_factor": 0.35,
+    "idle_savings_factor": 0.4,
+    "sql_query_low_count": 100,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "SYNAPSE_PAUSE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SYNAPSE_PAUSE": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SYNAPSE_SQL_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

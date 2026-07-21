@@ -1,0 +1,16 @@
+{
+  "short_name": "InfinityOps",
+  "name": "InfinityOps",
+  "icons": [
+    {
+      "src": "infinityops-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0ea5e9",
+  "background_color": "#e0f2fe"
+}

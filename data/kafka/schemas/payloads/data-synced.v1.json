@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/payloads/data-synced.v1.json",
+  "title": "DataSyncedPayload",
+  "description": "Payload for data.* topics — fetched Azure data routed before PostgreSQL persist.",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "data": {
+      "type": "object",
+      "description": "Stage-specific collected data (sections + summary).",
+      "additionalProperties": true
+    },
+    "run_params": {
+      "type": "object",
+      "description": "Original sync run parameters (token, scopes, etc.).",
+      "additionalProperties": true,
+      "properties": {
+        "reason": { "type": "string" },
+        "token": { "type": ["string", "null"] },
+        "type_list": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "types": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "resource_types": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "scope_resource_types": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "scope_components": {
+          "type": ["array", "null"],
+          "items": { "type": "string" }
+        },
+        "include_costs": { "type": "boolean" },
+        "profile": { "type": "string" },
+        "engine_version": { "type": "string" },
+        "force": { "type": "boolean" }
+      }
+    },
+    "chunk": {
+      "type": "object",
+      "description": "Optional chunk metadata when a stage payload is split across messages.",
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": { "type": "string" },
+        "chunk_index": { "type": "integer", "minimum": 0 },
+        "total_chunks": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["batch_id", "chunk_index", "total_chunks"]
+    }
+  }
+}

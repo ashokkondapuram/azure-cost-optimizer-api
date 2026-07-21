@@ -1,0 +1,404 @@
+/* ── Managed disks list (assessment v2) ─────────────── */
+.nav-badge--muted {
+  background: rgba(122, 138, 168, 0.2);
+  color: var(--text3);
+}
+
+.inline-code {
+  font-family: ui-monospace, 'SF Mono', monospace;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(0, 115, 255, 0.12);
+  color: var(--primary-light);
+}
+
+.disk-intel-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 10px;
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(18, 26, 54, 0.9), rgba(26, 35, 68, 0.75));
+  border: 1px solid var(--border-subtle);
+  font-size: 13px;
+  color: var(--text2);
+}
+
+.disk-intel-strip__dot { color: var(--text3); }
+.disk-intel-strip__seg--savings strong { color: var(--success-text); }
+
+.disk-command {
+  margin-bottom: 18px;
+}
+
+.disk-command__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.disk-command__search { flex: 1; max-width: 360px; }
+
+.disk-chip-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.disk-chip {
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(18, 26, 54, 0.65);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.disk-chip:hover { border-color: var(--border-light); color: var(--text); }
+.disk-chip.active {
+  border-color: var(--primary);
+  background: var(--primary-muted);
+  color: var(--text);
+}
+
+.disk-chip--premium.active { border-color: #a78bfa; background: rgba(167, 139, 250, 0.14); }
+
+.disk-filter-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text3);
+}
+
+.disk-table-panel { margin-top: 0; }
+
+.disk-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.disk-table-head__count {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary-muted);
+  color: var(--primary-light);
+}
+
+.disk-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.disk-inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.disk-inventory-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
+.disk-inventory-table th,
+.disk-inventory-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.disk-inventory-table th {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+.disk-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.disk-sortable:hover { color: var(--text2); }
+
+.disk-sortable.active { color: var(--primary-light); }
+
+.disk-sortable.active::after {
+  content: '';
+  display: inline-block;
+  margin-left: 4px;
+  border: 4px solid transparent;
+}
+
+.disk-sortable.active.desc::after {
+  border-top-color: currentColor;
+  transform: translateY(2px);
+}
+
+.disk-sortable.active.asc::after {
+  border-bottom-color: currentColor;
+  transform: translateY(-2px);
+}
+
+.disk-row--clickable {
+  cursor: pointer;
+  transition: background var(--transition);
+}
+
+.disk-row--clickable:hover { background: var(--row-hover); }
+
+.disk-row--clickable:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.disk-sku {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 115, 255, 0.1);
+  color: var(--primary-light);
+}
+
+.disk-state {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.disk-state--ok {
+  background: var(--success-muted);
+  color: var(--success-text);
+}
+
+.disk-state--warn {
+  background: var(--warning-muted);
+  color: var(--warning-text);
+}
+
+.disk-metric { font-variant-numeric: tabular-nums; }
+
+.disk-finding-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.disk-finding-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  background: var(--surface-2, rgba(127, 127, 127, 0.12));
+}
+
+.disk-savings {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--success-text);
+}
+
+.disk-no-finding { color: var(--text3); }
+
+.disk-empty {
+  padding: 24px 18px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+}
+
+.page-head--disks h1 { margin-bottom: 4px; }
+
+.disk-location {
+  font-size: 12px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+@media (max-width: 900px) {
+  .disk-inventory-table th:nth-child(n+6):nth-child(-n+9),
+  .disk-inventory-table td:nth-child(n+6):nth-child(-n+9) { display: none; }
+}
+
+/* ── Shell (from concept-v2 shared.css, scoped to disk-v2) ── */
+.disk-v2 .page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.disk-v2 .page-head h1 {
+  margin: 0 0 6px;
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.disk-v2 .page-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.disk-v2 .meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  background: var(--surface2);
+  border: 1px solid var(--border-subtle);
+}
+
+.disk-v2 .meta-pill--ok .meta-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.disk-v2 .actions { display: flex; gap: 10px; flex-shrink: 0; }
+
+.disk-v2 .panel.table-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.disk-v2 .section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.disk-v2 .section-title--bar {
+  padding-left: 12px;
+  border-left: 3px solid var(--primary);
+}
+
+.disk-v2 .search-wrap {
+  flex: 1;
+  min-width: 220px;
+  position: relative;
+}
+
+.disk-v2 .search-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text3);
+  pointer-events: none;
+}
+
+.disk-v2 .search {
+  width: 100%;
+  padding: 10px 14px 10px 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.disk-v2 .resource-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.disk-v2 .resource-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--primary-muted);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--primary-light);
+  flex-shrink: 0;
+}
+
+.disk-v2 .resource-icon--disk {
+  background: rgba(92, 45, 145, 0.2);
+  color: #c4b5fd;
+  border-color: rgba(92, 45, 145, 0.35);
+}
+
+.disk-v2 .resource-cell__body strong {
+  display: block;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.disk-v2 .resource-cell__body small {
+  display: block;
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 1px;
+}
+
+.disk-v2 .sev {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.disk-v2 .sev-critical { background: var(--danger-muted); color: var(--danger-text); }
+.disk-v2 .sev-high { background: var(--warning-muted); color: var(--warning-text); }
+.disk-v2 .sev-medium { background: var(--primary-muted); color: var(--primary-light); }
+.disk-v2 .sev-low { background: var(--surface2); color: var(--text3); }
+
+.disk-v2 .cost-cell { font-variant-numeric: tabular-nums; }
+.disk-v2 .cost-cell--muted { color: var(--text3); }
+
+/* ── Disk insight canvas (compact density, scoped to detail view) ── */
+.ic-detail.disk-v2 .ic-evidence-item__vals {
+  gap: 6px;
+}
+
+.ic-detail.disk-v2 .ac-prop-grid--flat2 .ac-prop-item__value {
+  font-size: 13px;
+}
+

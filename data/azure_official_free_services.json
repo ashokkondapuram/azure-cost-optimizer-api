@@ -1,0 +1,448 @@
+{
+  "version": "2026-06",
+  "updated_at": "2026-06-30",
+  "source_url": "https://azure.microsoft.com/en-us/pricing/free-services/#List-of-free-services",
+  "notes": "Mapped from Microsoft Azure free services page. retail_names link entries to Azure Retail Prices API serviceName values.",
+  "always": [
+    {
+      "name": "Azure AI Search",
+      "retail_names": ["Azure Cognitive Search"],
+      "category": "Foundry IQ",
+      "limit": "50 MB storage for 10,000 hosted documents and 3 indexes per service",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-services/ai-search/"
+    },
+    {
+      "name": "Azure Language",
+      "retail_names": ["Foundry Tools"],
+      "category": "Foundry Tools",
+      "limit": "5,000 text records",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-foundry/tools/language"
+    },
+    {
+      "name": "AI Bot Service",
+      "retail_names": ["Azure Bot Service"],
+      "category": "Foundry Tools",
+      "limit": "10,000 premium channel messages and unlimited standard channel messages",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-services/ai-bot-service/"
+    },
+    {
+      "name": "Speech to Text",
+      "retail_names": ["Foundry Tools"],
+      "category": "Azure Speech in Foundry Tools",
+      "limit": "5 audio hours per month for Realtime Speech to Text",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-foundry/tools/speech"
+    },
+    {
+      "name": "Text to Speech",
+      "retail_names": ["Foundry Tools"],
+      "category": "Azure Speech in Foundry Tools",
+      "limit": "0.5 million characters per month for Standard Neural Voices",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-foundry/tools/speech"
+    },
+    {
+      "name": "Speech Translation",
+      "retail_names": ["Foundry Tools"],
+      "category": "Azure Speech in Foundry Tools",
+      "limit": "5 audio hours per month for Real-time Speech Translation (with Standard Voice)",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-foundry/tools/speech"
+    },
+    {
+      "name": "Translator",
+      "retail_names": ["Foundry Tools"],
+      "category": "Azure Translator in Foundry Tools",
+      "limit": "2 million characters of standard and custom translation per month",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-foundry/tools/translator"
+    },
+    {
+      "name": "Face",
+      "retail_names": ["Foundry Tools"],
+      "category": "Azure Vision in Foundry Tools",
+      "limit": "30,000 transactions of Free instance",
+      "doc_url": "https://azure.microsoft.com/en-us/products/cognitive-services/face/"
+    },
+    {
+      "name": "Machine Learning",
+      "retail_names": ["Azure Machine Learning", "Machine Learning Studio"],
+      "category": "Azure Machine learning",
+      "limit": "Free",
+      "doc_url": "https://azure.microsoft.com/en-us/products/machine-learning/"
+    },
+    {
+      "name": "Data Factory",
+      "retail_names": ["Azure Data Factory v2", "Azure Data Factory"],
+      "category": "Analytics",
+      "limit": "5 low-frequency activities",
+      "doc_url": "https://azure.microsoft.com/en-us/products/data-factory/"
+    },
+    {
+      "name": "App Service",
+      "retail_names": ["Azure App Service"],
+      "category": "Compute",
+      "limit": "Up to 10 web or API apps with 1 GB storage and 1 hour per day",
+      "doc_url": "https://azure.microsoft.com/en-us/products/app-service/"
+    },
+    {
+      "name": "Azure Kubernetes Service (AKS)",
+      "retail_names": ["Azure Kubernetes Service"],
+      "category": "Compute",
+      "limit": "AKS cluster management is free; node resources bill",
+      "doc_url": "https://azure.microsoft.com/en-us/products/kubernetes-service/"
+    },
+    {
+      "name": "Batch",
+      "retail_names": ["Batch"],
+      "category": "Compute",
+      "limit": "Free orchestration; compute pools bill",
+      "notes": "Batch account is free; underlying VM pools bill."
+    },
+    {
+      "name": "Functions",
+      "retail_names": ["Functions"],
+      "category": "Compute",
+      "limit": "1 million requests",
+      "doc_url": "https://azure.microsoft.com/en-us/products/functions/"
+    },
+    {
+      "name": "Static Web Apps",
+      "retail_names": ["Static Web Apps"],
+      "category": "Compute",
+      "limit": "100 GB bandwidth per subscription, 2 custom domains and 0.5 GB storage per app",
+      "doc_url": "https://azure.microsoft.com/en-us/products/app-service/static/"
+    },
+    {
+      "name": "Azure Container Storage",
+      "retail_names": ["Azure Container Storage"],
+      "category": "Containers",
+      "limit": "Free tier for deployments with storage pool capacity under 5 TiB",
+      "doc_url": "https://azure.microsoft.com/en-us/products/container-storage/"
+    },
+    {
+      "name": "Container Apps",
+      "retail_names": ["Azure Container Apps"],
+      "category": "Containers",
+      "limit": "180,000 vCPU seconds, 360,000 GiB seconds, and 2 million requests",
+      "doc_url": "https://azure.microsoft.com/en-us/products/container-apps/"
+    },
+    {
+      "name": "Service Fabric",
+      "retail_names": ["Service Fabric"],
+      "category": "Containers",
+      "limit": "Free",
+      "notes": "Cluster management free; underlying VMs bill."
+    },
+    {
+      "name": "Azure Cosmos DB",
+      "retail_names": ["Azure Cosmos DB"],
+      "category": "Databases",
+      "limit": "1,000 request units per-second provisioned throughput with 25 GB storage",
+      "notes": "Perpetual free tier per subscription (separate from 12-month new-account allowance).",
+      "doc_url": "https://azure.microsoft.com/en-us/products/cosmos-db/"
+    },
+    {
+      "name": "Azure SQL Database",
+      "retail_names": ["SQL Database"],
+      "category": "Databases",
+      "limit": "Up to 10 databases with 100,000 vCore seconds of serverless tier and 32 GB storage each",
+      "doc_url": "https://azure.microsoft.com/en-us/products/azure-sql/database/"
+    },
+    {
+      "name": "Database Migration Service",
+      "retail_names": ["Azure Database Migration Service"],
+      "category": "Databases",
+      "limit": "Free Standard Compute",
+      "doc_url": "https://azure.microsoft.com/en-us/products/database-migration/"
+    },
+    {
+      "name": "App Configuration",
+      "retail_names": ["App Configuration"],
+      "category": "Developer Tools",
+      "limit": "1,000 requests per day with 10 MB storage",
+      "doc_url": "https://azure.microsoft.com/en-us/products/app-configuration/"
+    },
+    {
+      "name": "Azure DevOps",
+      "retail_names": ["Azure DevOps"],
+      "category": "Developer Tools",
+      "limit": "5 users with unlimited private Git repos",
+      "doc_url": "https://azure.microsoft.com/en-us/products/devops/"
+    },
+    {
+      "name": "Azure Arc",
+      "retail_names": ["Azure Arc Enabled Databases", "Azure Arc-enabled AKS"],
+      "category": "Hybrid + multicloud",
+      "limit": "Free Azure control plane for resources outside Azure",
+      "doc_url": "https://azure.microsoft.com/en-us/products/azure-arc/"
+    },
+    {
+      "name": "Azure Active Directory B2C",
+      "retail_names": ["Azure Active Directory B2C"],
+      "category": "Identity",
+      "limit": "50,000 active users per month (MAU)",
+      "doc_url": "https://www.microsoft.com/en-us/security/business/identity-access/microsoft-entra-id"
+    },
+    {
+      "name": "API Management",
+      "retail_names": ["API Management"],
+      "category": "Integration",
+      "limit": "1 million monthly calls free with Consumption tier",
+      "doc_url": "https://azure.microsoft.com/en-us/products/api-management/"
+    },
+    {
+      "name": "Event Grid",
+      "retail_names": ["Event Grid"],
+      "category": "Integration",
+      "limit": "100,000 operations per month",
+      "doc_url": "https://azure.microsoft.com/en-us/products/event-grid/"
+    },
+    {
+      "name": "Logic Apps",
+      "retail_names": ["Logic Apps"],
+      "category": "Integration",
+      "limit": "4,000 built-in actions with the Consumption plan",
+      "doc_url": "https://azure.microsoft.com/en-us/products/logic-apps/"
+    },
+    {
+      "name": "Azure Maps",
+      "retail_names": ["Azure Maps"],
+      "category": "Internet of Things",
+      "limit": "1,000 to 5,000 transactions for mapping and location features",
+      "doc_url": "https://azure.microsoft.com/en-us/products/azure-maps/"
+    },
+    {
+      "name": "IoT Hub",
+      "retail_names": ["IoT Hub"],
+      "category": "Internet of Things",
+      "limit": "8,000 messages per day and 0.5 KB message meter size of Free edition",
+      "doc_url": "https://azure.microsoft.com/en-us/products/iot-hub/"
+    },
+    {
+      "name": "Automation",
+      "retail_names": ["Automation"],
+      "category": "Management and Governance",
+      "limit": "500 minutes of job runtime",
+      "doc_url": "https://azure.microsoft.com/en-us/products/automation/"
+    },
+    {
+      "name": "Azure Policy",
+      "retail_names": ["Azure Policy"],
+      "category": "Management and Governance",
+      "limit": "Free access to configuration and change tracking features",
+      "doc_url": "https://azure.microsoft.com/en-us/products/azure-policy/"
+    },
+    {
+      "name": "Cost Management",
+      "retail_names": ["Cost Management"],
+      "category": "Management and Governance",
+      "limit": "Free",
+      "notes": "May not appear as a billable retail service."
+    },
+    {
+      "name": "Monitor",
+      "retail_names": ["Azure Monitor", "Log Analytics", "Application Insights"],
+      "category": "Management and Governance",
+      "limit": "Free amounts per feature (see Azure Monitor pricing)",
+      "doc_url": "https://azure.microsoft.com/en-us/products/monitor/"
+    },
+    {
+      "name": "Resource Manager",
+      "retail_names": [],
+      "category": "Management and Governance",
+      "limit": "Free",
+      "notes": "ARM resource groups, deployments, and tags — no retail service meter."
+    },
+    {
+      "name": "Notification Hubs",
+      "retail_names": ["Notification Hubs"],
+      "category": "Mobile",
+      "limit": "1 million push notifications with free namespace",
+      "doc_url": "https://azure.microsoft.com/en-us/products/notification-hubs/"
+    },
+    {
+      "name": "Bandwidth (Data Transfer)",
+      "retail_names": ["Bandwidth"],
+      "category": "Networking",
+      "limit": "100 GB outbound",
+      "notes": "Always-free monthly allowance; separate 15 GB for new accounts in first 12 months.",
+      "doc_url": "https://azure.microsoft.com/en-us/products/virtual-network/"
+    },
+    {
+      "name": "Network Watcher",
+      "retail_names": ["Network Watcher"],
+      "category": "Networking",
+      "limit": "5 GB storage with 1,000 checks, 10 tests, and 10 connection metrics",
+      "doc_url": "https://azure.microsoft.com/en-us/products/network-watcher/"
+    },
+    {
+      "name": "Private Link",
+      "retail_names": ["Azure Private Link"],
+      "category": "Networking",
+      "limit": "Free",
+      "notes": "Official page lists Private Link as free; private endpoints still bill hourly and for data processed.",
+      "doc_url": "https://azure.microsoft.com/en-us/products/private-link/"
+    },
+    {
+      "name": "Virtual Network",
+      "retail_names": ["Virtual Network"],
+      "category": "Networking",
+      "limit": "50 virtual networks",
+      "doc_url": "https://azure.microsoft.com/en-us/products/virtual-network/"
+    },
+    {
+      "name": "Security Center",
+      "retail_names": ["Microsoft Defender for Cloud"],
+      "category": "Security",
+      "limit": "Free policy assessment and recommendations",
+      "doc_url": "https://azure.microsoft.com/en-us/products/defender-for-cloud/"
+    },
+    {
+      "name": "Azure SignalR Service",
+      "retail_names": ["SignalR"],
+      "category": "Web",
+      "limit": "20 concurrent connections per unit and 20,000 messages",
+      "doc_url": "https://azure.microsoft.com/en-us/products/signalr-service/"
+    },
+    {
+      "name": "Web PubSub",
+      "retail_names": ["Web PubSub"],
+      "category": "Web",
+      "limit": "20,000 messages per unit per day and 20 concurrent connections per unit (1 unit max)",
+      "doc_url": "https://azure.microsoft.com/en-us/products/web-pubsub/"
+    }
+  ],
+  "12_months_new_account": [
+    {
+      "name": "Azure Document Intelligence",
+      "retail_names": ["Foundry Tools"],
+      "category": "Foundry Tools",
+      "limit": "500 pages S0 tier",
+      "doc_url": "https://azure.microsoft.com/en-us/products/ai-foundry/tools/document-intelligence"
+    },
+    {
+      "name": "AI Custom Vision",
+      "retail_names": ["Foundry Tools"],
+      "category": "Foundry Tools",
+      "limit": "10,000 predictions S0 tier, one training hour, two projects with 5,000 training images each"
+    },
+    {
+      "name": "Vision",
+      "retail_names": ["Foundry Tools"],
+      "category": "Azure Vision in Foundry Tools",
+      "limit": "5,000 transactions for each S1, S2, and S3 tier"
+    },
+    {
+      "name": "Face",
+      "retail_names": ["Foundry Tools"],
+      "category": "Azure Vision in Foundry Tools",
+      "limit": "30,000 transactions S0 tier",
+      "notes": "Separate from always-free Free instance allowance."
+    },
+    {
+      "name": "Virtual Machines—Linux",
+      "retail_names": ["Virtual Machines"],
+      "category": "Compute",
+      "limit": "750 hours each of B2pts v2 (Arm-based) and B2ats v2 (AMD-based) burstable VMs",
+      "doc_url": "https://azure.microsoft.com/en-us/products/virtual-machines/linux/"
+    },
+    {
+      "name": "Virtual Machines—Windows",
+      "retail_names": ["Virtual Machines"],
+      "category": "Compute",
+      "limit": "750 hours each of B2pts v2 (Arm-based) and B2ats v2 (AMD-based) burstable VMs",
+      "doc_url": "https://azure.microsoft.com/en-us/products/virtual-machines/windows/"
+    },
+    {
+      "name": "Container Registry",
+      "retail_names": ["Container Registry"],
+      "category": "Containers",
+      "limit": "1 Standard tier registry with 100 GB storage and 10 webhooks",
+      "doc_url": "https://azure.microsoft.com/en-us/products/container-registry/"
+    },
+    {
+      "name": "Azure Cosmos DB",
+      "retail_names": ["Azure Cosmos DB"],
+      "category": "Databases",
+      "limit": "400 request units per-second provisioned throughput with 25 GB storage",
+      "notes": "New-account 12-month allowance; separate from perpetual 1,000 RU/s free tier."
+    },
+    {
+      "name": "Azure Database for MySQL",
+      "retail_names": ["Azure Database for MySQL"],
+      "category": "Databases",
+      "limit": "750 hours Flexible Server Burstable B1MS, 32 GB storage and 32 GB backup",
+      "doc_url": "https://azure.microsoft.com/en-us/products/mysql/"
+    },
+    {
+      "name": "Azure Database for PostgreSQL",
+      "retail_names": ["Azure Database for PostgreSQL"],
+      "category": "Databases",
+      "limit": "750 hours Flexible Server Burstable B1MS, 32 GB storage and 32 GB backup",
+      "doc_url": "https://azure.microsoft.com/en-us/products/postgresql/"
+    },
+    {
+      "name": "Azure SQL Managed Instance",
+      "retail_names": ["SQL Managed Instance"],
+      "category": "Databases",
+      "limit": "720 vCore hours of 4-vCore or 8-vCore General Purpose instance with 64 GB data and backup storage",
+      "doc_url": "https://azure.microsoft.com/en-us/products/azure-sql/managed-instance/"
+    },
+    {
+      "name": "Service Bus",
+      "retail_names": ["Service Bus"],
+      "category": "Integration",
+      "limit": "750 hours and 13 million operations Standard tier base unit",
+      "doc_url": "https://azure.microsoft.com/en-us/products/service-bus/"
+    },
+    {
+      "name": "Bandwidth (Data Transfer)",
+      "retail_names": ["Bandwidth"],
+      "category": "Networking",
+      "limit": "15 GB outbound",
+      "doc_url": "https://azure.microsoft.com/en-us/products/virtual-network/"
+    },
+    {
+      "name": "Load Balancer",
+      "retail_names": ["Load Balancer"],
+      "category": "Networking",
+      "limit": "750 hours, 15 GB data processing, and up to five rules with Standard Load Balancer",
+      "doc_url": "https://azure.microsoft.com/en-us/products/load-balancer/"
+    },
+    {
+      "name": "VPN Gateway",
+      "retail_names": ["VPN Gateway"],
+      "category": "Networking",
+      "limit": "750 hours VpnGw1 Gateway Type",
+      "doc_url": "https://azure.microsoft.com/en-us/products/vpn-gateway/"
+    },
+    {
+      "name": "Key Vault",
+      "retail_names": ["Key Vault"],
+      "category": "Security",
+      "limit": "10,000 transactions RSA 2048-bit keys or secret operations, Standard tier",
+      "doc_url": "https://azure.microsoft.com/en-us/products/key-vault/"
+    },
+    {
+      "name": "Archive Storage",
+      "retail_names": ["Storage"],
+      "category": "Storage",
+      "limit": "10 GB LRS storage, 10 GB write/retrieval, and 100 reads"
+    },
+    {
+      "name": "Azure Files",
+      "retail_names": ["Storage"],
+      "category": "Storage",
+      "limit": "100 GB LRS transaction optimized, hot, and cool files; 2 million read/list operations"
+    },
+    {
+      "name": "Blob Storage",
+      "retail_names": ["Storage"],
+      "category": "Storage",
+      "limit": "5 GB LRS hot block with 20,000 read and 10,000 write operations"
+    },
+    {
+      "name": "Managed Disks",
+      "retail_names": ["Storage"],
+      "category": "Storage",
+      "limit": "2× 64 GB (P6) SSD storage, 1 GB snapshot, and 2 million I/O operations"
+    }
+  ]
+}

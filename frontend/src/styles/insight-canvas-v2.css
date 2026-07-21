@@ -1,0 +1,738 @@
+/* Insight canvas v2 — resource detail polish (concept-v2 aligned, compact density) */
+
+/* ── Shell & sticky chrome ── */
+.ic-detail {
+  --ic-bar-sticky-h: 64px;
+  --ic-nav-sticky-top: calc(var(--ic-topbar-h) + var(--ic-bar-sticky-h) + 6px);
+  --ic-canvas-gap: 24px;
+  --ic-bento-gap: 10px;
+  --ic-section-label-size: 13px;
+  gap: 14px;
+}
+
+.ic-detail .ic-bar {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  min-height: var(--ic-bar-sticky-h);
+  margin-bottom: 2px;
+  padding: 0 0 10px;
+}
+
+.ic-detail .ic-bar__row {
+  gap: 12px;
+  min-height: calc(var(--ic-bar-sticky-h) - 12px);
+}
+
+.ic-detail .ic-bar__identity {
+  gap: 10px;
+}
+
+.ic-detail .ic-bar__icon {
+  width: 34px;
+  height: 34px;
+  font-size: 9px;
+}
+
+.ic-detail .ic-bar__title {
+  font-size: 18px;
+  letter-spacing: -0.025em;
+}
+
+.ic-detail .ic-bar__subtitle {
+  margin-top: 2px;
+  font-size: 12px;
+}
+
+.ic-detail .ic-bar__divider {
+  height: 22px;
+}
+
+.ic-detail .ic-bar__nav {
+  padding: 1px 4px;
+}
+
+.ic-detail .ic-bar__nav-btn {
+  width: 26px;
+  height: 26px;
+}
+
+/* Scroll-spy: align side nav with first section heading */
+.ic-detail .ic-nav {
+  width: 156px;
+  padding: 8px 0;
+}
+
+.ic-detail .ic-nav__label {
+  margin-bottom: 8px;
+}
+
+.ic-detail .ic-nav__list {
+  gap: 1px;
+}
+
+.ic-detail .ic-nav__link {
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.ic-detail .ic-layout {
+  grid-template-columns: 156px minmax(0, 1fr) 272px;
+  gap: 18px;
+}
+
+.ic-detail .ic-canvas {
+  gap: var(--ic-canvas-gap);
+  padding-bottom: 40px;
+}
+
+.ic-detail .ic-section {
+  scroll-margin-top: calc(var(--ic-nav-sticky-top) + 12px);
+}
+
+/* ── Typography — sentence case for section & field labels ── */
+.ic-detail .ic-section__label {
+  margin: 0 0 10px;
+  font-size: var(--ic-section-label-size);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-transform: none;
+  color: var(--text2);
+}
+
+.ic-detail .ic-prop-group__title,
+.ic-detail .ic-evidence-group__label,
+.ic-detail .ic-subtitle {
+  text-transform: none;
+  letter-spacing: -0.01em;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+}
+
+.ic-detail .ic-prop-group__title {
+  margin-bottom: 8px;
+}
+
+.ic-detail .ic-subtitle {
+  margin: 10px 0 6px;
+}
+
+.ic-detail .ic-kpi__label,
+.ic-detail .ac-prop-item--compact .ac-prop-item__label,
+.ic-detail .ic-metric__label {
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.ic-detail .ac-prop-item__label {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.ic-detail .ac-prop-item__value {
+  color: var(--text);
+}
+
+/* ── Bento grids & tiles ── */
+.ic-detail .ic-bento {
+  gap: var(--ic-bento-gap);
+}
+
+.ic-detail .ic-bento--metrics-wide {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.ic-detail .ic-tile {
+  padding: 14px;
+}
+
+.ic-detail .ic-tile--kpi {
+  padding: 12px 14px;
+}
+
+.ic-detail .ic-tile--hero {
+  padding: 16px 18px;
+}
+
+.ic-detail .ic-tile--analysis-meta {
+  margin-top: 10px;
+}
+
+.ic-detail .ic-tile {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.ic-detail .ic-tile--evidence {
+  min-height: 0;
+}
+
+.ic-detail .ic-tile--properties {
+  padding: 16px 14px;
+}
+
+.ic-detail .ic-tile--metrics {
+  container-type: inline-size;
+  container-name: metrics-tile;
+}
+
+.ic-detail .ic-tile__eyebrow {
+  margin-bottom: 6px;
+  font-size: 10px;
+}
+
+.ic-detail .ic-tile__title {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.ic-detail .ic-tile__desc {
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ic-detail .ic-cost-intro {
+  margin-bottom: 10px;
+}
+
+/* ── Summary KPI grid ── */
+.ic-detail .ic-kpi__label {
+  margin-bottom: 4px;
+}
+
+.ic-detail .ic-kpi__value {
+  font-size: 18px;
+}
+
+.ic-detail .ic-kpi__value--sm {
+  font-size: 13px;
+}
+
+.ic-detail .ic-kpi__sev {
+  font-size: 16px;
+}
+
+.ic-detail .ic-kpi__trend {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.ic-detail .ic-meta-row {
+  padding: 7px 0;
+  font-size: 13px;
+}
+
+.ic-detail .ic-meta-row__label {
+  font-size: 10px;
+}
+
+/* ── Metrics grid & utilization bars ── */
+.ic-detail .ic-metrics-grid {
+  gap: 8px 10px;
+}
+
+.ic-detail .ic-metric {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface2);
+  min-width: 0;
+}
+
+.ic-detail .ic-metric__row {
+  margin-bottom: 6px;
+}
+
+.ic-detail .ic-metric__value {
+  font-size: 14px;
+}
+
+.ic-detail .ic-metric__track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.ic-detail .ic-metric-viz--evidence .ic-metric__track {
+  margin-top: 6px;
+}
+
+.ic-detail .ic-metric__fill {
+  border-radius: 999px;
+  transition: width 0.35s ease;
+}
+
+.ic-detail .ic-metric__fill--ok {
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.65), var(--success));
+}
+
+.ic-detail .ic-metric__fill--warn {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.65), #f59e0b);
+}
+
+.ic-detail .ic-metric__fill--danger {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.65), var(--danger));
+}
+
+.ic-detail .ic-metric__fill--idle {
+  background: linear-gradient(90deg, rgba(100, 116, 139, 0.45), #64748b);
+}
+
+.ic-detail .ic-trend-row {
+  padding: 7px 0;
+}
+
+.ic-detail .ic-trend-row__label {
+  font-size: 12px;
+}
+
+.ic-detail .ic-trend-row__value {
+  font-size: 13px;
+}
+
+@container metrics-tile (max-width: 440px) {
+  .ic-detail .ic-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Properties — flat 2-column groups (disks & generic) ── */
+.ic-detail .ic-prop-group + .ic-prop-group {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ic-detail .ic-prop-group {
+  margin-bottom: 0;
+}
+
+.ic-detail .ac-prop-grid--flat2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+}
+
+.ic-detail .ac-prop-grid--flat2 .ac-prop-item {
+  grid-template-columns: 1fr;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: rgba(18, 26, 54, 0.35);
+}
+
+.ic-detail .ac-prop-grid--flat2 .ac-prop-item__label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text3);
+}
+
+.ic-detail .ac-prop-grid--flat2 .ac-prop-item__value {
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.ic-detail .ac-prop-grid--flat2 .ac-prop-item.ic-prop--major,
+.ic-detail .ac-prop-grid--flat2 .ac-prop-item--major.ic-prop--major {
+  border-left: 3px solid rgba(0, 115, 255, 0.45);
+  background: linear-gradient(135deg, rgba(0, 115, 255, 0.07) 0%, rgba(18, 26, 54, 0.4) 48%);
+}
+
+/* ── Cost envelope (billed MTD + retail) ── */
+.ic-detail .ic-cost-envelope {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, rgba(0, 115, 255, 0.07) 0%, rgba(18, 26, 54, 0.45) 100%);
+  border: 1px solid rgba(0, 115, 255, 0.18);
+}
+
+.ic-detail .ic-cost-envelope__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ic-detail .ic-cost-envelope__label {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ic-detail .ic-cost-envelope__value {
+  font-size: 17px;
+}
+
+.ic-detail .ic-cost-envelope__source {
+  margin-top: 1px;
+  font-size: 10px;
+}
+
+.ic-detail .ic-cost-row {
+  padding: 7px 0;
+}
+
+.ic-detail .ic-cost-row__label {
+  font-size: 12px;
+}
+
+/* ── Rule evidence (disk assessment cards) ── */
+.ic-detail .ic-evidence-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ic-detail .ic-evidence-item {
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  background: rgba(18, 26, 54, 0.55);
+}
+
+.ic-detail .ic-evidence-item--pass { border-left: 3px solid var(--success); }
+.ic-detail .ic-evidence-item--fail { border-left: 3px solid var(--danger); }
+.ic-detail .ic-evidence-item--warn { border-left: 3px solid var(--warning); }
+.ic-detail .ic-evidence-item--muted { border-left: 3px solid var(--border); }
+
+.ic-detail .ic-evidence-item__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.ic-detail .ic-evidence-item__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ic-detail .ic-evidence-pillar {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.ic-detail .ic-evidence-pillar--performance {
+  background: rgba(0, 115, 255, 0.14);
+  color: var(--primary-light);
+}
+
+.ic-detail .ic-evidence-pillar--cost {
+  background: var(--success-muted);
+  color: var(--success-text);
+}
+
+.ic-detail .ic-evidence-item__vals {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ic-detail .ic-evidence-item__value {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.ic-detail .ic-evidence-item__threshold {
+  font-size: 10px;
+  color: var(--text3);
+}
+
+.ic-detail .ic-evidence-item__meta {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--text3);
+}
+
+.ic-detail .ic-evidence-factors {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ic-detail .ic-evidence-factors__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text3);
+  margin-bottom: 6px;
+}
+
+.ic-detail .ic-bullet-list--compact li {
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+/* Structured evidence rows (generic findings) */
+.ic-detail .ic-evidence-group {
+  gap: 0;
+}
+
+.ic-detail .ic-evidence-group__label {
+  margin-bottom: 6px;
+}
+
+.ic-detail .ic-evidence-row {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
+  padding: 7px 0;
+}
+
+.ic-detail .ic-evidence-row__label {
+  font-size: 12px;
+  color: var(--text2);
+}
+
+.ic-detail .ic-evidence-row__value {
+  font-size: 13px;
+}
+
+.ic-detail .ic-evidence-more {
+  margin-top: 8px;
+}
+
+/* ── SKU panel — current | recommended balance ── */
+.ic-detail .ic-sku-panel {
+  width: 272px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.ic-detail .ic-sku-panel__head {
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.ic-detail .ic-sku-panel__title {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.ic-detail .ic-sku-badge {
+  padding: 3px 8px;
+  font-size: 9px;
+}
+
+.ic-detail .ic-sku-card {
+  padding: 12px;
+}
+
+.ic-detail .ic-sku-card__head {
+  margin-bottom: 8px;
+}
+
+.ic-detail .ic-sku-card__section {
+  margin-top: 10px;
+  padding-top: 8px;
+}
+
+.ic-detail .ic-sku-card__section-label {
+  margin-bottom: 6px;
+}
+
+.ic-detail .ic-sku-divider {
+  margin: 10px 0;
+}
+
+.ic-detail .ic-sku-no-replacement {
+  margin-top: 10px;
+  padding: 10px 12px;
+}
+
+.ic-detail .ic-sku-card + .ic-sku-divider {
+  margin-top: 0;
+}
+
+.ic-detail .ic-sku-card--recommended {
+  margin-top: 0;
+}
+
+.ic-detail .ic-sku-cost-single {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  align-items: end;
+}
+
+.ic-detail .ic-sku-cost-single__label {
+  font-size: 10px;
+}
+
+.ic-detail .ic-sku-cost-single__value {
+  font-size: 15px;
+}
+
+.ic-detail .ic-sku-cost-single__label--retail {
+  grid-column: 2;
+}
+
+.ic-detail .ic-sku-cost-single__value--retail {
+  grid-column: 2;
+  color: var(--primary-light);
+}
+
+.ic-detail .ic-sku-cost-single__suffix {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  margin-left: 2px;
+}
+
+.ic-detail .ic-sku-block__name {
+  margin-top: 2px;
+  font-size: 14px;
+}
+
+.ic-detail .ic-sku-block__label {
+  font-size: 10px;
+}
+
+.ic-detail .ic-sku-savings {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+
+.ic-detail .ic-sku-savings__value {
+  font-size: 18px;
+}
+
+.ic-detail .ic-sku-cost {
+  margin-top: 12px;
+  padding-top: 10px;
+}
+
+.ic-detail .ic-sku-cost__heading {
+  margin-bottom: 6px;
+}
+
+.ic-detail .ic-sku-cost__bar {
+  height: 6px;
+  margin-top: 6px;
+}
+
+.ic-detail .ic-sku-cost__savings {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.ic-detail .ic-sku-spec {
+  padding: 6px 0;
+}
+
+.ic-detail .ic-sku-spec__vals {
+  font-size: 12px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1280px) {
+  .ic-detail .ic-bento--metrics-wide {
+    grid-template-columns: 1fr;
+  }
+
+  .ic-detail .ic-layout {
+    grid-template-columns: 148px minmax(0, 1fr) 260px;
+    gap: 16px;
+  }
+
+  .ic-detail .ic-nav {
+    width: 148px;
+  }
+
+  .ic-detail .ic-sku-panel {
+    width: 260px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .ic-detail .ic-layout {
+    grid-template-columns: 140px minmax(0, 1fr) 248px;
+    gap: 14px;
+  }
+
+  .ic-detail .ic-nav {
+    width: 140px;
+  }
+
+  .ic-detail .ic-cost-envelope {
+    grid-template-columns: 1fr;
+  }
+
+  .ic-detail .ic-sku-panel {
+    width: 248px;
+  }
+}
+
+@media (max-width: 768px) {
+  .ic-detail {
+    --ic-canvas-gap: 20px;
+    --ic-bar-sticky-h: 60px;
+    gap: 12px;
+  }
+
+  .ic-detail .ic-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ic-detail .ic-sku-panel {
+    order: -1;
+    width: 100%;
+  }
+
+  .ic-detail .ic-sku-cost-single {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .ic-detail .ac-prop-grid--flat2 {
+    grid-template-columns: 1fr;
+  }
+
+  .ic-detail .ic-bento--kpis-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .ic-detail .ic-bento--kpis-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .ic-detail .ic-sku-cost-single {
+    grid-template-columns: 1fr;
+  }
+
+  .ic-detail .ic-sku-cost-single__label--retail,
+  .ic-detail .ic-sku-cost-single__value--retail {
+    grid-column: 1;
+  }
+}

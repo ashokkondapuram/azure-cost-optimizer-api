@@ -1,0 +1,199 @@
+# Kafka / Redpanda topic manifest — orchestration + data pipeline
+#
+# Provisioned on stack startup by redpanda-init (docker compose) or:
+#   ./scripts/kafka-topics.sh init
+#
+# Loaded at runtime by app/messaging/topic_config.py
+
+defaults:
+  partitions: 6
+  replication_factor: 1
+  retention_ms: 604800000 # 7 days
+  cleanup_policy: delete
+  compression_type: producer
+  # All topics use subscription_id as the Kafka message key for partition affinity.
+
+api_defaults: &api_defaults
+  partitions: 6
+  replication_factor: 1
+  retention_ms: 259200000 # 3 days — transient work-queue buffer
+  cleanup_policy: delete
+  compression_type: lz4
+  partition_key: subscription_id
+
+topics:
+  # ── Orchestration (job requests) ─────────────────────────────────────────
+  sync.inventory.requested:
+    description: Start inventory stage for a full sync pipeline
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+    partitions: 6
+
+  sync.cost.requested:
+    description: Start cost stage after inventory completes
+    producers: [platform-inventory]
+    consumers: [platform-cost]
+    partitions: 6
+
+  sync.metrics.requested:
+    description: Start metrics stage after cost completes
+    producers: [platform-cost]
+    consumers: [platform-metrics]
+    partitions: 6
+
+  sync.analysis.requested:
+    description: Start analysis stage after metrics completes
+    producers: [platform-metrics]
+    consumers: [platform-analysis]
+    partitions: 6
+
+  sync.pipeline.status:
+    description: Per-stage progress events (optional subscribers)
+    producers: [platform-inventory, platform-cost, platform-metrics, platform-analysis]
+    consumers: [platform-inventory]
+    partitions: 3
+    retention_ms: 259200000 # 3 days
+
+  sync.pipeline.completed:
+    description: Terminal pipeline outcome (success or failure)
+    producers: [platform-inventory, platform-cost, platform-metrics, platform-analysis]
+    consumers: [platform-inventory]
+    partitions: 3
+    retention_ms: 259200000 # 3 days
+
+  # ── Data (Azure fetch results → DB via persistence consumers) ───────────────
+  data.inventory.synced:
+    description: ARM inventory resource batches fetched from Azure
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+    partitions: 6
+
+  data.cost.synced:
+    description: Cost Management API responses fetched from Azure
+    producers: [platform-cost]
+    consumers: [platform-cost]
+    partitions: 6
+
+  data.metrics.synced:
+    description: Metrics fetch manifests and resource references
+    producers: [platform-metrics]
+    consumers: [platform-metrics]
+    partitions: 6
+
+  data.analysis.completed:
+    description: Analysis scope and job results for persistence
+    producers: [platform-analysis]
+    consumers: [platform-analysis]
+    partitions: 6
+
+  # ── API throttle queue (Azure API rate limiting, backpressure, DLQ) ───────
+  api.cost.requested:
+    <<: *api_defaults
+    description: Rate-limited Cost Management API work items (key = subscription_id)
+    producers: [platform-cost]
+    consumers: [platform-cost]
+
+  api.cost.completed:
+    <<: *api_defaults
+    description: Completed Cost Management API responses (key = subscription_id)
+    producers: [platform-cost]
+    consumers: [platform-cost]
+
+  api.metrics.requested:
+    <<: *api_defaults
+    description: Rate-limited Azure Monitor metrics API work items (key = subscription_id)
+    producers: [platform-metrics]
+    consumers: [platform-metrics]
+
+  api.metrics.completed:
+    <<: *api_defaults
+    description: Completed metrics API responses (key = subscription_id)
+    producers: [platform-metrics]
+    consumers: [platform-metrics]
+
+  api.inventory.requested:
+    <<: *api_defaults
+    description: Rate-limited ARM inventory API work items (key = subscription_id)
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+
+  api.inventory.completed:
+    <<: *api_defaults
+    description: Completed ARM inventory API responses (key = subscription_id)
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+
+  api.dead-letter:
+    description: Failed API work items after max retries (key = subscription_id)
+    producers: [platform-inventory, platform-cost, platform-metrics]
+    consumers: [platform-inventory, platform-cost, platform-metrics]
+    partitions: 3
+    retention_ms: 1209600000 # 14 days — ops investigation window
+    cleanup_policy: delete
+    compression_type: lz4
+    partition_key: subscription_id
+
+services:
+  platform-gateway:
+    role: proxy
+    kafka_enabled: false
+    note: Proxies sync HTTP to platform-inventory; does not produce or consume Kafka messages.
+
+  platform-inventory:
+    consumes:
+      - sync.inventory.requested
+      - sync.pipeline.status
+      - sync.pipeline.completed
+      - data.inventory.synced
+      - api.inventory.requested
+      - api.inventory.completed
+      - api.dead-letter
+    produces:
+      - sync.cost.requested
+      - data.inventory.synced
+      - api.inventory.requested
+      - api.inventory.completed
+      - api.dead-letter
+      - sync.pipeline.status
+      - sync.pipeline.completed
+
+  platform-cost:
+    consumes:
+      - sync.cost.requested
+      - data.cost.synced
+      - api.cost.requested
+      - api.cost.completed
+      - api.dead-letter
+    produces:
+      - sync.metrics.requested
+      - data.cost.synced
+      - api.cost.requested
+      - api.cost.completed
+      - api.dead-letter
+      - sync.pipeline.status
+      - sync.pipeline.completed
+
+  platform-metrics:
+    consumes:
+      - sync.metrics.requested
+      - data.metrics.synced
+      - api.metrics.requested
+      - api.metrics.completed
+      - api.dead-letter
+    produces:
+      - sync.analysis.requested
+      - data.metrics.synced
+      - api.metrics.requested
+      - api.metrics.completed
+      - api.dead-letter
+      - sync.pipeline.status
+      - sync.pipeline.completed
+
+  platform-analysis:
+    consumes:
+      - sync.analysis.requested
+      - data.analysis.completed
+    produces:
+      - data.analysis.completed
+      - sync.pipeline.status
+      - sync.pipeline.completed

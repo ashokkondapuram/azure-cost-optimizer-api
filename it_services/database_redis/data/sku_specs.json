@@ -1,0 +1,186 @@
+{
+  "schema_version": 1,
+  "service_id": "database-redis",
+  "canonical_type": "database/redis",
+  "arm_type": "Microsoft.Cache/redis",
+  "display_name": "Azure Cache for Redis",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/cache-overview",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-cache-redis-metrics",
+    "retirement": "https://learn.microsoft.com/en-us/azure/azure-cache-for-redis/retirement-faq",
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Basic": {
+      "family_codes": [
+        "C"
+      ],
+      "memory_mb_min": 250,
+      "memory_mb_max": 53248,
+      "replication": false,
+      "sla_uptime": null,
+      "clustering": false,
+      "max_shards": 1,
+      "persistence": false,
+      "geo_replication": false,
+      "zone_redundancy": false,
+      "redis_modules": false,
+      "recommended_for": [
+        "Dev/test",
+        "Non-critical caches"
+      ],
+      "avoid_for": [
+        "Production HA",
+        "Persistence",
+        "Geo-replication"
+      ],
+      "upgrade_paths": [
+        "Standard",
+        "Premium"
+      ],
+      "downgrade_paths": []
+    },
+    "Standard": {
+      "family_codes": [
+        "C"
+      ],
+      "memory_mb_min": 250,
+      "memory_mb_max": 53248,
+      "replication": true,
+      "replica_count": 1,
+      "sla_uptime": 99.9,
+      "clustering": false,
+      "max_shards": 1,
+      "persistence": false,
+      "geo_replication": false,
+      "zone_redundancy": true,
+      "redis_modules": false,
+      "recommended_for": [
+        "Production workloads without persistence"
+      ],
+      "avoid_for": [
+        "Large datasets requiring clustering",
+        "RDB/AOF persistence"
+      ],
+      "upgrade_paths": [
+        "Premium",
+        "Enterprise"
+      ],
+      "downgrade_paths": [
+        "Basic"
+      ]
+    },
+    "Premium": {
+      "family_codes": [
+        "P"
+      ],
+      "memory_mb_min": 6144,
+      "memory_mb_max": 1228800,
+      "replication": true,
+      "replica_count": 1,
+      "sla_uptime": 99.9,
+      "clustering": true,
+      "max_shards": 10,
+      "persistence": true,
+      "persistence_options": [
+        "RDB",
+        "AOF"
+      ],
+      "geo_replication": "passive",
+      "zone_redundancy": true,
+      "redis_modules": false,
+      "recommended_for": [
+        "Production with persistence",
+        "High throughput via clustering"
+      ],
+      "avoid_for": [
+        "Redis modules",
+        "Active geo-replication"
+      ],
+      "upgrade_paths": [
+        "Enterprise"
+      ],
+      "downgrade_paths": [
+        "Standard"
+      ]
+    },
+    "Enterprise": {
+      "family_codes": [
+        "E"
+      ],
+      "memory_mb_min": 1024,
+      "memory_mb_max": 2097152,
+      "replication": true,
+      "replica_count": 2,
+      "sla_uptime": 99.95,
+      "clustering": true,
+      "max_shards": 15,
+      "persistence": true,
+      "persistence_options": [
+        "RDB",
+        "AOF"
+      ],
+      "geo_replication": "active",
+      "zone_redundancy": true,
+      "redis_modules": true,
+      "recommended_for": [
+        "Redis modules",
+        "Active geo-replication",
+        "Large memory"
+      ],
+      "avoid_for": [
+        "Simple dev/test caches"
+      ],
+      "upgrade_paths": [
+        "EnterpriseFlash"
+      ],
+      "downgrade_paths": [
+        "Premium"
+      ]
+    },
+    "EnterpriseFlash": {
+      "family_codes": [
+        "F"
+      ],
+      "memory_mb_min": 307200,
+      "memory_mb_max": 4608000,
+      "replication": true,
+      "replica_count": 2,
+      "sla_uptime": 99.95,
+      "clustering": true,
+      "max_shards": 15,
+      "persistence": true,
+      "persistence_options": [
+        "RDB",
+        "AOF"
+      ],
+      "geo_replication": "active",
+      "zone_redundancy": true,
+      "redis_modules": true,
+      "recommended_for": [
+        "Very large datasets with flash-backed memory"
+      ],
+      "avoid_for": [
+        "Small workloads"
+      ],
+      "upgrade_paths": [],
+      "downgrade_paths": [
+        "Enterprise"
+      ]
+    }
+  },
+  "pricing": {},
+  "optimization_thresholds": {
+    "memory_pressure_pct": 85,
+    "memory_low_utilization_pct": 30,
+    "server_load_low_pct": 20,
+    "hit_ratio_poor_pct": 50,
+    "hit_ratio_healthy_pct": 80,
+    "cluster_unnecessary_ops_per_sec": 50000,
+    "idle_ops_per_sec": 0,
+    "rightsizing_headroom_pct": 25,
+    "upgrade_urgent_memory_pct": 90
+  },
+  "synced_at": "2026-07-10T17:49:10.064864+00:00"
+}

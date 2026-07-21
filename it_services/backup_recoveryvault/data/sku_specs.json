@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "service_id": "backup-recoveryvault",
+  "canonical_type": "backup/recoveryvault",
+  "arm_type": "Microsoft.RecoveryServices/vaults",
+  "display_name": "Recovery Services vault",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard": {
+      "backup_storage_redundancy": [
+        "LRS",
+        "GRS",
+        "ZRS"
+      ]
+    }
+  },
+  "pricing": {
+    "billing_model": "protected_instance",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:08.823048+00:00"
+}

@@ -1,0 +1,150 @@
+# Kafka message schemas — sync pipeline
+#
+# Subject naming (Redpanda / Confluent compatible): {topic}-value
+# Register with: ./scripts/kafka-topics.sh schemas
+#
+# Wire format: UTF-8 JSON (plain). Schemas are registered for discovery and
+# local validation. Future migration may adopt Confluent wire format (schema ID prefix).
+
+version: 1
+
+registry:
+  subject_suffix: "-value"
+  schema_type: JSON
+
+topics:
+  sync.inventory.requested:
+    subject: sync.inventory.requested-value
+    schema_file: topics/sync.inventory.requested-value.v1.json
+    job_type: sync.inventory
+    payload_schema: payloads/stage-request.v1.json
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+
+  sync.cost.requested:
+    subject: sync.cost.requested-value
+    schema_file: topics/sync.cost.requested-value.v1.json
+    job_type: sync.cost
+    payload_schema: payloads/stage-request.v1.json
+    producers: [platform-inventory]
+    consumers: [platform-cost]
+
+  sync.metrics.requested:
+    subject: sync.metrics.requested-value
+    schema_file: topics/sync.metrics.requested-value.v1.json
+    job_type: sync.metrics
+    payload_schema: payloads/stage-request.v1.json
+    producers: [platform-cost]
+    consumers: [platform-metrics]
+
+  sync.analysis.requested:
+    subject: sync.analysis.requested-value
+    schema_file: topics/sync.analysis.requested-value.v1.json
+    job_type: sync.analysis
+    payload_schema: payloads/stage-request.v1.json
+    producers: [platform-metrics]
+    consumers: [platform-analysis]
+
+  sync.pipeline.status:
+    subject: sync.pipeline.status-value
+    schema_file: topics/sync.pipeline.status-value.v1.json
+    job_type: pipeline.status
+    payload_schema: payloads/pipeline-status.v1.json
+    producers: [platform-inventory, platform-cost, platform-metrics, platform-analysis]
+    consumers: []
+
+  sync.pipeline.completed:
+    subject: sync.pipeline.completed-value
+    schema_file: topics/sync.pipeline.completed-value.v1.json
+    job_type: pipeline.completed
+    payload_schema: payloads/pipeline-completed.v1.json
+    producers: [platform-inventory, platform-cost, platform-metrics, platform-analysis]
+    consumers: []
+
+  data.inventory.synced:
+    subject: data.inventory.synced-value
+    schema_file: topics/data.inventory.synced-value.v1.json
+    job_type: data.inventory.synced
+    payload_schema: payloads/data-synced.v1.json
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+
+  data.cost.synced:
+    subject: data.cost.synced-value
+    schema_file: topics/data.cost.synced-value.v1.json
+    job_type: data.cost.synced
+    payload_schema: payloads/data-synced.v1.json
+    producers: [platform-cost]
+    consumers: [platform-cost]
+
+  data.metrics.synced:
+    subject: data.metrics.synced-value
+    schema_file: topics/data.metrics.synced-value.v1.json
+    job_type: data.metrics.synced
+    payload_schema: payloads/data-synced.v1.json
+    producers: [platform-metrics]
+    consumers: [platform-metrics]
+
+  data.analysis.completed:
+    subject: data.analysis.completed-value
+    schema_file: topics/data.analysis.completed-value.v1.json
+    job_type: data.analysis.completed
+    payload_schema: payloads/data-synced.v1.json
+    producers: [platform-analysis]
+    consumers: [platform-analysis]
+
+  api.cost.requested:
+    subject: api.cost.requested-value
+    schema_file: topics/api.cost.requested-value.v1.json
+    job_type: api.cost
+    payload_schema: payloads/api-request.v1.json
+    producers: [platform-cost]
+    consumers: [platform-cost]
+
+  api.cost.completed:
+    subject: api.cost.completed-value
+    schema_file: topics/api.cost.completed-value.v1.json
+    job_type: api.cost.completed
+    payload_schema: payloads/api-request.v1.json
+    producers: [platform-cost]
+    consumers: [platform-cost]
+
+  api.metrics.requested:
+    subject: api.metrics.requested-value
+    schema_file: topics/api.metrics.requested-value.v1.json
+    job_type: api.metrics
+    payload_schema: payloads/api-request.v1.json
+    producers: [platform-metrics]
+    consumers: [platform-metrics]
+
+  api.metrics.completed:
+    subject: api.metrics.completed-value
+    schema_file: topics/api.metrics.completed-value.v1.json
+    job_type: api.metrics.completed
+    payload_schema: payloads/api-request.v1.json
+    producers: [platform-metrics]
+    consumers: [platform-metrics]
+
+  api.inventory.requested:
+    subject: api.inventory.requested-value
+    schema_file: topics/api.inventory.requested-value.v1.json
+    job_type: api.inventory
+    payload_schema: payloads/api-request.v1.json
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+
+  api.inventory.completed:
+    subject: api.inventory.completed-value
+    schema_file: topics/api.inventory.completed-value.v1.json
+    job_type: api.inventory.completed
+    payload_schema: payloads/api-request.v1.json
+    producers: [platform-inventory]
+    consumers: [platform-inventory]
+
+  api.dead-letter:
+    subject: api.dead-letter-value
+    schema_file: topics/api.dead-letter-value.v1.json
+    job_type: api.dead-letter
+    payload_schema: payloads/api-request.v1.json
+    producers: [platform-inventory, platform-cost, platform-metrics]
+    consumers: [platform-inventory, platform-cost, platform-metrics]

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "service": "Azure Databricks",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/databricks/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/databricks/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 150,
+    "dev_min_monthly_cost_usd": 100,
+    "savings_factor": 0.3,
+    "dev_savings_factor": 0.35,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "DATABRICKS_CLUSTER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATABRICKS_CLUSTER": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATABRICKS_DEV_WORKSPACE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

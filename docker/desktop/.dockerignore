@@ -1,0 +1,49 @@
+# Docker Desktop build context — extends repo-root ignores for smaller images.
+# Note: compose build context is the repository root; repo-root .dockerignore applies.
+
+.git
+.cursor
+.vscode
+.idea
+*.swp
+.DS_Store
+
+__pycache__
+**/__pycache__
+*.py[cod]
+.venv
+venv
+.pytest_cache
+.mypy_cache
+htmlcov
+.coverage
+
+**/node_modules
+frontend/build
+
+tests
+requirements-dev.txt
+specs
+docs
+
+.env
+.env.*
+!.env.example
+docker/.env
+
+azure_dashboard_*
+*.docx
+*.pdf
+azure-pipelines.yml
+.github
+
+figma-*.json
+build_figma*.py
+
+# Legacy / alternate stacks (not needed for monolith desktop image)
+services/
+docker-compose.microservices.yml
+k8s/
+
+# Other docker stacks
+docker/desktop/k8s

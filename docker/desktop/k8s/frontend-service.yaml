@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: costoptimize
+  labels:
+    app: frontend
+    app.kubernetes.io/part-of: costoptimize-recommender
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

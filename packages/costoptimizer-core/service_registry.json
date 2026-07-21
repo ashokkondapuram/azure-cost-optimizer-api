@@ -1,0 +1,422 @@
+[
+  {
+    "service_id": "analytics-adx",
+    "canonical_type": "analytics/adx",
+    "api_slug": "adx",
+    "component": "Analytics",
+    "arm_type": "Microsoft.Kusto/clusters",
+    "display_name": "Azure Data Explorer",
+    "port": 8101,
+    "migrated": false
+  },
+  {
+    "service_id": "analytics-databricks",
+    "canonical_type": "analytics/databricks",
+    "api_slug": "databricks",
+    "component": "Analytics",
+    "arm_type": "Microsoft.Databricks/workspaces",
+    "display_name": "Azure Databricks",
+    "port": 8102,
+    "migrated": false
+  },
+  {
+    "service_id": "analytics-mlworkspace",
+    "canonical_type": "analytics/mlworkspace",
+    "api_slug": "mlworkspace",
+    "component": "Analytics",
+    "arm_type": "Microsoft.MachineLearningServices/workspaces",
+    "display_name": "Azure ML workspace",
+    "port": 8103,
+    "migrated": false
+  },
+  {
+    "service_id": "analytics-synapse",
+    "canonical_type": "analytics/synapse",
+    "api_slug": "synapse",
+    "component": "Analytics",
+    "arm_type": "Microsoft.Synapse/workspaces",
+    "display_name": "Azure Synapse",
+    "port": 8104,
+    "migrated": false
+  },
+  {
+    "service_id": "appservice-plan",
+    "canonical_type": "appservice/plan",
+    "api_slug": "appserviceplans",
+    "component": "App Service",
+    "arm_type": "Microsoft.Web/serverFarms",
+    "display_name": "App Service plan",
+    "port": 8105,
+    "migrated": false
+  },
+  {
+    "service_id": "appservice-webapp",
+    "canonical_type": "appservice/webapp",
+    "api_slug": "appservices",
+    "component": "App Service",
+    "arm_type": "Microsoft.Web/sites",
+    "display_name": "App Service",
+    "port": 8106,
+    "migrated": false
+  },
+  {
+    "service_id": "backup-recoveryvault",
+    "canonical_type": "backup/recoveryvault",
+    "api_slug": "recoveryvault",
+    "component": "Backup",
+    "arm_type": "Microsoft.RecoveryServices/vaults",
+    "display_name": "Recovery Services vault",
+    "port": 8107,
+    "migrated": false
+  },
+  {
+    "service_id": "compute-disk",
+    "canonical_type": "compute/disk",
+    "api_slug": "disks",
+    "component": "Managed Disks",
+    "arm_type": "Microsoft.Compute/disks",
+    "display_name": "Managed disk",
+    "port": 8108,
+    "migrated": true
+  },
+  {
+    "service_id": "compute-snapshot",
+    "canonical_type": "compute/snapshot",
+    "api_slug": "snapshots",
+    "component": "Disk Snapshots",
+    "arm_type": "Microsoft.Compute/snapshots",
+    "display_name": "Disk snapshot",
+    "port": 8109,
+    "migrated": false
+  },
+  {
+    "service_id": "compute-vm",
+    "canonical_type": "compute/vm",
+    "api_slug": "vms",
+    "component": "Virtual Machines",
+    "arm_type": "Microsoft.Compute/virtualMachines",
+    "display_name": "Virtual machine",
+    "port": 8110,
+    "migrated": false
+  },
+  {
+    "service_id": "compute-vmss",
+    "canonical_type": "compute/vmss",
+    "api_slug": "vmss",
+    "component": "Virtual Machine Scale Sets",
+    "arm_type": "Microsoft.Compute/virtualMachineScaleSets",
+    "display_name": "Virtual machine scale set",
+    "port": 8111,
+    "migrated": false
+  },
+  {
+    "service_id": "containers-acr",
+    "canonical_type": "containers/acr",
+    "api_slug": "acr",
+    "component": "Container Registry",
+    "arm_type": "Microsoft.ContainerRegistry/registries",
+    "display_name": "Container registry",
+    "port": 8112,
+    "migrated": false
+  },
+  {
+    "service_id": "containers-aks",
+    "canonical_type": "containers/aks",
+    "api_slug": "aks",
+    "component": "AKS",
+    "arm_type": "Microsoft.ContainerService/managedClusters",
+    "display_name": "AKS cluster",
+    "port": 8113,
+    "migrated": false
+  },
+  {
+    "service_id": "database-cosmosdb",
+    "canonical_type": "database/cosmosdb",
+    "api_slug": "cosmosdb",
+    "component": "Cosmos DB",
+    "arm_type": "Microsoft.DocumentDB/databaseAccounts",
+    "display_name": "Cosmos DB account",
+    "port": 8114,
+    "migrated": false
+  },
+  {
+    "service_id": "database-postgresql",
+    "canonical_type": "database/postgresql",
+    "api_slug": "postgresql",
+    "component": "PostgreSQL",
+    "arm_type": "Microsoft.DBforPostgreSQL/flexibleServers",
+    "display_name": "PostgreSQL flexible server",
+    "port": 8115,
+    "migrated": false
+  },
+  {
+    "service_id": "database-redis",
+    "canonical_type": "database/redis",
+    "api_slug": "redis",
+    "component": "Redis Cache",
+    "arm_type": "Microsoft.Cache/redis",
+    "display_name": "Azure Cache for Redis",
+    "port": 8116,
+    "migrated": false
+  },
+  {
+    "service_id": "database-sql",
+    "canonical_type": "database/sql",
+    "api_slug": "sql",
+    "component": "SQL Database",
+    "arm_type": "Microsoft.Sql/servers",
+    "display_name": "SQL server",
+    "port": 8117,
+    "migrated": false
+  },
+  {
+    "service_id": "integration-apim",
+    "canonical_type": "integration/apim",
+    "api_slug": "apim",
+    "component": "Integration",
+    "arm_type": "Microsoft.ApiManagement/service",
+    "display_name": "API Management",
+    "port": 8118,
+    "migrated": false
+  },
+  {
+    "service_id": "integration-datafactory",
+    "canonical_type": "integration/datafactory",
+    "api_slug": "datafactory",
+    "component": "Integration",
+    "arm_type": "Microsoft.DataFactory/factories",
+    "display_name": "Data Factory",
+    "port": 8119,
+    "migrated": false
+  },
+  {
+    "service_id": "integration-logicapp",
+    "canonical_type": "integration/logicapp",
+    "api_slug": "logicapps",
+    "component": "Integration",
+    "arm_type": "Microsoft.Logic/workflows",
+    "display_name": "Logic App",
+    "port": 8120,
+    "migrated": false
+  },
+  {
+    "service_id": "messaging-eventhub",
+    "canonical_type": "messaging/eventhub",
+    "api_slug": "eventhubs",
+    "component": "Messaging",
+    "arm_type": "Microsoft.EventHub/namespaces",
+    "display_name": "Event Hubs namespace",
+    "port": 8121,
+    "migrated": false
+  },
+  {
+    "service_id": "messaging-servicebus",
+    "canonical_type": "messaging/servicebus",
+    "api_slug": "servicebus",
+    "component": "Messaging",
+    "arm_type": "Microsoft.ServiceBus/namespaces",
+    "display_name": "Service Bus namespace",
+    "port": 8122,
+    "migrated": false
+  },
+  {
+    "service_id": "monitoring-appinsights",
+    "canonical_type": "monitoring/appinsights",
+    "api_slug": "appinsights",
+    "component": "Monitoring",
+    "arm_type": "Microsoft.Insights/components",
+    "display_name": "Application Insights",
+    "port": 8123,
+    "migrated": false
+  },
+  {
+    "service_id": "monitoring-loganalytics",
+    "canonical_type": "monitoring/loganalytics",
+    "api_slug": "loganalytics",
+    "component": "Monitoring",
+    "arm_type": "Microsoft.OperationalInsights/workspaces",
+    "display_name": "Log Analytics workspace",
+    "port": 8124,
+    "migrated": false
+  },
+  {
+    "service_id": "network-appgateway",
+    "canonical_type": "network/appgateway",
+    "api_slug": "appgateways",
+    "component": "Application Gateways",
+    "arm_type": "Microsoft.Network/applicationGateways",
+    "display_name": "Application gateway",
+    "port": 8125,
+    "migrated": false
+  },
+  {
+    "service_id": "network-cdn",
+    "canonical_type": "network/cdn",
+    "api_slug": "cdn",
+    "component": "Networking",
+    "arm_type": "Microsoft.Cdn/profiles",
+    "display_name": "CDN profile",
+    "port": 8126,
+    "migrated": false
+  },
+  {
+    "service_id": "network-expressroute",
+    "canonical_type": "network/expressroute",
+    "api_slug": "expressroute",
+    "component": null,
+    "arm_type": "Microsoft.Network/expressRouteCircuits",
+    "display_name": "ExpressRoute circuit",
+    "port": 8127,
+    "migrated": false
+  },
+  {
+    "service_id": "network-firewall",
+    "canonical_type": "network/firewall",
+    "api_slug": "firewall",
+    "component": "Networking",
+    "arm_type": "Microsoft.Network/azureFirewalls",
+    "display_name": "Azure Firewall",
+    "port": 8128,
+    "migrated": false
+  },
+  {
+    "service_id": "network-frontdoor",
+    "canonical_type": "network/frontdoor",
+    "api_slug": "frontdoor",
+    "component": null,
+    "arm_type": "Microsoft.Network/frontdoors",
+    "display_name": "Azure Front Door",
+    "port": 8129,
+    "migrated": false
+  },
+  {
+    "service_id": "network-loadbalancer",
+    "canonical_type": "network/loadbalancer",
+    "api_slug": "loadbalancers",
+    "component": "Load Balancers",
+    "arm_type": "Microsoft.Network/loadBalancers",
+    "display_name": "Load balancer",
+    "port": 8130,
+    "migrated": false
+  },
+  {
+    "service_id": "network-nat",
+    "canonical_type": "network/nat",
+    "api_slug": "natgateways",
+    "component": "NAT Gateways",
+    "arm_type": "Microsoft.Network/natGateways",
+    "display_name": "NAT gateway",
+    "port": 8131,
+    "migrated": false
+  },
+  {
+    "service_id": "network-nic",
+    "canonical_type": "network/nic",
+    "api_slug": "nics",
+    "component": "Network Interfaces",
+    "arm_type": "Microsoft.Network/networkInterfaces",
+    "display_name": "Network interface",
+    "port": 8132,
+    "migrated": false
+  },
+  {
+    "service_id": "network-nsg",
+    "canonical_type": "network/nsg",
+    "api_slug": "nsgs",
+    "component": "Network Security Groups",
+    "arm_type": "Microsoft.Network/networkSecurityGroups",
+    "display_name": "Network security group",
+    "port": 8133,
+    "migrated": false
+  },
+  {
+    "service_id": "network-privatedns",
+    "canonical_type": "network/privatedns",
+    "api_slug": "privatedns",
+    "component": "Networking Extended",
+    "arm_type": "Microsoft.Network/privateDnsZones",
+    "display_name": "Private DNS zone",
+    "port": 8134,
+    "migrated": false
+  },
+  {
+    "service_id": "network-privateendpoint",
+    "canonical_type": "network/privateendpoint",
+    "api_slug": "privateendpoints",
+    "component": "Networking Extended",
+    "arm_type": "Microsoft.Network/privateEndpoints",
+    "display_name": "Private endpoint",
+    "port": 8135,
+    "migrated": false
+  },
+  {
+    "service_id": "network-privatelinkservice",
+    "canonical_type": "network/privatelinkservice",
+    "api_slug": "privatelinkservices",
+    "component": "Networking Extended",
+    "arm_type": "Microsoft.Network/privateLinkServices",
+    "display_name": "Private link service",
+    "port": 8136,
+    "migrated": false
+  },
+  {
+    "service_id": "network-publicip",
+    "canonical_type": "network/publicip",
+    "api_slug": "publicips",
+    "component": "Public IPs",
+    "arm_type": "Microsoft.Network/publicIPAddresses",
+    "display_name": "Public IP address",
+    "port": 8137,
+    "migrated": false
+  },
+  {
+    "service_id": "network-trafficmanager",
+    "canonical_type": "network/trafficmanager",
+    "api_slug": "trafficmanager",
+    "component": null,
+    "arm_type": "Microsoft.Network/trafficManagerProfiles",
+    "display_name": "Traffic Manager profile",
+    "port": 8138,
+    "migrated": false
+  },
+  {
+    "service_id": "network-vnet",
+    "canonical_type": "network/vnet",
+    "api_slug": "vnets",
+    "component": "Networking Extended",
+    "arm_type": "Microsoft.Network/virtualNetworks",
+    "display_name": "Virtual network",
+    "port": 8139,
+    "migrated": false
+  },
+  {
+    "service_id": "search-cognitivesearch",
+    "canonical_type": "search/cognitivesearch",
+    "api_slug": "cognitivesearch",
+    "component": "Search",
+    "arm_type": "Microsoft.Search/searchServices",
+    "display_name": "Cognitive Search",
+    "port": 8140,
+    "migrated": false
+  },
+  {
+    "service_id": "security-keyvault",
+    "canonical_type": "security/keyvault",
+    "api_slug": "keyvaults",
+    "component": "Key Vault",
+    "arm_type": "Microsoft.KeyVault/vaults",
+    "display_name": "Key vault",
+    "port": 8141,
+    "migrated": true
+  },
+  {
+    "service_id": "storage-account",
+    "canonical_type": "storage/account",
+    "api_slug": "storage",
+    "component": "Storage Accounts",
+    "arm_type": "Microsoft.Storage/storageAccounts",
+    "display_name": "Storage account",
+    "port": 8142,
+    "migrated": false
+  }
+]

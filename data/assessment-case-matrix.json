@@ -1,0 +1,4959 @@
+{
+  "schemaVersion": "1.0.0",
+  "purpose": "Deterministic DB-backed classification matrix for Azure optimization assessments without live Azure calls, AI, or manual interpretation at recommendation runtime.",
+  "classificationLevels": [
+    {
+      "level": "best",
+      "scoreRange": [
+        90,
+        100
+      ],
+      "meaning": "Already optimized or only minor optional improvements remain.",
+      "defaultAction": "no_action_or_monitor"
+    },
+    {
+      "level": "good",
+      "scoreRange": [
+        75,
+        89
+      ],
+      "meaning": "Generally healthy with low-risk optimization opportunities.",
+      "defaultAction": "optional_optimize"
+    },
+    {
+      "level": "warning",
+      "scoreRange": [
+        50,
+        74
+      ],
+      "meaning": "Needs review; measurable cost, performance, reliability, security, or governance risk exists.",
+      "defaultAction": "review_and_plan"
+    },
+    {
+      "level": "bad",
+      "scoreRange": [
+        25,
+        49
+      ],
+      "meaning": "Action recommended; resource is materially over-costed, underperforming, risky, or non-compliant.",
+      "defaultAction": "prioritize_fix"
+    },
+    {
+      "level": "worst",
+      "scoreRange": [
+        0,
+        24
+      ],
+      "meaning": "Immediate action recommended; high waste, outage risk, security exposure, or compliance risk.",
+      "defaultAction": "urgent_fix_or_owner_approval"
+    }
+  ],
+  "conditionOperators": {
+    "numeric": [
+      "lt",
+      "lte",
+      "gt",
+      "gte",
+      "between",
+      "outside"
+    ],
+    "boolean": [
+      "is_true",
+      "is_false"
+    ],
+    "string": [
+      "eq",
+      "neq",
+      "in",
+      "not_in",
+      "contains",
+      "missing",
+      "present"
+    ],
+    "collection": [
+      "empty",
+      "not_empty",
+      "count_lt",
+      "count_gt"
+    ],
+    "date": [
+      "older_than_days",
+      "newer_than_days",
+      "expired"
+    ]
+  },
+  "defaultScoring": {
+    "startScore": 100,
+    "deductions": {
+      "low": 8,
+      "medium": 18,
+      "high": 32,
+      "critical": 45
+    },
+    "caps": {
+      "anyCriticalSecurityFinding": 24,
+      "anyHighSecurityFinding": 49,
+      "anyHighReliabilityFinding": 49,
+      "missingRequiredMetrics": 74,
+      "missingCostData": 74,
+      "unknownProductionOwner": 74
+    }
+  },
+  "globalCases": [
+    {
+      "id": "required_data_complete",
+      "levelWhenTrue": "good",
+      "condition": {
+        "all": [
+          {
+            "field": "input.has_resource_properties",
+            "op": "is_true"
+          },
+          {
+            "field": "input.has_cost_data",
+            "op": "is_true"
+          },
+          {
+            "field": "input.has_required_metrics_or_not_applicable",
+            "op": "is_true"
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing_cost_data",
+      "severity": "medium",
+      "pillar": "cost",
+      "condition": {
+        "field": "input.has_cost_data",
+        "op": "is_false"
+      },
+      "deterministicRecommendation": "Fetch Cost Management data before estimating savings."
+    },
+    {
+      "id": "missing_owner_or_environment_tags",
+      "severity": "medium",
+      "pillar": "governance",
+      "condition": {
+        "any": [
+          {
+            "field": "tags.owner",
+            "op": "missing"
+          },
+          {
+            "field": "tags.environment",
+            "op": "missing"
+          }
+        ]
+      },
+      "deterministicRecommendation": "Add owner and environment tags before automated remediation."
+    },
+    {
+      "id": "public_access_when_private_required",
+      "severity": "high",
+      "pillar": "security",
+      "condition": {
+        "all": [
+          {
+            "field": "policy.requires_private_access",
+            "op": "is_true"
+          },
+          {
+            "field": "signals.public_access_enabled",
+            "op": "is_true"
+          }
+        ]
+      },
+      "deterministicRecommendation": "Disable public access or restrict it with private endpoints/access controls."
+    }
+  ],
+  "resourceCaseThresholds": {
+    "Microsoft.Compute/disks": {
+      "best": {
+        "p95IopsUtilizationPctMax": 70,
+        "p95ThroughputUtilizationPctMax": 70,
+        "burstFrequencyPctMax": 1,
+        "unattached": false,
+        "publicExportAllowed": false
+      },
+      "warning": {
+        "p95IopsUtilizationPctMin": 80,
+        "p95ThroughputUtilizationPctMin": 80,
+        "burstFrequencyPctMin": 5
+      },
+      "worst": {
+        "unattachedAgeDaysMin": 30,
+        "publicExportAllowed": true,
+        "idleHighCostMonthlyMin": 100
+      }
+    },
+    "Microsoft.Compute/snapshots": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasExpiryTag": true,
+        "expired": false,
+        "publicExportAllowed": false,
+        "incrementalPreferredForRecurring": true
+      },
+      "warning": {
+        "ageDaysMin": 30,
+        "missingOwnerOrExpiry": true
+      },
+      "worst": {
+        "expired": true,
+        "monthlyActualCostMin": 100,
+        "publicExportAllowed": true
+      }
+    },
+    "Microsoft.Compute/virtualMachines": {
+      "best": {
+        "p95CpuPctMax": 70,
+        "p05AvailableMemoryPctMin": 20,
+        "p95DiskConsumedPctMax": 70,
+        "availabilityScoreMin": 99.9,
+        "publicExposure": false
+      },
+      "warning": {
+        "p95CpuPctMin": 80,
+        "p05AvailableMemoryPctMax": 10,
+        "p95DiskConsumedPctMin": 80
+      },
+      "worst": {
+        "idleDaysMin": 30,
+        "publicExposure": true,
+        "availabilityScoreMax": 99
+      }
+    },
+    "Microsoft.Compute/virtualMachineScaleSets": {
+      "best": {
+        "fleetP95CpuPctMax": 70,
+        "fleetP05AvailableMemoryPctMin": 20,
+        "unhealthyInstancePctMax": 0,
+        "autoscaleAtMaxPctMax": 5
+      },
+      "warning": {
+        "autoscaleAtMaxPctMin": 20,
+        "scaleOscillationCountMin": 5,
+        "unhealthyInstancePctMin": 5
+      },
+      "worst": {
+        "unhealthyInstancePctMin": 20,
+        "autoscaleMissingForVariableWorkload": true,
+        "publicExposure": true
+      }
+    },
+    "Microsoft.DocumentDB/databaseAccounts": {
+      "best": {
+        "p95NormalizedRuPctMax": 70,
+        "throttleRatePctMax": 0.1,
+        "hotPartitionRatioMax": 2,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "p95NormalizedRuPctMin": 80,
+        "throttleRatePctMin": 1,
+        "hotPartitionRatioMin": 3
+      },
+      "worst": {
+        "throttleRatePctMin": 5,
+        "hotPartitionRatioMin": 10,
+        "publicAccessEnabled": true
+      }
+    },
+    "Microsoft.DBforPostgreSQL/flexibleServers": {
+      "best": {
+        "p95CpuPctMax": 70,
+        "p95MemoryPctMax": 70,
+        "p95StoragePctMax": 70,
+        "p95IopsConsumedPctMax": 70,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "p95CpuPctMin": 80,
+        "p95MemoryPctMin": 80,
+        "p95StoragePctMin": 80,
+        "p95IopsConsumedPctMin": 80
+      },
+      "worst": {
+        "p95StoragePctMin": 95,
+        "replicaLagP95SecondsMin": 300,
+        "publicAccessEnabled": true
+      }
+    },
+    "Microsoft.Sql/servers": {
+      "best": {
+        "p95CpuPctMax": 70,
+        "p95DataIoPctMax": 70,
+        "p95LogWritePctMax": 70,
+        "p95StoragePctMax": 70,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "p95CpuPctMin": 80,
+        "p95DataIoPctMin": 80,
+        "p95LogWritePctMin": 80,
+        "p95WorkersPctMin": 80
+      },
+      "worst": {
+        "p95StoragePctMin": 95,
+        "availabilityScoreMax": 99,
+        "publicAccessEnabled": true
+      }
+    },
+    "Microsoft.Web/sites": {
+      "best": {
+        "planP95CpuPctMax": 70,
+        "planP95MemoryPctMax": 70,
+        "app5xxRatePctMax": 1,
+        "httpsOnly": true,
+        "publicExposureAllowed": false
+      },
+      "warning": {
+        "planP95CpuPctMin": 80,
+        "planP95MemoryPctMin": 80,
+        "app5xxRatePctMin": 2,
+        "planP95HttpQueueLengthMin": 10
+      },
+      "worst": {
+        "app5xxRatePctMin": 10,
+        "httpsOnly": false,
+        "remoteDebuggingEnabled": true
+      }
+    },
+    "Microsoft.Databricks/workspaces": {
+      "best": {
+        "clustersMissingAutoTermination": 0,
+        "idleAllPurposeClusterCount": 0,
+        "tagCoveragePctMin": 95,
+        "publicAccessEnabled": false,
+        "policyCoveragePctMin": 95
+      },
+      "warning": {
+        "clustersMissingAutoTerminationMin": 1,
+        "idleAllPurposeClusterCountMin": 1,
+        "tagCoveragePctMax": 80
+      },
+      "worst": {
+        "idleAllPurposeClusterCountMin": 5,
+        "publicAccessEnabled": true,
+        "policyCoveragePctMax": 50
+      }
+    },
+    "Microsoft.Cache/redis": {
+      "best": {
+        "p95UsedMemoryPctMax": 70,
+        "p95ServerLoadPctMax": 70,
+        "p95CpuPctMax": 70,
+        "missRatePctMax": 20,
+        "evictionsPerHour": 0,
+        "nonSslEnabled": false,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "p95UsedMemoryPctMin": 80,
+        "p95ServerLoadPctMin": 80,
+        "p95CpuPctMin": 80,
+        "missRatePctMin": 40,
+        "connectionChurnPerSecondMin": 50,
+        "shardSkewRatioMin": 3
+      },
+      "worst": {
+        "p95UsedMemoryPctMin": 95,
+        "evictionsPerHourMin": 1,
+        "p95ServerLoadPctMin": 95,
+        "nonSslEnabled": true,
+        "publicAccessEnabled": true
+      }
+    },
+    "Microsoft.ContainerService/managedClusters": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.ApiManagement/service": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/applicationGateways": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Insights/components": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.CognitiveServices/accounts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.App/containerApps": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.ContainerRegistry/registries": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.DataFactory/factories": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.EventHub/namespaces": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Cdn/profiles": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.KeyVault/vaults": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/loadBalancers": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.OperationalInsights/workspaces": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.DBforMySQL/flexibleServers": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/natGateways": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/publicIPAddresses": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.RecoveryServices/vaults": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Search/searchServices": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.ServiceBus/namespaces": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Sql/managedInstances": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Storage/storageAccounts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Synapse/workspaces": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/virtualNetworks": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/networkSecurityGroups": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/networkWatchers": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/virtualNetworkGateways": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/expressRouteCircuits": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/azureFirewalls": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/bastionHosts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/dnsZones": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/privateDnsZones": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/privateEndpoints": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/trafficManagerProfiles": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Network/routeTables": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.ManagedIdentity/userAssignedIdentities": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Automation/automationAccounts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Batch/batchAccounts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Logic/workflows": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.EventGrid/topics": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.SignalRService/SignalR": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.NotificationHubs/namespaces": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Devices/IotHubs": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Devices/provisioningServices": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.StreamAnalytics/streamingJobs": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.HDInsight/clusters": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Purview/accounts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.MachineLearningServices/workspaces": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Dashboard/grafana": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.Maps/accounts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.KeyVault/managedHSMs": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.NetApp/netAppAccounts": {
+      "best": {
+        "monthlyActualCostMax": 1000,
+        "criticalCostOrSecurityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 1000
+      },
+      "worst": {
+        "criticalCostOrSecurityRisk": true
+      }
+    },
+    "Microsoft.AnalysisServices/servers": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "utilizationPctMax": 75,
+        "queuedJobsMax": 0,
+        "failedJobsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "queuedJobsMin": 1,
+        "failedJobsMin": 1,
+        "idleHoursMin": 40
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 500,
+        "publicNetworkAccess": true
+      },
+      "family": "analytics",
+      "assessmentFile": "analysis-services-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ApiCenter/services": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "api-center-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.AppConfiguration/configurationStores": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "app-configuration-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Web/certificates": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "app-service-certificate-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Web/serverfarms": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "app-service-plan-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/applicationSecurityGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "application-security-group-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Kubernetes/connectedClusters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "restartCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "restartCountMin": 3,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "crashLoopDetected": true,
+        "publicExposureRisk": true
+      },
+      "family": "containers",
+      "assessmentFile": "arc-kubernetes-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.HybridCompute/machines": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "arc-machine-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Attestation/attestationProviders": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "daysToExpiryMin": 30,
+        "rotationOverdue": false,
+        "publicExposureRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "daysToExpiryMax": 30,
+        "rotationOverdue": true
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "expired": true,
+        "publicExposureRisk": true
+      },
+      "family": "security",
+      "assessmentFile": "attestation-provider-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Automation/automationAccounts/runbooks": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRunCountMax": 0,
+        "idleDaysMax": 30,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedRunCountMin": 1,
+        "idleDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalAutomationFailed": true
+      },
+      "family": "operations",
+      "assessmentFile": "automation-runbook-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Automation/automationAccounts/schedules": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRunCountMax": 0,
+        "idleDaysMax": 30,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedRunCountMin": 1,
+        "idleDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalAutomationFailed": true
+      },
+      "family": "operations",
+      "assessmentFile": "automation-schedule-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/availabilitySets": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "availability-set-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.AzureStackHCI/clusters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "azure-stack-hci-cluster-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DataProtection/backupVaults": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1
+      },
+      "family": "generic",
+      "assessmentFile": "backup-vault-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Blueprint/blueprints": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "assignmentHealthy": true,
+        "staleDaysMax": 90,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "staleDaysMin": 90,
+        "nonCompliantResourceCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalPolicyDisabled": true
+      },
+      "family": "governance",
+      "assessmentFile": "blueprint-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/capacityReservationGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "capacity-reservation-group-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Cdn/profiles/endpoints": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "cdn-endpoint-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Chaos/experiments": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRunCountMax": 0,
+        "idleDaysMax": 30,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedRunCountMin": 1,
+        "idleDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalAutomationFailed": true
+      },
+      "family": "operations",
+      "assessmentFile": "chaos-studio-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Communication/communicationServices": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "communication-service-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/galleries": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "compute-gallery-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/images": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "compute-image-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ConfidentialLedger/ledgers": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "daysToExpiryMin": 30,
+        "rotationOverdue": false,
+        "publicExposureRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "daysToExpiryMax": 30,
+        "rotationOverdue": true
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "expired": true,
+        "publicExposureRisk": true
+      },
+      "family": "security",
+      "assessmentFile": "confidential-ledger-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.App/managedEnvironments": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "restartCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "restartCountMin": 3,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "crashLoopDetected": true,
+        "publicExposureRisk": true
+      },
+      "family": "containers",
+      "assessmentFile": "container-app-environment-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ContainerInstance/containerGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "restartCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "restartCountMin": 3,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "crashLoopDetected": true,
+        "publicExposureRisk": true
+      },
+      "family": "containers",
+      "assessmentFile": "container-instance-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DocumentDB/mongoClusters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "storageUsedPctMax": 75,
+        "throttleCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "storageUsedPctMin": 85,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "backupMissing": true,
+        "publicNetworkAccess": true
+      },
+      "family": "database",
+      "assessmentFile": "cosmos-mongodb-vcore-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Portal/dashboards": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "evaluationFailuresMax": 0,
+        "ownerTagPresent": true,
+        "dataScannedGiBMax": 100
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "evaluationFailuresMin": 1,
+        "dataScannedGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "alertDisabledForCriticalScope": true,
+        "ingestionAnomalyPctMin": 25
+      },
+      "family": "monitoring",
+      "assessmentFile": "dashboard-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Insights/dataCollectionRules": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "evaluationFailuresMax": 0,
+        "ownerTagPresent": true,
+        "dataScannedGiBMax": 100
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "evaluationFailuresMin": 1,
+        "dataScannedGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "alertDisabledForCriticalScope": true,
+        "ingestionAnomalyPctMin": 25
+      },
+      "family": "monitoring",
+      "assessmentFile": "data-collection-rule-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Kusto/clusters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "utilizationPctMax": 75,
+        "queuedJobsMax": 0,
+        "failedJobsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "queuedJobsMin": 1,
+        "failedJobsMin": 1,
+        "idleHoursMin": 40
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 500,
+        "publicNetworkAccess": true
+      },
+      "family": "analytics",
+      "assessmentFile": "data-explorer-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DataLakeStore/accounts": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "usedCapacityPctMax": 80,
+        "lastAccessDaysMax": 30,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "lastAccessDaysMin": 60,
+        "snapshotGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicAccessEnabled": true
+      },
+      "family": "storage",
+      "assessmentFile": "data-lake-store-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DataShare/accounts": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "utilizationPctMax": 75,
+        "queuedJobsMax": 0,
+        "failedJobsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "queuedJobsMin": 1,
+        "failedJobsMin": 1,
+        "idleHoursMin": 40
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 500,
+        "publicNetworkAccess": true
+      },
+      "family": "analytics",
+      "assessmentFile": "data-share-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/ddosProtectionPlans": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "ddos-protection-plan-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/hostGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "dedicated-host-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DesktopVirtualization/applicationGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "desktopvirtualization-applicationgroup-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DesktopVirtualization/hostPools": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "desktopvirtualization-hostpool-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DesktopVirtualization/workspaces": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "desktopvirtualization-workspace-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DevCenter/devcenters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRunCountMax": 0,
+        "idleDaysMax": 30,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedRunCountMin": 1,
+        "idleDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalAutomationFailed": true
+      },
+      "family": "operations",
+      "assessmentFile": "devcenter-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DevCenter/projects": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRunCountMax": 0,
+        "idleDaysMax": 30,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedRunCountMin": 1,
+        "idleDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalAutomationFailed": true
+      },
+      "family": "operations",
+      "assessmentFile": "devcenter-project-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DeviceUpdate/accounts": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRequestsMax": 0,
+        "errorRatePctMax": 1,
+        "publicNetworkAccess": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "errorRatePctMin": 2,
+        "unusedDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 60,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true
+      },
+      "family": "specialized",
+      "assessmentFile": "device-update-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.HealthcareApis/workspaces/dicomservices": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRequestsMax": 0,
+        "errorRatePctMax": 1,
+        "publicNetworkAccess": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "errorRatePctMin": 2,
+        "unusedDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 60,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true
+      },
+      "family": "specialized",
+      "assessmentFile": "dicom-service-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DigitalTwins/digitalTwinsInstances": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRequestsMax": 0,
+        "errorRatePctMax": 1,
+        "publicNetworkAccess": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "errorRatePctMin": 2,
+        "unusedDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 60,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true
+      },
+      "family": "specialized",
+      "assessmentFile": "digital-twins-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/diskAccesses": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "disk-access-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/dnsForwardingRulesets": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "dns-forwarding-ruleset-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/dnsResolvers": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "dns-resolver-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ElasticSan/elasticSans": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "usedCapacityPctMax": 80,
+        "lastAccessDaysMax": 30,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "lastAccessDaysMin": 60,
+        "snapshotGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicAccessEnabled": true
+      },
+      "family": "storage",
+      "assessmentFile": "elastic-san-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Communication/emailServices": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "email-communication-service-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.EventGrid/domains": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "event-grid-domain-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.EventGrid/systemTopics": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "event-grid-system-topic-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.EventHub/namespaces/eventhubs": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "eventhub-hub-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.HealthcareApis/workspaces/fhirservices": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRequestsMax": 0,
+        "errorRatePctMax": 1,
+        "publicNetworkAccess": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "errorRatePctMin": 2,
+        "unusedDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 60,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true
+      },
+      "family": "specialized",
+      "assessmentFile": "fhir-service-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/firewallPolicies": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "firewall-policy-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/frontDoors": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "frontdoor-classic-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.HealthcareApis/workspaces": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRequestsMax": 0,
+        "errorRatePctMax": 1,
+        "publicNetworkAccess": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "errorRatePctMin": 2,
+        "unusedDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 60,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true
+      },
+      "family": "specialized",
+      "assessmentFile": "healthcare-workspace-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.StorageCache/caches": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "usedCapacityPctMax": 80,
+        "lastAccessDaysMax": 30,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "lastAccessDaysMin": 60,
+        "snapshotGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicAccessEnabled": true
+      },
+      "family": "storage",
+      "assessmentFile": "hpc-cache-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Logic/integrationAccounts": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "integration-account-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/ipGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "ip-group-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.KeyVault/vaults/certificates": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "daysToExpiryMin": 30,
+        "rotationOverdue": false,
+        "publicExposureRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "daysToExpiryMax": 30,
+        "rotationOverdue": true
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "expired": true,
+        "publicExposureRisk": true
+      },
+      "family": "security",
+      "assessmentFile": "keyvault-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.KeyVault/vaults/keys": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "daysToExpiryMin": 30,
+        "rotationOverdue": false,
+        "publicExposureRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "daysToExpiryMax": 30,
+        "rotationOverdue": true
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "expired": true,
+        "publicExposureRisk": true
+      },
+      "family": "security",
+      "assessmentFile": "keyvault-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.KeyVault/vaults/secrets": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "daysToExpiryMin": 30,
+        "rotationOverdue": false,
+        "publicExposureRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "daysToExpiryMax": 30,
+        "rotationOverdue": true
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "expired": true,
+        "publicExposureRisk": true
+      },
+      "family": "security",
+      "assessmentFile": "keyvault-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ContainerService/fleets": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "restartCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "restartCountMin": 3,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "crashLoopDetected": true,
+        "publicExposureRisk": true
+      },
+      "family": "containers",
+      "assessmentFile": "kubernetes-fleet-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.LabServices/labPlans": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRunCountMax": 0,
+        "idleDaysMax": 30,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedRunCountMin": 1,
+        "idleDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalAutomationFailed": true
+      },
+      "family": "operations",
+      "assessmentFile": "lab-plan-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.LoadTestService/loadTests": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRunCountMax": 0,
+        "idleDaysMax": 30,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedRunCountMin": 1,
+        "idleDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalAutomationFailed": true
+      },
+      "family": "operations",
+      "assessmentFile": "load-test-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/localNetworkGateways": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "local-network-gateway-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Web/serverfarms/workflows": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "logic-app-standard-plan-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Solutions/applications": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "assignmentHealthy": true,
+        "staleDaysMax": 90,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "staleDaysMin": 90,
+        "nonCompliantResourceCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalPolicyDisabled": true
+      },
+      "family": "governance",
+      "assessmentFile": "managed-application-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Solutions/applicationDefinitions": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "assignmentHealthy": true,
+        "staleDaysMax": 90,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "staleDaysMin": 90,
+        "nonCompliantResourceCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalPolicyDisabled": true
+      },
+      "family": "governance",
+      "assessmentFile": "managed-application-definition-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DocumentDB/cassandraClusters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "storageUsedPctMax": 75,
+        "throttleCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "storageUsedPctMin": 85,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "backupMissing": true,
+        "publicNetworkAccess": true
+      },
+      "family": "database",
+      "assessmentFile": "managed-cassandra-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.StorageCache/amlFilesystems": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "usedCapacityPctMax": 80,
+        "lastAccessDaysMax": 30,
+        "publicAccessEnabled": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "lastAccessDaysMin": 60,
+        "snapshotGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicAccessEnabled": true
+      },
+      "family": "storage",
+      "assessmentFile": "managed-lustre-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Maps/accounts/creators": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRequestsMax": 0,
+        "errorRatePctMax": 1,
+        "publicNetworkAccess": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "errorRatePctMin": 2,
+        "unusedDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 60,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true
+      },
+      "family": "specialized",
+      "assessmentFile": "maps-creator-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.DBforMariaDB/servers": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "storageUsedPctMax": 75,
+        "throttleCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "storageUsedPctMin": 85,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "backupMissing": true,
+        "publicNetworkAccess": true
+      },
+      "family": "database",
+      "assessmentFile": "mariadb-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Media/mediaservices": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "failedRequestsMax": 0,
+        "errorRatePctMax": 1,
+        "publicNetworkAccess": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "errorRatePctMin": 2,
+        "unusedDaysMin": 30
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 60,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true
+      },
+      "family": "specialized",
+      "assessmentFile": "media-service-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Insights/metricAlerts": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "evaluationFailuresMax": 0,
+        "ownerTagPresent": true,
+        "dataScannedGiBMax": 100
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "evaluationFailuresMin": 1,
+        "dataScannedGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "alertDisabledForCriticalScope": true,
+        "ingestionAnomalyPctMin": 25
+      },
+      "family": "monitoring",
+      "assessmentFile": "metric-alert-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Insights/actionGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "evaluationFailuresMax": 0,
+        "ownerTagPresent": true,
+        "dataScannedGiBMax": 100
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "evaluationFailuresMin": 1,
+        "dataScannedGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "alertDisabledForCriticalScope": true,
+        "ingestionAnomalyPctMin": 25
+      },
+      "family": "monitoring",
+      "assessmentFile": "monitor-action-group-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/connections": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "network-connection-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/networkManagers": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "network-manager-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Oracle.Database/cloudVmClusters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "storageUsedPctMax": 75,
+        "throttleCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "storageUsedPctMin": 85,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "backupMissing": true,
+        "publicNetworkAccess": true
+      },
+      "family": "database",
+      "assessmentFile": "oracle-cloud-vmcluster-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Authorization/policyAssignments": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "assignmentHealthy": true,
+        "staleDaysMax": 90,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "staleDaysMin": 90,
+        "nonCompliantResourceCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalPolicyDisabled": true
+      },
+      "family": "governance",
+      "assessmentFile": "policy-assignment-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Authorization/policySetDefinitions": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "assignmentHealthy": true,
+        "staleDaysMax": 90,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "staleDaysMin": 90,
+        "nonCompliantResourceCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalPolicyDisabled": true
+      },
+      "family": "governance",
+      "assessmentFile": "policy-set-definition-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.PowerBIDedicated/capacities": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "utilizationPctMax": 75,
+        "queuedJobsMax": 0,
+        "failedJobsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "queuedJobsMin": 1,
+        "failedJobsMin": 1,
+        "idleHoursMin": 40
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 500,
+        "publicNetworkAccess": true
+      },
+      "family": "analytics",
+      "assessmentFile": "powerbi-dedicated-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/privateLinkServices": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "private-link-service-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/proximityPlacementGroups": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "proximity-placement-group-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Relay/namespaces": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "relay-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ResourceGraph/queries": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "assignmentHealthy": true,
+        "staleDaysMax": 90,
+        "ownerTagPresent": true
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "staleDaysMin": 90,
+        "nonCompliantResourceCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "criticalPolicyDisabled": true
+      },
+      "family": "governance",
+      "assessmentFile": "resource-graph-query-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/routeFilters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "route-filter-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Insights/scheduledQueryRules": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "evaluationFailuresMax": 0,
+        "ownerTagPresent": true,
+        "dataScannedGiBMax": 100
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "evaluationFailuresMin": 1,
+        "dataScannedGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "alertDisabledForCriticalScope": true,
+        "ingestionAnomalyPctMin": 25
+      },
+      "family": "monitoring",
+      "assessmentFile": "scheduled-query-rule-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Security/automations": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "daysToExpiryMin": 30,
+        "rotationOverdue": false,
+        "publicExposureRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "daysToExpiryMax": 30,
+        "rotationOverdue": true
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "expired": true,
+        "publicExposureRisk": true
+      },
+      "family": "security",
+      "assessmentFile": "security-automation-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Security/securityConnectors": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "daysToExpiryMin": 30,
+        "rotationOverdue": false,
+        "publicExposureRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "daysToExpiryMax": 30,
+        "rotationOverdue": true
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "expired": true,
+        "publicExposureRisk": true
+      },
+      "family": "security",
+      "assessmentFile": "security-connector-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ServiceFabric/clusters": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "service-fabric-cluster-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ServiceBus/namespaces/queues": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "servicebus-queue-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.ServiceBus/namespaces/topics": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "servicebus-topic-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.RecoveryServices/vaults/replicationFabrics": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1
+      },
+      "family": "generic",
+      "assessmentFile": "site-recovery-vault-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.AppPlatform/Spring": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "spring-apps-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Sql/servers/databases": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "storageUsedPctMax": 75,
+        "throttleCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "storageUsedPctMin": 85,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "backupMissing": true,
+        "publicNetworkAccess": true
+      },
+      "family": "database",
+      "assessmentFile": "sql-database-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Sql/servers/elasticPools": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "storageUsedPctMax": 75,
+        "throttleCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "storageUsedPctMin": 85,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "backupMissing": true,
+        "publicNetworkAccess": true
+      },
+      "family": "database",
+      "assessmentFile": "sql-elastic-pool-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Compute/sshPublicKeys": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "ssh-public-key-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Web/staticSites": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "static-web-app-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Synapse/workspaces/bigDataPools": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "utilizationPctMax": 75,
+        "queuedJobsMax": 0,
+        "failedJobsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "queuedJobsMin": 1,
+        "failedJobsMin": 1,
+        "idleHoursMin": 40
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 500,
+        "publicNetworkAccess": true
+      },
+      "family": "analytics",
+      "assessmentFile": "synapse-spark-pool-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Synapse/workspaces/sqlPools": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "storageUsedPctMax": 75,
+        "throttleCountMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "storageUsedPctMin": 85,
+        "throttleCountMin": 1
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "backupMissing": true,
+        "publicNetworkAccess": true
+      },
+      "family": "database",
+      "assessmentFile": "synapse-sql-pool-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.TimeSeriesInsights/environments": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "evaluationFailuresMax": 0,
+        "ownerTagPresent": true,
+        "dataScannedGiBMax": 100
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "evaluationFailuresMin": 1,
+        "dataScannedGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "alertDisabledForCriticalScope": true,
+        "ingestionAnomalyPctMin": 25
+      },
+      "family": "monitoring",
+      "assessmentFile": "time-series-insights-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/virtualHubs": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "virtual-hub-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/virtualWans": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "virtual-wan-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.AVS/privateClouds": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "availabilityRisk": false
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "p95CpuPctMin": 85,
+        "p95MemoryPctMin": 85,
+        "idleHoursMin": 80
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "idleHighCostMonthlyMin": 100,
+        "availabilityRisk": true
+      },
+      "family": "compute",
+      "assessmentFile": "vmware-private-cloud-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Network/ApplicationGatewayWebApplicationFirewallPolicies": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "availabilityPctMin": 99.9,
+        "failedConnectionsMax": 0,
+        "unusedEndpointsMax": 0
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "failedConnectionsMin": 1,
+        "egressAnomalyPctMin": 15
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "unusedHighCostMonthlyMin": 100
+      },
+      "family": "network_integration",
+      "assessmentFile": "waf-policy-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.SignalRService/WebPubSub": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "p95CpuPctMax": 75,
+        "p95MemoryPctMax": 80,
+        "http5xxRatePctMax": 1
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "http5xxRatePctMin": 2,
+        "responseTimeP95MsMin": 1000
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "publicExposureRisk": true,
+        "authDisabled": true
+      },
+      "family": "app",
+      "assessmentFile": "web-pubsub-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    },
+    "Microsoft.Insights/workbooks": {
+      "best": {
+        "hasOwnerTag": true,
+        "hasEnvironmentTag": true,
+        "costDataPresent": true,
+        "requiredMetricsPresent": true,
+        "criticalFindingsMax": 0,
+        "highFindingsMax": 0,
+        "evaluationFailuresMax": 0,
+        "ownerTagPresent": true,
+        "dataScannedGiBMax": 100
+      },
+      "warning": {
+        "monthlyActualCostMin": 25,
+        "missingOwnerOrEnvironment": true,
+        "rightSizeCandidate": true,
+        "costAnomalyPctMin": 10,
+        "evaluationFailuresMin": 1,
+        "dataScannedGiBMin": 100
+      },
+      "worst": {
+        "monthlyActualCostMin": 100,
+        "orphanedOrUnattached": true,
+        "noRecentUsageDaysMin": 30,
+        "criticalFindingsMin": 1,
+        "alertDisabledForCriticalScope": true,
+        "ingestionAnomalyPctMin": 25
+      },
+      "family": "monitoring",
+      "assessmentFile": "workbook-assessment.json",
+      "actionOutcomes": [
+        "stay",
+        "downgrade",
+        "upgrade",
+        "stop_or_delete",
+        "investigate"
+      ]
+    }
+  },
+  "normalizedInputContract": {
+    "requiredTopLevelFields": [
+      "resource_id",
+      "resource_type",
+      "properties",
+      "metrics",
+      "cost",
+      "signals",
+      "tags",
+      "policy"
+    ],
+    "notes": [
+      "Collectors should normalize provider-specific fields into signals before classification.",
+      "Classification must be deterministic: no natural-language condition parsing is required.",
+      "Assessment files provide knowledge and recommendations; this matrix provides executable status thresholds."
+    ],
+    "runtimeDataSource": "database_normalized_azure_resource_record",
+    "recommendationRuntimeAzureCallsAllowed": false,
+    "requiredRoots": [
+      "resource",
+      "properties",
+      "metrics",
+      "cost",
+      "prices",
+      "tags",
+      "policy",
+      "advisor",
+      "signals"
+    ],
+    "allowedRecommendationActions": [
+      "stay",
+      "downgrade",
+      "upgrade",
+      "stop_or_delete",
+      "investigate"
+    ]
+  }
+}

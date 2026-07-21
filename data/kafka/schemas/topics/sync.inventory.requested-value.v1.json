@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/topics/sync.inventory.requested-value.v1.json",
+  "title": "sync.inventory.requested-value",
+  "allOf": [
+    { "$ref": "../base/job-envelope.v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "job_type": { "const": "sync.inventory" },
+        "payload": { "$ref": "../payloads/stage-request.v1.json" }
+      }
+    }
+  ]
+}

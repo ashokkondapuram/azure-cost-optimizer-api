@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "service": "API Management",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/api-management/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/api-management/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 100,
+    "request_count_low": 10000,
+    "capacity_pct_low": 20,
+    "savings_factor": 0.35,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "APIM_SKU_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APIM_LOW_TRAFFIC_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "API_MANAGEMENT_SKU": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

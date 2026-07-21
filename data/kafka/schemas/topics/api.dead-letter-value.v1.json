@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/topics/api.dead-letter-value.v1.json",
+  "title": "api.dead-letter-value",
+  "allOf": [
+    { "$ref": "../base/job-envelope.v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "job_type": { "const": "api.dead-letter" },
+        "payload": { "$ref": "../payloads/api-request.v1.json" }
+      }
+    }
+  ]
+}

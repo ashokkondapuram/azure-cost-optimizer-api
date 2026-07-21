@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/payloads/api-response.v1.json",
+  "title": "ApiResponsePayload",
+  "description": "Optional nested payload for api.*.completed topics (result may also live at envelope root).",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "http_status": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 599
+    },
+    "headers": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "body": {
+      "type": "object",
+      "description": "Parsed API response body.",
+      "additionalProperties": true
+    },
+    "rate_limit": {
+      "type": "object",
+      "description": "Rate-limit metadata from Azure response headers.",
+      "properties": {
+        "remaining": { "type": "integer" },
+        "reset_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

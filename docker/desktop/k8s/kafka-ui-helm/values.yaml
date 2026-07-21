@@ -1,0 +1,40 @@
+# Kafbat UI (successor to Provectus kafka-ui) for CostOptimize local Kubernetes.
+#
+# Image: ghcr.io/kafbat/kafka-ui (NOT docker.io/provectuslabs/kafka-ui — blocked for Zafin).
+# Chart:  https://ui.charts.kafbat.io  (kafbat/kafka-ui)
+#
+# Install:
+#   helm repo add kafbat https://ui.charts.kafbat.io
+#   helm upgrade --install costoptimize-kafka-ui kafbat/kafka-ui \
+#     -n costoptimize --create-namespace \
+#     -f docker/desktop/k8s/kafka-ui-helm/values.yaml
+
+image:
+  registry: ghcr.io
+  repository: kafbat/kafka-ui
+  pullPolicy: IfNotPresent
+
+yamlApplicationConfig:
+  kafka:
+    clusters:
+      - name: costoptimize
+        bootstrapServers: redpanda:9092
+  auth:
+    type: disabled
+  management:
+    health:
+      ldap:
+        enabled: false
+
+service:
+  type: NodePort
+  port: 80
+  nodePort: 30085
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/topics/data.cost.synced-value.v1.json",
+  "title": "data.cost.synced-value",
+  "allOf": [
+    { "$ref": "../base/job-envelope.v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "job_type": { "const": "data.cost.synced" },
+        "payload": { "$ref": "../payloads/data-synced.v1.json" }
+      }
+    }
+  ]
+}

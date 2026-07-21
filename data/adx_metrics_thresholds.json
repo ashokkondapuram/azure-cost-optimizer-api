@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "service": "Azure Data Explorer",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/data-explorer/",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/azure-data-explorer/"
+  },
+  "optimization_thresholds": {
+    "min_monthly_cost_usd": 100,
+    "ingestion_low_mb": 512,
+    "savings_factor": 0.2,
+    "ingestion_savings_factor": 0.25,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 5
+  },
+  "analysis_rules": {
+    "ADX_INGESTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ADX_INGESTION": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ADX_LOW_INGESTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

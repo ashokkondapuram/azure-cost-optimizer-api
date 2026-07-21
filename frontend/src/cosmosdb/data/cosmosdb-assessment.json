@@ -1,0 +1,1028 @@
+{
+  "schema_version": "2.0",
+  "schemaVersion": "2.0",
+  "resource_type": "database/cosmosdb",
+  "resourceType": "Microsoft.DocumentDB/databaseAccounts",
+  "arm_type": "microsoft.documentdb/databaseaccounts",
+  "canonical_type": "database/cosmosdb",
+  "assessmentName": "Azure Cosmos DB Production Optimization",
+  "versionDate": "2026-07-17",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/cosmos-db/introduction",
+    "arm_api": "https://learn.microsoft.com/en-us/rest/api/cosmos-db-resource-providers/",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-documentdb-databaseaccounts-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/cosmos-db/",
+    "pricing_models_ref": "data/cosmosdb_pricing_models.json",
+    "thresholds_ref": "inline optimization_thresholds in this file",
+    "evidence_contracts_ref": "data/rule_evidence_contracts.json",
+    "engine_ref": "it_services/database_cosmosdb/engine/analysis.py"
+  },
+  "strategy": {
+    "mode": "db_backed_python_engine",
+    "runtimeDataSource": "database_snapshot",
+    "analyzerUsesStoredMetricsOnly": true,
+    "recommendationRuntimeAzureCallsAllowed": false,
+    "refreshCadence": {
+      "resourceProperties": "daily",
+      "metrics": "hourly_or_daily",
+      "costManagement": "daily",
+      "retailPrices": "daily"
+    }
+  },
+  "azure_properties": {
+    "description": "Synced from ARM \u2014 non-empty when account exists",
+    "sync_property_paths": [
+      "databaseAccountOfferType",
+      "capabilities",
+      "enableAutomaticFailover",
+      "enableMultipleWriteLocations",
+      "enableFreeTier",
+      "consistencyPolicy",
+      "locations",
+      "provisioningState",
+      "publicNetworkAccess",
+      "disableKeyBasedMetadataWriteAccess",
+      "backupPolicy",
+      "enableAnalyticalStorage",
+      "enablePartitionKeyMonitor",
+      "minimalTlsVersion"
+    ],
+    "groups": [
+      {
+        "group": "configuration",
+        "title": "Configuration",
+        "properties": [
+          {
+            "arm_path": "kind",
+            "label": "API kind",
+            "type": "string",
+            "assessment_use": "api_type"
+          },
+          {
+            "arm_path": "properties.databaseAccountOfferType",
+            "label": "Offer type",
+            "type": "string",
+            "assessment_use": "pricing"
+          },
+          {
+            "arm_path": "properties.capabilities",
+            "label": "Capabilities",
+            "type": "array",
+            "assessment_use": "throughput_model"
+          },
+          {
+            "arm_path": "properties.consistencyPolicy.defaultConsistencyLevel",
+            "label": "Consistency level",
+            "type": "string",
+            "assessment_use": "consistency"
+          },
+          {
+            "arm_path": "properties.enableFreeTier",
+            "label": "Free tier",
+            "type": "boolean",
+            "assessment_use": "free_tier"
+          },
+          {
+            "arm_path": "properties.enableAutomaticFailover",
+            "label": "Automatic failover",
+            "type": "boolean",
+            "assessment_use": "reliability"
+          },
+          {
+            "arm_path": "properties.enableMultipleWriteLocations",
+            "label": "Multi-region writes",
+            "type": "boolean",
+            "assessment_use": "multi_write"
+          },
+          {
+            "arm_path": "properties.provisioningState",
+            "label": "Provisioning state",
+            "type": "string",
+            "assessment_use": "lifecycle"
+          },
+          {
+            "arm_path": "location",
+            "label": "Region",
+            "type": "string",
+            "assessment_use": "pricing"
+          },
+          {
+            "arm_path": "properties.locations",
+            "label": "Read regions",
+            "type": "array",
+            "assessment_use": "multi_region"
+          }
+        ]
+      },
+      {
+        "group": "security",
+        "title": "Security",
+        "properties": [
+          {
+            "arm_path": "properties.publicNetworkAccess",
+            "label": "Public network access",
+            "type": "string",
+            "assessment_use": "security"
+          },
+          {
+            "arm_path": "properties.disableKeyBasedMetadataWriteAccess",
+            "label": "Key-based metadata writes disabled",
+            "type": "boolean",
+            "assessment_use": "security"
+          },
+          {
+            "arm_path": "properties.minimalTlsVersion",
+            "label": "Minimum TLS version",
+            "type": "string",
+            "assessment_use": "security"
+          }
+        ]
+      },
+      {
+        "group": "backup",
+        "title": "Backup",
+        "properties": [
+          {
+            "arm_path": "properties.backupPolicy",
+            "label": "Backup policy",
+            "type": "object",
+            "assessment_use": "durability"
+          },
+          {
+            "arm_path": "properties.enableAnalyticalStorage",
+            "label": "Analytical storage",
+            "type": "boolean",
+            "assessment_use": "analytics"
+          }
+        ]
+      }
+    ]
+  },
+  "azure_metrics": {
+    "description": "From Azure Monitor \u2014 account-level throughput and storage signals",
+    "period_default": "P7D",
+    "metrics": [
+      {
+        "metric_name": "TotalRequests",
+        "fact_key": "request_count",
+        "label": "Request count",
+        "aggregation": "Count",
+        "period": "P7D",
+        "unit": "count",
+        "rules": [
+          "COSMOS_SERVERLESS",
+          "COSMOS_AUTOSCALE_EXTENDED"
+        ]
+      },
+      {
+        "metric_name": "TotalRequestUnits",
+        "fact_key": "total_ru",
+        "label": "Total RU consumed",
+        "aggregation": "Total",
+        "period": "P7D",
+        "unit": "RU",
+        "rules": [
+          "COSMOS_AUTOSCALE_EXTENDED",
+          "COSMOS_SERVERLESS",
+          "COSMOS_FREE_TIER_SUBOPTIMAL"
+        ]
+      },
+      {
+        "metric_name": "NormalizedRUConsumption",
+        "fact_key": "normalized_ru_pct",
+        "label": "Normalized RU consumption",
+        "aggregation": "Average",
+        "period": "P7D",
+        "unit": "%",
+        "rules": [
+          "COSMOS_AUTOSCALE_EXTENDED",
+          "COSMOS_RU_RIGHT_SIZING_UNDER",
+          "COSMOS_RU_RIGHT_SIZING_OVER",
+          "COSMOS_THROTTLING_DETECTED",
+          "COSMOS_RESERVED_CAPACITY_ELIGIBLE"
+        ]
+      },
+      {
+        "metric_name": "NormalizedRUConsumption",
+        "fact_key": "normalized_ru_peak_pct",
+        "label": "Peak normalized RU consumption",
+        "aggregation": "Maximum",
+        "period": "P7D",
+        "unit": "%",
+        "rules": [
+          "COSMOS_THROTTLING_DETECTED",
+          "COSMOS_HOT_CONTAINER_DETECTED"
+        ]
+      },
+      {
+        "metric_name": "ProvisionedThroughput",
+        "fact_key": "provisioned_throughput",
+        "label": "Provisioned throughput",
+        "aggregation": "Maximum",
+        "period": "P7D",
+        "unit": "RU/s",
+        "rules": [
+          "COSMOS_RU_RIGHT_SIZING_UNDER",
+          "COSMOS_FREE_TIER_SUBOPTIMAL"
+        ]
+      },
+      {
+        "metric_name": "DataUsage",
+        "fact_key": "data_usage_bytes",
+        "label": "Data usage",
+        "aggregation": "Total",
+        "period": "P7D",
+        "unit": "bytes",
+        "rules": [
+          "COSMOS_LARGE_ITEMS_DETECTED",
+          "COSMOS_INDEXING_OVERPROVISIONED"
+        ]
+      },
+      {
+        "metric_name": "IndexUsage",
+        "fact_key": "index_usage_bytes",
+        "label": "Index usage",
+        "aggregation": "Total",
+        "period": "P7D",
+        "unit": "bytes",
+        "rules": [
+          "COSMOS_INDEXING_OVERPROVISIONED"
+        ]
+      },
+      {
+        "metric_name": "DocumentCountV2",
+        "fact_key": "document_count",
+        "label": "Document count",
+        "aggregation": "Total",
+        "period": "P7D",
+        "unit": "count",
+        "rules": [
+          "COSMOS_LARGE_ITEMS_DETECTED"
+        ]
+      },
+      {
+        "metric_name": "ReplicationLatency",
+        "fact_key": "replication_latency_ms",
+        "label": "Replication latency",
+        "aggregation": "Maximum",
+        "period": "P7D",
+        "unit": "ms",
+        "rules": [
+          "COSMOS_MULTI_WRITE_UNNECESSARY"
+        ]
+      },
+      {
+        "metric_name": "ServerSideLatencyDirect",
+        "fact_key": "server_latency_ms",
+        "label": "Server-side latency (direct)",
+        "aggregation": "Average",
+        "period": "P7D",
+        "unit": "ms",
+        "rules": [
+          "COSMOS_THROTTLING_DETECTED"
+        ]
+      }
+    ],
+    "derived_metrics": {
+      "ru_skew_ratio": {
+        "source": "normalized_ru_peak_pct / normalized_ru_pct",
+        "aggregation": "peak",
+        "period": "P7D",
+        "unit": "ratio"
+      },
+      "avg_item_bytes": {
+        "source": "data_usage_bytes / document_count",
+        "aggregation": "avg",
+        "period": "P7D",
+        "unit": "bytes"
+      },
+      "index_to_data_ratio": {
+        "source": "index_usage_bytes / data_usage_bytes",
+        "aggregation": "avg",
+        "period": "P7D",
+        "unit": "ratio"
+      }
+    }
+  },
+  "cost_management": {
+    "description": "From Cost Management API and Azure Retail Prices \u2014 throughput and storage charges",
+    "fields": [
+      {
+        "field": "billed_mtd",
+        "label": "Billed month-to-date",
+        "source": "cost_management",
+        "cost_query": "PreTaxCost",
+        "granularity": "MTD",
+        "currency": "billing",
+        "normalized_key": "monthly_cost_usd",
+        "required_for": [
+          "all_cost_rules"
+        ]
+      },
+      {
+        "field": "retail_monthly",
+        "label": "Retail monthly estimate",
+        "source": "azure_retail_prices",
+        "sku_from": "throughput_model + location + api_type",
+        "currency": "USD",
+        "normalized_key": "retail_monthly",
+        "fallback_source": "catalog_thresholds",
+        "required_for": [
+          "throughput_mode_rules"
+        ]
+      },
+      {
+        "field": "retail_currency",
+        "label": "Retail price currency",
+        "source": "azure_retail_prices",
+        "normalized_key": "retail_currency"
+      },
+      {
+        "field": "retail_source",
+        "label": "Retail price data source",
+        "source": "azure_retail_prices",
+        "normalized_key": "retail_source",
+        "values": [
+          "azure_retail_prices",
+          "catalog_thresholds"
+        ]
+      },
+      {
+        "field": "retail_pending",
+        "label": "Retail estimate pending",
+        "source": "derived",
+        "normalized_key": "retail_pending",
+        "type": "boolean"
+      },
+      {
+        "field": "savings_estimate",
+        "label": "Estimated monthly savings",
+        "source": "azure_retail_pricing.estimate_cosmos_throughput_savings",
+        "inputs": [
+          "billed_mtd",
+          "retail_monthly",
+          "throughput_model",
+          "target_model",
+          "location"
+        ]
+      }
+    ]
+  },
+  "cost_policy": {
+    "source": "azure_cost_management",
+    "primary_field": "billed_mtd",
+    "retail_field": "retail_monthly",
+    "normalized_billed_key": "monthly_cost_usd"
+  },
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0,
+    "cosmos_ru_low_pct": 20.0,
+    "cosmos_ru_high_pct": 80.0,
+    "cosmos_throttle_ru_pct": 95.0,
+    "cosmos_serverless_ru_threshold": 50000.0,
+    "cosmos_autoscale_candidate_utilization_pct": 25.0,
+    "cosmos_hot_partition_skew_ratio": 2.5,
+    "cosmos_large_item_bytes": 2097152.0,
+    "cosmos_index_to_data_ratio": 1.5,
+    "cosmos_replication_lag_ms": 100.0,
+    "ru_low_pct": 20.0,
+    "ru_high_pct": 80.0,
+    "ru_throttle_pct": 95.0,
+    "serverless_ru_threshold_7d": 50000.0,
+    "index_to_data_ratio": 1.5,
+    "large_item_bytes": 2097152.0,
+    "hot_partition_skew_ratio": 2.5,
+    "replication_lag_ms": 100.0,
+    "min_downgrade_savings_pct": 30.0
+  },
+  "rules": [
+    {
+      "rule_id": "COSMOS_PROVISIONED_EXTENDED",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Evaluate autoscale or serverless for variable workloads",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [],
+      "evidence_factors": [
+        "Account uses provisioned throughput",
+        "Serverless capability not enabled"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_AUTOSCALE_EXTENDED",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Evaluate autoscale or serverless based on request volume variance",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Low normalized RU utilization",
+        "Low request volume over evaluation window"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_SERVERLESS",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Migrate to serverless throughput to pay per million RUs",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Total RU below serverless threshold",
+        "Provisioned throughput exceeds steady demand"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_RU_RIGHT_SIZING_UNDER",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Downscale provisioned RU/s or switch to autoscale/serverless",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Sustained normalized RU below low threshold",
+        "Provisioned throughput exceeds workload demand"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_RU_RIGHT_SIZING_OVER",
+      "category": "performance",
+      "determines": [
+        "performance"
+      ],
+      "recommendation": {
+        "action": "Increase provisioned RU/s or enable autoscale max throughput",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_high_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Sustained normalized RU above high threshold",
+        "Headroom needed before throttling"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_THROTTLING_DETECTED",
+      "category": "reliability",
+      "determines": [
+        "reliability"
+      ],
+      "recommendation": {
+        "action": "Increase provisioned RU/s or enable autoscale immediately",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_peak_pct",
+          "label": "Peak RU utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_throttle_ru_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "evidence_factors": [
+        "Peak normalized RU near saturation",
+        "429 throttling risk elevated"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_HOT_CONTAINER_DETECTED",
+      "category": "performance",
+      "determines": [
+        "performance"
+      ],
+      "recommendation": {
+        "action": "Review partition key design and rebalance throughput",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [
+        {
+          "signal": "ru_skew_ratio",
+          "label": "RU skew ratio",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "ratio",
+          "threshold_key": "cosmos_hot_partition_skew_ratio",
+          "pillar": "performance"
+        },
+        {
+          "signal": "ru_utilization_peak_pct",
+          "label": "Peak RU utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_throttle_ru_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "evidence_factors": [
+        "Peak-to-average RU skew exceeds threshold",
+        "Possible hot partition or container"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_API_COST_VARIANCE",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Review whether SQL API could reduce RU cost for this workload",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [],
+      "evidence_factors": [
+        "Non-SQL API selected",
+        "API RU multiplier above SQL baseline"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_CONSISTENCY_OVERPROVISIONED",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Relax consistency to Session or Eventual if SLAs allow",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [],
+      "evidence_factors": [
+        "Strong or bounded staleness consistency",
+        "Non-production or over-provisioned read cost"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_LARGE_ITEMS_DETECTED",
+      "category": "performance",
+      "determines": [
+        "performance"
+      ],
+      "recommendation": {
+        "action": "Move large blobs to Blob Storage and store references in Cosmos DB",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [
+        {
+          "signal": "avg_item_bytes",
+          "label": "Average item size",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "cosmos_large_item_bytes",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Average item size exceeds 2 MB",
+        "Storage and RU cost elevated"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_INDEXING_OVERPROVISIONED",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Implement a custom indexing policy to exclude unused paths",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "index_to_data_ratio",
+          "label": "Index to data ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ratio",
+          "threshold_key": "cosmos_index_to_data_ratio",
+          "pillar": "cost"
+        }
+      ],
+      "evidence_factors": [
+        "Index size large relative to data",
+        "Default indexing may be too broad"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_MULTI_WRITE_UNNECESSARY",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Use single-write region with read replicas unless global writes are required",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [],
+      "evidence_factors": [
+        "Multi-region writes enabled",
+        "Workload may not require global writes"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_FAILOVER_UNNECESSARY",
+      "category": "reliability",
+      "determines": [
+        "reliability"
+      ],
+      "recommendation": {
+        "action": "Disable automatic failover for dev/test unless validating DR",
+        "target_tier": null,
+        "savings_from": null
+      },
+      "required_evidence": [],
+      "evidence_factors": [
+        "Automatic failover enabled",
+        "Non-production environment tag"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_FREE_TIER_SUBOPTIMAL",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Evaluate paid provisioned, autoscale, or serverless instead of free-tier burst limits",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Free tier enabled",
+        "Usage exceeds 1,000 RU/s allowance"
+      ],
+      "engine": "extended"
+    },
+    {
+      "rule_id": "COSMOS_RESERVED_CAPACITY_ELIGIBLE",
+      "category": "cost",
+      "determines": [
+        "cost"
+      ],
+      "recommendation": {
+        "action": "Evaluate 1-year or 3-year Cosmos DB reserved capacity",
+        "target_tier": null,
+        "savings_from": "azure_retail_pricing"
+      },
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "evidence_factors": [
+        "Stable RU utilization between low and high thresholds",
+        "Predictable provisioned throughput spend"
+      ],
+      "engine": "extended"
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "low_ru_serverless_candidate",
+      "description": "Low Ru Serverless Candidate",
+      "rule_id": "COSMOS_SERVERLESS",
+      "properties_required": [
+        "capabilities",
+        "kind"
+      ],
+      "metrics_required": [
+        "total_ru"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "evidence_factors": [
+        "Total RU below serverless threshold"
+      ]
+    },
+    {
+      "case_id": "autoscale_candidate",
+      "description": "Autoscale Candidate",
+      "rule_id": "COSMOS_AUTOSCALE_EXTENDED",
+      "properties_required": [
+        "capabilities"
+      ],
+      "metrics_required": [
+        "normalized_ru_pct",
+        "request_count",
+        "total_ru"
+      ],
+      "cost_required": [
+        "billed_mtd",
+        "retail_monthly"
+      ],
+      "evidence_factors": [
+        "Low utilization with provisioned throughput"
+      ]
+    },
+    {
+      "case_id": "ru_underutilized",
+      "description": "Ru Underutilized",
+      "rule_id": "COSMOS_RU_RIGHT_SIZING_UNDER",
+      "properties_required": [
+        "capabilities"
+      ],
+      "metrics_required": [
+        "normalized_ru_pct",
+        "provisioned_throughput"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "evidence_factors": [
+        "Normalized RU below low threshold"
+      ]
+    },
+    {
+      "case_id": "ru_overutilized",
+      "description": "Ru Overutilized",
+      "rule_id": "COSMOS_RU_RIGHT_SIZING_OVER",
+      "properties_required": [
+        "capabilities"
+      ],
+      "metrics_required": [
+        "normalized_ru_pct"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "evidence_factors": [
+        "Normalized RU above high threshold"
+      ]
+    },
+    {
+      "case_id": "throttling_risk",
+      "description": "Throttling Risk",
+      "rule_id": "COSMOS_THROTTLING_DETECTED",
+      "properties_required": [
+        "capabilities"
+      ],
+      "metrics_required": [
+        "normalized_ru_peak_pct",
+        "normalized_ru_pct"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "evidence_factors": [
+        "Peak RU near saturation"
+      ]
+    },
+    {
+      "case_id": "hot_partition",
+      "description": "Hot Partition",
+      "rule_id": "COSMOS_HOT_CONTAINER_DETECTED",
+      "properties_required": [],
+      "metrics_required": [
+        "normalized_ru_peak_pct",
+        "normalized_ru_pct"
+      ],
+      "cost_required": [],
+      "evidence_factors": [
+        "RU skew ratio elevated"
+      ]
+    },
+    {
+      "case_id": "index_overprovisioned",
+      "description": "Index Overprovisioned",
+      "rule_id": "COSMOS_INDEXING_OVERPROVISIONED",
+      "properties_required": [],
+      "metrics_required": [
+        "index_usage_bytes",
+        "data_usage_bytes"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "evidence_factors": [
+        "Index size exceeds data size ratio"
+      ]
+    },
+    {
+      "case_id": "reserved_capacity",
+      "description": "Reserved Capacity",
+      "rule_id": "COSMOS_RESERVED_CAPACITY_ELIGIBLE",
+      "properties_required": [
+        "capabilities"
+      ],
+      "metrics_required": [
+        "normalized_ru_pct"
+      ],
+      "cost_required": [
+        "billed_mtd"
+      ],
+      "evidence_factors": [
+        "Stable utilization suitable for RI"
+      ]
+    }
+  ],
+  "pythonAssessment": {
+    "mode": "deterministic_db_rule_evaluation_only",
+    "requiredNormalizedInput": [
+      "resource",
+      "properties",
+      "metrics",
+      "cost",
+      "signals"
+    ],
+    "defaultScoring": {
+      "startScore": 100,
+      "deductions": {
+        "critical": 40,
+        "high": 25,
+        "medium": 10
+      },
+      "caps": {
+        "missingRequiredMetrics": 74,
+        "missingCostData": 74,
+        "anyCriticalSecurityFinding": 40,
+        "anyHighSecurityFinding": 55,
+        "anyHighReliabilityFinding": 60,
+        "unknownProductionOwner": 65
+      }
+    },
+    "classificationLevels": [
+      {
+        "level": "best",
+        "scoreRange": [
+          90,
+          100
+        ]
+      },
+      {
+        "level": "good",
+        "scoreRange": [
+          70,
+          89
+        ]
+      },
+      {
+        "level": "warning",
+        "scoreRange": [
+          50,
+          69
+        ]
+      },
+      {
+        "level": "bad",
+        "scoreRange": [
+          30,
+          49
+        ]
+      },
+      {
+        "level": "worst",
+        "scoreRange": [
+          0,
+          29
+        ]
+      }
+    ],
+    "deterministicCases": {
+      "warning": [
+        {
+          "field": "signals.missingRequiredMetrics",
+          "operator": "is_true",
+          "value": true
+        },
+        {
+          "field": "signals.missingCostData",
+          "operator": "is_true",
+          "value": true
+        }
+      ],
+      "best": [
+        {
+          "field": "signals.requiredMetricsPresent",
+          "operator": "is_true",
+          "value": true
+        },
+        {
+          "field": "signals.costDataComplete",
+          "operator": "is_true",
+          "value": true
+        }
+      ]
+    }
+  }
+}

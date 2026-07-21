@@ -1,0 +1,644 @@
+{
+  "coreMatchers": [
+    "status",
+    "state",
+    "powerstate",
+    "power state",
+    "sku",
+    "type",
+    "resourceid",
+    "resource-id",
+    "resource id",
+    "provisioningstate",
+    "provisioning state",
+    "diskstate",
+    "disk state",
+    "lastsynced",
+    "last synced",
+    "version",
+    "nodes",
+    "kubernetesversion",
+    "kubernetes version",
+    "tier",
+    "kind",
+    "size",
+    "vmsize",
+    "vm size",
+    "backend pools",
+    "health probes"
+  ],
+  "byCanonicalType": {
+    "analytics/adx": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "analytics/databricks": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "analytics/mlworkspace": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "analytics/synapse": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "appservice/plan": {
+      "factKeys": [
+        "app_count"
+      ],
+      "matchers": [
+        "appcount"
+      ],
+      "labels": [
+        "hosted app count"
+      ]
+    },
+    "appservice/webapp": {
+      "factKeys": [
+        "alwaysOn",
+        "state"
+      ],
+      "matchers": [
+        "alwayson",
+        "state"
+      ],
+      "labels": [
+        "always on",
+        "app state"
+      ]
+    },
+    "backup/recoveryvault": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "compute/disk": {
+      "factKeys": [
+        "disk_state",
+        "last_managed_by",
+        "last_ownership_update",
+        "managed_by",
+        "provisioned_iops",
+        "provisioned_mbps",
+        "size_gb",
+        "sku",
+        "time_created"
+      ],
+      "matchers": [
+        "diskiopsreadwrite",
+        "diskmbpsreadwrite",
+        "disksizegb",
+        "diskstate",
+        "lastmanagedby",
+        "lastownershipupdatetime",
+        "managedby",
+        "sku",
+        "timecreated"
+      ],
+      "labels": [
+        "attached to",
+        "created",
+        "disk size (gb)",
+        "disk state",
+        "last attached to",
+        "last ownership update time",
+        "provisioned iops",
+        "provisioned throughput (mb/s)",
+        "sku"
+      ]
+    },
+    "compute/snapshot": {
+      "factKeys": [
+        "age_days",
+        "disk_state",
+        "incremental",
+        "provisioning_state",
+        "size_gb",
+        "sku",
+        "source_disk_id",
+        "time_created"
+      ],
+      "matchers": [
+        "creationdata.incremental",
+        "creationdata.sourceresourceid",
+        "disksizegb",
+        "diskstate",
+        "incremental",
+        "provisioningstate",
+        "sku",
+        "snapshotagedays",
+        "sourceresourceid",
+        "timecreated"
+      ],
+      "labels": [
+        "age (days)",
+        "created",
+        "incremental snapshot",
+        "provisioning state",
+        "sku",
+        "snapshot size (gb)",
+        "snapshot state",
+        "source disk"
+      ]
+    },
+    "compute/vm": {
+      "factKeys": [
+        "environment",
+        "power_state",
+        "time_created",
+        "vm_size"
+      ],
+      "matchers": [
+        "environment",
+        "hardwareprofile.vmsize",
+        "powerstate",
+        "tag:environment",
+        "timecreated",
+        "vmsize"
+      ],
+      "labels": [
+        "environment tag",
+        "power state",
+        "time created",
+        "vm size"
+      ]
+    },
+    "compute/vmss": {
+      "factKeys": [
+        "instance_count",
+        "time_created",
+        "vm_size"
+      ],
+      "matchers": [
+        "capacity",
+        "oldest_instance_time_created",
+        "oldestinstancetimecreated",
+        "sku",
+        "virtualmachineprofile.hardwareprofile.vmsize",
+        "vmsize"
+      ],
+      "labels": [
+        "instance count",
+        "oldest instance created",
+        "vm size"
+      ]
+    },
+    "containers/acr": {
+      "factKeys": [
+        "admin_user_enabled",
+        "network_default_action",
+        "private_endpoint_count",
+        "provisioning_state",
+        "public_network_access",
+        "replication_count",
+        "retention_policy_days",
+        "retention_policy_enabled",
+        "sku",
+        "zone_redundancy"
+      ],
+      "matchers": [
+        "adminuserenabled",
+        "defaultaction",
+        "networkruleset.defaultaction",
+        "privateendpointcount",
+        "provisioningstate",
+        "publicnetworkaccess",
+        "replicationcount",
+        "retentionpolicydays",
+        "retentionpolicyenabled",
+        "sku",
+        "zoneredundancy"
+      ],
+      "labels": [
+        "admin user enabled",
+        "geo-replication count",
+        "network default action",
+        "private endpoint count",
+        "provisioning state",
+        "public network access",
+        "retention policy days",
+        "retention policy enabled",
+        "sku",
+        "zone redundancy"
+      ]
+    },
+    "containers/aks": {
+      "factKeys": [
+        "kubernetes_version",
+        "node_auto_provisioning",
+        "node_count",
+        "pool_count"
+      ],
+      "matchers": [
+        "kubernetesversion",
+        "nodeautoprovisioning",
+        "nodecount",
+        "nodeprovisioningprofile",
+        "poolcount"
+      ],
+      "labels": [
+        "kubernetes version",
+        "node auto provisioning",
+        "node pool count",
+        "total node count"
+      ]
+    },
+    "database/cosmosdb": {
+      "factKeys": [
+        "api_type",
+        "automatic_failover_enabled",
+        "consistency_level",
+        "free_tier_enabled",
+        "multi_write_enabled",
+        "region_count",
+        "serverless_enabled"
+      ],
+      "matchers": [
+        "consistencypolicy.defaultconsistencylevel",
+        "cosmosapitype",
+        "cosmosregioncount",
+        "defaultconsistencylevel",
+        "enableautomaticfailover",
+        "enablefreetier",
+        "enablemultiplewritelocations",
+        "serverlessenabled"
+      ],
+      "labels": [
+        "api type",
+        "automatic failover",
+        "consistency level",
+        "free tier",
+        "multi-region writes",
+        "region count",
+        "serverless enabled"
+      ]
+    },
+    "database/postgresql": {
+      "factKeys": [
+        "backup_retention_days",
+        "ha_mode",
+        "storage_gb",
+        "version"
+      ],
+      "matchers": [
+        "backup.retentiondays",
+        "highavailability.mode",
+        "mode",
+        "retentiondays",
+        "storage.storagesizegb",
+        "storagesizegb",
+        "version"
+      ],
+      "labels": [
+        "backup retention (days)",
+        "high availability",
+        "postgresql version",
+        "storage size (gb)"
+      ]
+    },
+    "database/redis": {
+      "factKeys": [
+        "aof_backup_enabled",
+        "maxmemory_policy",
+        "rdb_backup_enabled",
+        "shard_count"
+      ],
+      "matchers": [
+        "aofbackupenabled",
+        "maxmemorypolicy",
+        "rdbbackupenabled",
+        "redisconfiguration.aofbackupenabled",
+        "redisconfiguration.maxmemorypolicy",
+        "redisconfiguration.rdbbackupenabled",
+        "shardcount"
+      ],
+      "labels": [
+        "aof backup",
+        "eviction policy",
+        "rdb backup",
+        "shard count"
+      ]
+    },
+    "database/sql": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "integration/apim": {
+      "factKeys": [
+        "vnet_type"
+      ],
+      "matchers": [
+        "virtualnetworktype"
+      ],
+      "labels": [
+        "vnet integration"
+      ]
+    },
+    "integration/datafactory": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "integration/logicapp": {
+      "factKeys": [
+        "workflow_state"
+      ],
+      "matchers": [
+        "state"
+      ],
+      "labels": [
+        "workflow state"
+      ]
+    },
+    "messaging/eventhub": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "messaging/servicebus": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "monitoring/appinsights": {
+      "factKeys": [
+        "app_type"
+      ],
+      "matchers": [
+        "application_type",
+        "applicationtype"
+      ],
+      "labels": [
+        "application type"
+      ]
+    },
+    "monitoring/loganalytics": {
+      "factKeys": [
+        "retention_days",
+        "sku"
+      ],
+      "matchers": [
+        "retentionindays",
+        "sku"
+      ],
+      "labels": [
+        "retention (days)",
+        "sku"
+      ]
+    },
+    "network/appgateway": {
+      "factKeys": [
+        "http_listener_count",
+        "sku_tier"
+      ],
+      "matchers": [
+        "httplistenercount",
+        "sku"
+      ],
+      "labels": [
+        "http listener count",
+        "sku tier"
+      ]
+    },
+    "network/cdn": {
+      "factKeys": [
+        "resource_state",
+        "sku"
+      ],
+      "matchers": [
+        "resourcestate",
+        "sku"
+      ],
+      "labels": [
+        "resource state",
+        "sku"
+      ]
+    },
+    "network/expressroute": {
+      "factKeys": [
+        "provisioning_state",
+        "sku"
+      ],
+      "matchers": [
+        "provisioningstate",
+        "sku"
+      ],
+      "labels": [
+        "provisioning state",
+        "sku"
+      ]
+    },
+    "network/firewall": {
+      "factKeys": [
+        "provisioning_state",
+        "sku_tier"
+      ],
+      "matchers": [
+        "provisioningstate",
+        "sku"
+      ],
+      "labels": [
+        "provisioning state",
+        "sku tier"
+      ]
+    },
+    "network/frontdoor": {
+      "factKeys": [
+        "provisioning_state"
+      ],
+      "matchers": [
+        "provisioningstate"
+      ],
+      "labels": [
+        "provisioning state"
+      ]
+    },
+    "network/loadbalancer": {
+      "factKeys": [
+        "all_backends_empty",
+        "backend_pool_count"
+      ],
+      "matchers": [
+        "allbackendsempty",
+        "backendpoolcount"
+      ],
+      "labels": [
+        "all backends empty",
+        "backend pool count"
+      ]
+    },
+    "network/nat": {
+      "factKeys": [
+        "subnet_count"
+      ],
+      "matchers": [
+        "subnetcount"
+      ],
+      "labels": [
+        "subnet associations"
+      ]
+    },
+    "network/nic": {
+      "factKeys": [
+        "has_private_endpoint",
+        "has_vm"
+      ],
+      "matchers": [
+        "hasprivateendpoint",
+        "hasvm"
+      ],
+      "labels": [
+        "attached to vm",
+        "private endpoint"
+      ]
+    },
+    "network/nsg": {
+      "factKeys": [],
+      "matchers": [],
+      "labels": []
+    },
+    "network/privatedns": {
+      "factKeys": [
+        "is_empty",
+        "record_set_count"
+      ],
+      "matchers": [
+        "privatednsisempty",
+        "privatednsrecordsetcount"
+      ],
+      "labels": [
+        "empty zone",
+        "record set count"
+      ]
+    },
+    "network/privateendpoint": {
+      "factKeys": [
+        "connection_state",
+        "dns_zone_group_count",
+        "target_resource_id"
+      ],
+      "matchers": [
+        "dnszonegroupcount",
+        "peconnectionstate",
+        "petargetresourceid"
+      ],
+      "labels": [
+        "connection state",
+        "dns zone groups",
+        "target resource"
+      ]
+    },
+    "network/privatelinkservice": {
+      "factKeys": [
+        "connection_count"
+      ],
+      "matchers": [
+        "plsconnectioncount"
+      ],
+      "labels": [
+        "private endpoint connections"
+      ]
+    },
+    "network/publicip": {
+      "factKeys": [
+        "allocation",
+        "public_ip_allocation_method"
+      ],
+      "matchers": [
+        "publicipallocationmethod",
+        "state"
+      ],
+      "labels": [
+        "allocation method",
+        "association"
+      ]
+    },
+    "network/trafficmanager": {
+      "factKeys": [
+        "profile_status"
+      ],
+      "matchers": [
+        "profilestatus"
+      ],
+      "labels": [
+        "profile status"
+      ]
+    },
+    "network/vnet": {
+      "factKeys": [
+        "peering_count"
+      ],
+      "matchers": [
+        "vnetpeeringcount"
+      ],
+      "labels": [
+        "peering count"
+      ]
+    },
+    "search/cognitivesearch": {
+      "factKeys": [
+        "partition_count",
+        "replica_count"
+      ],
+      "matchers": [
+        "partitioncount",
+        "replicacount"
+      ],
+      "labels": [
+        "partition count",
+        "replica count"
+      ]
+    },
+    "security/keyvault": {
+      "factKeys": [
+        "network_default_action",
+        "public_network_access",
+        "purge_protection_enabled",
+        "rbac_enabled",
+        "sku",
+        "soft_delete_enabled"
+      ],
+      "matchers": [
+        "enablepurgeprotection",
+        "enablerbacauthorization",
+        "enablesoftdelete",
+        "networkdefaultaction",
+        "publicnetworkaccess",
+        "sku"
+      ],
+      "labels": [
+        "network default action",
+        "public network access",
+        "purge protection",
+        "rbac authorization",
+        "sku",
+        "soft delete"
+      ]
+    },
+    "storage/account": {
+      "factKeys": [
+        "access_tier",
+        "kind",
+        "sku_name"
+      ],
+      "matchers": [
+        "accesstier",
+        "kind",
+        "name",
+        "sku"
+      ],
+      "labels": [
+        "access tier",
+        "replication",
+        "storage kind"
+      ]
+    }
+  }
+}

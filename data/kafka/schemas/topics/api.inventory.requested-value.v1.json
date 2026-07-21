@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/topics/api.inventory.requested-value.v1.json",
+  "title": "api.inventory.requested-value",
+  "allOf": [
+    { "$ref": "../base/job-envelope.v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "job_type": { "const": "api.inventory" },
+        "payload": { "$ref": "../payloads/api-request.v1.json" }
+      }
+    }
+  ]
+}

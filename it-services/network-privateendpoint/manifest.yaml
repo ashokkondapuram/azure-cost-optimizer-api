@@ -1,0 +1,24 @@
+service_id: network-privateendpoint
+canonical_type: network/privateendpoint
+display_name: Private endpoint
+api_path: /resources/privateendpoints
+arm_type: Microsoft.Network/privateEndpoints
+component: Networking Extended
+drawer_ui: false
+
+backend:
+  package: it_services/network_privateendpoint
+  modules:
+    - it_services/network_privateendpoint/resource_profile.py
+  related_app_modules:
+    - app/resources/network/privateendpoint.py
+    - app/optimizer/resource_engines/network/privateendpoint/
+
+frontend:
+  root: frontend/src/it-services/network-privateendpoint
+  entry: frontend/src/it-services/network-privateendpoint/index.js
+  related_platform_files:
+    - frontend/src/utils/privateEndpointNormalize.js
+
+platform:
+  - frontend/src/it-services/registry.js

@@ -1,0 +1,19 @@
+/* Chart visualization tokens — mapped to Figma design system */
+
+:root {
+  --chart-series-1: var(--ds-primary, var(--primary));
+  --chart-series-2: var(--ds-accent, var(--accent));
+  --chart-series-3: var(--ds-purple, var(--purple));
+  --chart-series-4: var(--ds-success, var(--success));
+  --chart-series-5: var(--ds-warning, var(--warning));
+  --chart-series-6: var(--ds-danger, var(--danger));
+  --chart-series-muted: var(--ds-text3, var(--text3));
+  --chart-grid: var(--border-subtle);
+  --chart-axis: var(--ds-text3, var(--text3));
+  --chart-tooltip-bg: var(--ds-surface, var(--surface));
+  --chart-tooltip-border: var(--ds-border, var(--border));
+  --chart-forecast: var(--chart-series-5);
+  --chart-budget: var(--chart-series-6);
+  --chart-anomaly: var(--chart-series-6);
+  --chart-prior-period: var(--chart-series-muted);
+}

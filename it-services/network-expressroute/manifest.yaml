@@ -1,0 +1,22 @@
+service_id: network-expressroute
+canonical_type: network/expressroute
+display_name: ExpressRoute circuit
+api_path: /resources/expressroute
+arm_type: Microsoft.Network/expressRouteCircuits
+component: 
+drawer_ui: false
+
+backend:
+  package: it_services/network_expressroute
+  modules:
+    - it_services/network_expressroute/resource_profile.py
+  related_app_modules:
+    - app/resources/network/expressroute.py
+    - app/optimizer/resource_engines/network/
+
+frontend:
+  root: frontend/src/it-services/network-expressroute
+  entry: frontend/src/it-services/network-expressroute/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

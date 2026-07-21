@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/topics/sync.metrics.requested-value.v1.json",
+  "title": "sync.metrics.requested-value",
+  "allOf": [
+    { "$ref": "../base/job-envelope.v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "job_type": { "const": "sync.metrics" },
+        "payload": { "$ref": "../payloads/stage-request.v1.json" }
+      }
+    }
+  ]
+}

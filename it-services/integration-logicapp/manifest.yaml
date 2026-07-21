@@ -1,0 +1,22 @@
+service_id: integration-logicapp
+canonical_type: integration/logicapp
+display_name: Logic App
+api_path: /resources/logicapps
+arm_type: Microsoft.Logic/workflows
+component: Integration
+drawer_ui: false
+
+backend:
+  package: it_services/integration_logicapp
+  modules:
+    - it_services/integration_logicapp/resource_profile.py
+  related_app_modules:
+    - app/resources/integration/logicapp.py
+    - app/optimizer/resource_engines/integration/
+
+frontend:
+  root: frontend/src/it-services/integration-logicapp
+  entry: frontend/src/it-services/integration-logicapp/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

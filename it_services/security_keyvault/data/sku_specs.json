@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "service_id": "security-keyvault",
+  "canonical_type": "security/keyvault",
+  "arm_type": "Microsoft.KeyVault/vaults",
+  "display_name": "Key vault",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "standard": {
+      "hsm": false,
+      "soft_delete": true
+    },
+    "premium": {
+      "hsm": false,
+      "soft_delete": true,
+      "keys_rsa_2048": true
+    }
+  },
+  "pricing": {
+    "billing_model": "operation",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.419870+00:00"
+}

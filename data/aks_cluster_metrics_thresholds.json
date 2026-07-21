@@ -1,0 +1,434 @@
+{
+  "schema_version": 1,
+  "service": "Azure Kubernetes Service",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/aks/",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-containerservice-managedclusters-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/kubernetes-service/"
+  },
+  "node_pool_defaults": {
+    "min_nodes_production": 2,
+    "min_nodes_system": 1,
+    "spot_savings_pct": 0.8,
+    "reserved_savings_pct": 0.6
+  },
+  "pricing": {
+    "node_hourly_usd_baseline": 0.096
+  },
+  "optimization_thresholds": {
+    "cluster_cpu_scale_out_pct": 70.0,
+    "cluster_memory_pressure_pct": 80.0,
+    "node_cpu_downsize_pct": 20.0,
+    "node_memory_pressure_pct": 85.0,
+    "node_disk_usage_pct": 85.0,
+    "pod_density_low_threshold": 3,
+    "evaluation_window_days": 30,
+    "min_monthly_savings_usd": 15.0
+  },
+  "metric_thresholds": {
+    "node_cpu_usage_percentage": {
+      "limit_pct": 100,
+      "saturation_pct": 70,
+      "static_baseline_pct": 50
+    },
+    "node_memory_working_set_percentage": {
+      "limit_pct": 100,
+      "saturation_pct": 80,
+      "static_baseline_pct": 50
+    },
+    "pod_cpu_usage_percentage": {
+      "limit_pct": 100,
+      "saturation_pct": 70,
+      "static_baseline_pct": 50
+    },
+    "pod_memory_working_set_percentage": {
+      "limit_pct": 100,
+      "saturation_pct": 80,
+      "static_baseline_pct": 50
+    }
+  },
+  "analysis_rules": {
+    "AKS_IDLE_POOL_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_ratio",
+          "label": "Idle node ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "aks_max_idle_node_ratio",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NODE_IDLE": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_OVERPROVISIONED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_AUTOSCALER": {
+      "required_evidence": [
+        {
+          "signal": "autoscaler_enabled",
+          "label": "Cluster autoscaler enabled",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "flag",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_AUTOSCALER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "autoscaler_enabled",
+          "label": "Cluster autoscaler enabled",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "flag",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_OLD_VERSION": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_OLD_VERSION_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NONPROD_SCHEDULING": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_SPOT": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_SINGLE_NODE_POOL": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_EMPTY_POOL": {
+      "required_evidence": [
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_SYSTEM_POOL_RELIABILITY": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_POOL_CONSOLIDATION": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_ratio",
+          "label": "Idle node ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "aks_max_idle_node_ratio",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_DEV_RUNNING_NIGHTS": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_UNDERUTILIZED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_ratio",
+          "label": "Idle node ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "aks_max_idle_node_ratio",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_SPOT_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_SINGLE_NODE_POOL_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NODE_MEMORY_PRESSURE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_POD_DENSITY_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

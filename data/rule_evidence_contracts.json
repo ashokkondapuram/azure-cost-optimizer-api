@@ -1,0 +1,3957 @@
+{
+  "schema_version": 1,
+  "analysis_rules": {
+    "VM_IDLE": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "Average CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_OVERSIZE": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "Average CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Average memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "memory_downsize_used_pct_max",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_NO_RESERVED": {
+      "required_evidence": [
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        },
+        {
+          "signal": "power_state",
+          "label": "Power state",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "state",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_STOPPED_DEALLOCATED": {
+      "required_evidence": [
+        {
+          "signal": "power_state",
+          "label": "Power state",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "state",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_UNATTACHED": {
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_OVERSIZE": {
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SNAPSHOT_OLD": {
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ASP_EMPTY": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ASP_OVERPROVISIONED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NODE_IDLE": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_OVERPROVISIONED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_DEV_RUNNING_NIGHTS": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_SPOT": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_OLD_VERSION": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_AUTOSCALER": {
+      "required_evidence": [
+        {
+          "signal": "autoscaler_enabled",
+          "label": "Cluster autoscaler enabled",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "flag",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_SINGLE_NODE_POOL": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_HOT_UNUSED": {
+      "required_evidence": [
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "capacity_used_bytes",
+          "label": "Capacity used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "storage_utilization_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_NO_LIFECYCLE": {
+      "required_evidence": [
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_LRS_CRITICAL": {
+      "required_evidence": [
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "capacity_used_bytes",
+          "label": "Capacity used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "storage_utilization_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "IP_UNASSOCIATED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "packet_count",
+          "label": "Packets transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "packets",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NIC_UNATTACHED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NAT_GATEWAY_IDLE": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "snat_connection_count",
+          "label": "SNAT connections",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "connections",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LB_NO_BACKEND": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "backend_health_pct",
+          "label": "Backend health",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "backend_availability_low_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APPGW_UNUSED": {
+      "required_evidence": [
+        {
+          "signal": "throughput_bytes",
+          "label": "Throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_FAILED": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_OVERSIZED": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SQL_IDLE": {
+      "required_evidence": [
+        {
+          "signal": "dtu_utilization_pct",
+          "label": "DTU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "db_dtu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SQL_NO_SERVERLESS": {
+      "required_evidence": [
+        {
+          "signal": "dtu_utilization_pct",
+          "label": "DTU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "db_dtu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_PROVISIONED": {
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_WARNING": {
+      "required_evidence": [
+        {
+          "signal": "budget_utilization_pct",
+          "label": "Budget utilization",
+          "aggregation": "current",
+          "period": "MTD",
+          "unit": "%",
+          "threshold_key": "budget_warn_pct",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_CRITICAL": {
+      "required_evidence": [
+        {
+          "signal": "budget_utilization_pct",
+          "label": "Budget utilization",
+          "aggregation": "current",
+          "period": "MTD",
+          "unit": "%",
+          "threshold_key": "budget_warn_pct",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "RESERVED_OPPORTUNITY": {
+      "required_evidence": [
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SAVINGS_PLAN_OPPORTUNITY": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SPOT_OPPORTUNITY": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_SOFT_DELETE_OFF": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "SQL_ELASTIC_POOL_CANDIDATE": {
+      "required_evidence": [
+        {
+          "signal": "dtu_utilization_pct",
+          "label": "DTU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "db_dtu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SQL_HYBRID_BENEFIT_CANDIDATE": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "SQL_QUERY_PERF_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "dtu_utilization_pct",
+          "label": "DTU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "db_dtu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NETWORK_DDOS_PLAN_REVIEW": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NETWORK_TRAFFIC_MANAGER_IDLE": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NETWORK_FRONT_DOOR_REVIEW": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NETWORK_EXPRESSROUTE_REVIEW": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "GOVERNANCE_TAG_ENFORCEMENT": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "FUNCTIONS_PLAN_OPTIMIZATION": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "VM_UNDERUTILIZED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_RIGHTSIZE_FAMILY": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_COMMITMENT_CANDIDATE": {
+      "required_evidence": [
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_MISSING_GOVERNANCE_TAGS": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "VM_STOPPED_BILLING_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "power_state",
+          "label": "Power state",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "state",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_SKU_SIZING_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "Average CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Average memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "memory_downsize_used_pct_max",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_UNUSED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_OVERSIZE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_UNDERPROVISIONED": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "provisioned_iops",
+          "label": "Provisioned IOPS",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "IOPS",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_CAPACITY_RIGHTSIZE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_QUEUE_DEPTH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_NEW_GRACE_PERIOD": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "DISK_ULTRA_DOWNGRADE_PREMIUM": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_ULTRA_DOWNGRADE_SSD": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_PREMIUM_DOWNGRADE_HDD": {
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DISK_SSD_DOWNGRADE_HDD": {
+      "required_evidence": [
+        {
+          "signal": "disk_read_throughput",
+          "label": "Disk read throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_write_throughput",
+          "label": "Disk write throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "B/s",
+          "threshold_key": "disk_io_idle_bps",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SNAPSHOT_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_SERVICE_PLAN_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "WEBAPP_STOPPED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "WEBAPP_ALWAYS_ON_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_IDLE_POOL_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_ratio",
+          "label": "Idle node ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "aks_max_idle_node_ratio",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NONPROD_SCHEDULING": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_SYSTEM_POOL_RELIABILITY": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PUBLIC_IP_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "packet_count",
+          "label": "Packets transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "packets",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PUBLIC_IP_BASIC_SKU_MIGRATION": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "LOAD_BALANCER_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "backend_health_pct",
+          "label": "Backend health",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "backend_availability_low_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOAD_BALANCER_SNAT_PRESSURE": {
+      "required_evidence": [
+        {
+          "signal": "snat_port_utilization_pct",
+          "label": "SNAT port utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "lb_snat_pressure_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOAD_BALANCER_THROUGHPUT_RIGHTSIZE": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOAD_BALANCER_BACKEND_CONSOLIDATION": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOAD_BALANCER_BASIC_SKU_MIGRATION": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "APP_GATEWAY_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "throughput_bytes",
+          "label": "Throughput",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_GATEWAY_CU_SATURATION": {
+      "required_evidence": [
+        {
+          "signal": "capacity_unit_utilization_pct",
+          "label": "Capacity unit utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "app_gateway_cu_saturation_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_GATEWAY_CU_RIGHTSIZE_DOWN": {
+      "required_evidence": [
+        {
+          "signal": "capacity_unit_utilization_pct",
+          "label": "Capacity unit utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "app_gateway_cu_saturation_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_ENDPOINT_UNDERUTILIZED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_LINK_NAT_PORT_PRESSURE": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_LINK_NAT_RIGHTSIZE": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_DNS_UNUSED_ZONE": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "VNET_PEERING_CONSOLIDATION_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "VNET_UNUSED_SUBNET_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NSG_FLOW_LOG_COST": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NIC_ORPHANED_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NAT_GATEWAY_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "snat_connection_count",
+          "label": "SNAT connections",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "connections",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NAT_GATEWAY_SNAT_EXHAUSTION": {
+      "required_evidence": [
+        {
+          "signal": "snat_utilization_pct",
+          "label": "SNAT utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "nat_snat_exhaustion_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NAT_GATEWAY_SKU_V2_UPGRADE": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NAT_GATEWAY_SUBNET_CONSOLIDATION": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "snat_connection_count",
+          "label": "SNAT connections",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "connections",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NSG_ORPHANED_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NSG_PERMISSIVE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "risky_rule_count",
+          "label": "Risky rule hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "pillar": "security"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_LIFECYCLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "capacity_used_bytes",
+          "label": "Capacity used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "storage_utilization_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_REDUNDANCY_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "egress_bytes",
+          "label": "Data egress",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "bytes",
+          "threshold_key": "storage_egress_bytes_monthly",
+          "pillar": "cost"
+        },
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SQL_SERVERLESS_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_AUTOSCALE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_PROVISIONED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_SERVERLESS": {
+      "required_evidence": [
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_RU_RIGHT_SIZING_UNDER": {
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_RU_RIGHT_SIZING_OVER": {
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_THROTTLING_DETECTED": {
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_peak_pct",
+          "label": "Peak RU utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_throttle_ru_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_HOT_CONTAINER_DETECTED": {
+      "required_evidence": [
+        {
+          "signal": "ru_skew_ratio",
+          "label": "RU skew ratio",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "ratio",
+          "threshold_key": "cosmos_hot_partition_skew_ratio",
+          "pillar": "performance"
+        },
+        {
+          "signal": "ru_utilization_peak_pct",
+          "label": "Peak RU utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_throttle_ru_pct",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_API_COST_VARIANCE": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_CONSISTENCY_OVERPROVISIONED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_LARGE_ITEMS_DETECTED": {
+      "required_evidence": [
+        {
+          "signal": "avg_item_bytes",
+          "label": "Average item size",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "cosmos_large_item_bytes",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_INDEXING_OVERPROVISIONED": {
+      "required_evidence": [
+        {
+          "signal": "index_to_data_ratio",
+          "label": "Index to data ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ratio",
+          "threshold_key": "cosmos_index_to_data_ratio",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_MULTI_WRITE_UNNECESSARY": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_FAILOVER_UNNECESSARY": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_FREE_TIER_SUBOPTIMAL": {
+      "required_evidence": [
+        {
+          "signal": "total_ru_consumed",
+          "label": "Total RU consumed",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "RU",
+          "threshold_key": "cosmos_serverless_ru_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COSMOS_RESERVED_CAPACITY_ELIGIBLE": {
+      "required_evidence": [
+        {
+          "signal": "ru_utilization_pct",
+          "label": "RU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cosmos_ru_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_HEALTH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_RIGHTSIZE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_IDLE_DETECTION": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_MEMORY_PRESSURE": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "evicted_keys",
+          "label": "Evicted keys",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "count",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_LOW_UTILIZATION": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "server_load_pct",
+          "label": "Server load",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "redis_server_load_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_HIT_RATIO_POOR": {
+      "required_evidence": [
+        {
+          "signal": "cache_hit_rate_pct",
+          "label": "Cache hit rate",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "redis_hit_ratio_poor_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_CLUSTER_UNNECESSARY": {
+      "required_evidence": [
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_PERSISTENCE_REVIEW": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_STOPPED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_BURSTABLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_STORAGE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "storage_utilization_pct",
+          "label": "Storage utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "postgresql_storage_high_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_LOW_COMPUTE_UTILIZATION": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_HIGH_COMPUTE_DEMAND": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_MEMORY_PRESSURE": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_STORAGE_EXPANSION": {
+      "required_evidence": [
+        {
+          "signal": "storage_utilization_pct",
+          "label": "Storage utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "postgresql_storage_high_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_IOPS_PRESSURE": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS consumed",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "postgresql_iops_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_CONNECTION_POOL_RISK": {
+      "required_evidence": [
+        {
+          "signal": "connection_count",
+          "label": "Active connections",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "connections",
+          "threshold_key": "postgresql_connection_risk_absolute",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_HA_UNNECESSARY": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_HA_REQUIRED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_READ_REPLICA_ANALYSIS": {
+      "required_evidence": [
+        {
+          "signal": "replication_lag_seconds",
+          "label": "Replication lag",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "seconds",
+          "threshold_key": "postgresql_replication_lag_seconds",
+          "pillar": "reliability"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_VERSION_OUTDATED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRESQL_BACKUP_RETENTION_REVIEW": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "ACR_PREMIUM_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_STANDARD_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_GEO_REPLICATION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_STORAGE_HIGH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        },
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_RETENTION_DISABLED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_PROTECTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_PREMIUM_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "KEYVAULT_HIGH_OPS_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "api_hits",
+          "label": "API hits",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "hits",
+          "threshold_key": "kv_api_hits_idle",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_GUARDRAIL_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "budget_utilization_pct",
+          "label": "Budget utilization",
+          "aggregation": "current",
+          "period": "MTD",
+          "unit": "%",
+          "threshold_key": "budget_warn_pct",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_WARNING_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "BUDGET_CRITICAL_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_OLD_VERSION_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_AUTOSCALER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "autoscaler_enabled",
+          "label": "Cluster autoscaler enabled",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "flag",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NO_SPOT_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_SINGLE_NODE_POOL_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SQL_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "dtu_utilization_pct",
+          "label": "DTU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "db_dtu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_HOT_UNUSED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "capacity_used_bytes",
+          "label": "Capacity used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "storage_utilization_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_LRS_CRITICAL_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "capacity_used_bytes",
+          "label": "Capacity used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "storage_utilization_low_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VMSS_NO_AUTOSCALE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VMSS_NONPROD_SCHEDULING_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "RESERVED_OPPORTUNITY_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SAVINGS_PLAN_OPPORTUNITY_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOG_ANALYTICS_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOG_ANALYTICS_INGESTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_INSIGHTS_SAMPLING_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_INSIGHTS_LOW_TRAFFIC_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APIM_SKU_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APIM_LOW_TRAFFIC_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATA_FACTORY_IR_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATA_FACTORY_IDLE_PIPELINES_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOGIC_APP_PLAN_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOGIC_APP_LOW_RUNS_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "EVENT_HUBS_TIER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "EVENT_HUBS_LOW_THROUGHPUT_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SERVICE_BUS_TIER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SERVICE_BUS_IDLE_NAMESPACE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATABRICKS_CLUSTER_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATABRICKS_DEV_WORKSPACE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SYNAPSE_PAUSE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SYNAPSE_SQL_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ADX_INGESTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ADX_LOW_INGESTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ML_WORKSPACE_COMPUTE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ML_WORKSPACE_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BACKUP_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BACKUP_VAULT_GROWTH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COGNITIVE_SEARCH_SKU_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COGNITIVE_SEARCH_REPLICA_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NETWORK_FRONT_DOOR_IDLE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "NETWORK_FRONT_DOOR_COST_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "FIREWALL_FIXED_COST_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "CDN_EGRESS_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "egress_bytes",
+          "label": "Data egress",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "bytes",
+          "threshold_key": "storage_egress_bytes_monthly",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PLAN_EMPTY": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PLAN_UNDERUTILIZED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_IDLE": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_EMPTY_POOL": {
+      "required_evidence": [
+        {
+          "signal": "idle_node_count",
+          "label": "Idle nodes",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "nodes",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_UNDERUTILIZED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_ratio",
+          "label": "Idle node ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "aks_max_idle_node_ratio",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "REDIS_TIER_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        },
+        {
+          "signal": "operations_per_second",
+          "label": "Operations per second",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "ops/s",
+          "threshold_key": "redis_idle_ops_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_ALWAYS_ON_OFF": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_ENDPOINT_FAILED_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_ENDPOINT_ORPHAN_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_LINK_UNUSED_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_DNS_EMPTY_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "VNET_PEERING_REVIEW_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "VM_DISK_BOTTLENECK": {
+      "required_evidence": [
+        {
+          "signal": "disk_iops_utilization_pct",
+          "label": "Disk IOPS utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "disk_iops_high_util_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "disk_throughput_utilization_pct",
+          "label": "Disk throughput utilization",
+          "aggregation": "peak",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_NETWORK_BOTTLENECK": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_MEMORY_PRESSURE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_EGRESS_HIGH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VMSS_AUTOSCALE_TUNING_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SNAPSHOT_ARCHIVE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "unattached_days",
+          "label": "Days since last attachment",
+          "aggregation": "current",
+          "period": "sync",
+          "unit": "days",
+          "threshold_key": "max_unattached_disk_days",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_NODE_MEMORY_PRESSURE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_POD_DENSITY_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_IMAGE_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        },
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "WEBAPP_PLAN_LOAD_LOW_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "memory_utilization_pct",
+          "label": "Memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ASP_CONSOLIDATION_CANDIDATE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_EGRESS_HIGH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "egress_bytes",
+          "label": "Data egress",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "bytes",
+          "threshold_key": "storage_egress_bytes_monthly",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "STORAGE_COOL_TIER_CANDIDATE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "transaction_count",
+          "label": "Transaction count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "transactions",
+          "threshold_key": "storage_transaction_low",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_SCHEDULE_CANDIDATE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "VM_ZOMBIE_CANDIDATE_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "uptime_hours",
+          "label": "Uptime hours",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "hours",
+          "threshold_key": "vm_uptime_hours_candidate",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "AKS_POOL_CONSOLIDATION": {
+      "required_evidence": [
+        {
+          "signal": "cluster_cpu_utilization_pct",
+          "label": "Cluster CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_cpu_downsize_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "cluster_memory_utilization_pct",
+          "label": "Cluster memory utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "node_memory_pressure_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "idle_node_ratio",
+          "label": "Idle node ratio",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "aks_max_idle_node_ratio",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COST_SPIKE_DETECTED": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOG_ANALYTICS_INGESTION": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "APP_INSIGHTS_SAMPLING": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "API_MANAGEMENT_SKU": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATA_FACTORY_PIPELINE": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "LOGIC_APP_RUN_HISTORY": {
+      "required_evidence": [
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "EVENT_HUBS_TIER": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SERVICE_BUS_TIER": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "DATABRICKS_CLUSTER": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "SYNAPSE_PAUSE": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ADX_INGESTION": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ML_WORKSPACE_COMPUTE": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BACKUP_RETENTION": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "CDN_EGRESS": {
+      "required_evidence": [
+        {
+          "signal": "egress_bytes",
+          "label": "Data egress",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "bytes",
+          "threshold_key": "storage_egress_bytes_monthly",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "FIREWALL_FIXED_COST": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COGNITIVE_SEARCH_SKU": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "BANDWIDTH_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "egress_bytes",
+          "label": "Data egress",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "bytes",
+          "threshold_key": "storage_egress_bytes_monthly",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_ENDPOINT_COST": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "PRIVATE_LINK_COST": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "IDLE_APP_SERVICE_PLANS": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        },
+        {
+          "signal": "request_count",
+          "label": "Request count",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "requests",
+          "threshold_key": "app_idle_request_threshold",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "UNUSED_NIC": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "IDLE_NAT_GATEWAY": {
+      "required_evidence": [
+        {
+          "signal": "network_bytes",
+          "label": "Bytes transmitted",
+          "aggregation": "sum",
+          "period": "7d",
+          "unit": "bytes",
+          "threshold_key": "idle_byte_threshold",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "IDLE_DB_FLEXIBLE_SERVER": {
+      "required_evidence": [
+        {
+          "signal": "cpu_utilization_pct",
+          "label": "CPU utilization",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "%",
+          "threshold_key": "cpu_idle_pct",
+          "pillar": "performance"
+        },
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COST_EXPORT_ONLY_RESOURCE": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "UNCLASSIFIED_SERVICE_SPEND": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "IP_IDLE_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "PUBLIC_IP_UNASSOCIATED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "LB_IDLE_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "LOAD_BALANCER_NO_BACKEND": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "NAT_GATEWAY_UNUSED_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "APP_SERVICE_IDLE_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "POSTGRES_STORAGE_EXTENDED": {
+      "required_evidence": [],
+      "exclude_inventory_facts": true
+    },
+    "COST_APIM_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COST_APP_INSIGHTS_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COST_LOGIC_APP_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COST_LOG_ANALYTICS_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COST_SEARCH_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "COST_HIGH_SPEND_REVIEW": {
+      "required_evidence": [
+        {
+          "signal": "monthly_cost_usd",
+          "label": "Month-to-date cost",
+          "aggregation": "sum",
+          "period": "MTD",
+          "unit": "USD",
+          "threshold_key": "min_monthly_savings_usd",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

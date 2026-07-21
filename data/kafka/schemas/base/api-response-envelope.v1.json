@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/api-response-envelope.v1.json",
+  "title": "ApiResponseEnvelope",
+  "description": "Minimal envelope for completed Azure API work items. Partition key: subscription_id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "request_id",
+    "api_domain",
+    "subscription_id",
+    "operation",
+    "status",
+    "completed_at",
+    "source_service"
+  ],
+  "properties": {
+    "request_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Matches the originating api.*.requested request_id."
+    },
+    "api_domain": {
+      "type": "string",
+      "enum": ["cost", "metrics", "inventory"]
+    },
+    "subscription_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Azure subscription GUID (lowercase). Kafka message key."
+    },
+    "operation": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "error"]
+    },
+    "result": {
+      "type": "object",
+      "description": "API response body on success.",
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "description": "Error details on failure (before DLQ routing).",
+      "additionalProperties": true,
+      "properties": {
+        "code": { "type": "string" },
+        "message": { "type": "string" },
+        "retriable": { "type": "boolean" }
+      }
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Wall-clock time for the Azure API call."
+    },
+    "completed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC ISO-8601 timestamp."
+    },
+    "source_service": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Worker service that executed the API call."
+    }
+  }
+}

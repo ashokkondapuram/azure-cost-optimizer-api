@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "service_id": "network-appgateway",
+  "canonical_type": "network/appgateway",
+  "arm_type": "Microsoft.Network/applicationGateways",
+  "display_name": "Application gateway",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/application-gateway/overview",
+    "metrics": "https://learn.microsoft.com/en-us/azure/azure-monitor/reference/supported-metrics/microsoft-network-applicationgateways-metrics",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/application-gateway/"
+  },
+  "skus": {
+    "Standard_v2": {
+      "fixed_cost_hourly_usd": 0.246,
+      "capacity_unit_hourly_usd": 0.0144,
+      "cu_per_capacity_unit": 100
+    },
+    "WAF_v2": {
+      "fixed_cost_hourly_usd": 0.443,
+      "capacity_unit_hourly_usd": 0.0144,
+      "cu_per_capacity_unit": 100
+    }
+  },
+  "pricing": {
+    "regional_multiplier_min": 1.0,
+    "regional_multiplier_max": 1.625
+  },
+  "optimization_thresholds": {
+    "cu_saturation_pct": 80.0,
+    "cu_downsize_pct": 30.0,
+    "idle_throughput_bytes": 500.0,
+    "idle_request_count": 100.0,
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 25.0
+  },
+  "synced_at": "2026-07-10T17:49:10.224771+00:00"
+}

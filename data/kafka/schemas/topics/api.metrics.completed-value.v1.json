@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/topics/api.metrics.completed-value.v1.json",
+  "title": "api.metrics.completed-value",
+  "allOf": [
+    { "$ref": "../base/job-envelope.v1.json" },
+    {
+      "type": "object",
+      "properties": {
+        "job_type": { "const": "api.metrics.completed" },
+        "payload": { "$ref": "../payloads/api-request.v1.json" }
+      }
+    }
+  ]
+}

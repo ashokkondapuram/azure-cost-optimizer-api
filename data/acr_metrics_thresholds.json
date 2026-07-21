@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "service": "Acr",
+  "optimization_thresholds": {
+    "evaluation_window_days": 7,
+    "min_monthly_savings_usd": 5.0
+  },
+  "analysis_rules": {
+    "ACR_PREMIUM_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_STANDARD_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_GEO_REPLICATION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        },
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_STORAGE_HIGH_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        },
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_RETENTION_DISABLED_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        }
+      ],
+      "exclude_inventory_facts": true
+    },
+    "ACR_IMAGE_RETENTION_EXTENDED": {
+      "required_evidence": [
+        {
+          "signal": "registry_storage_gb",
+          "label": "Registry storage used",
+          "aggregation": "avg",
+          "period": "7d",
+          "unit": "GB",
+          "threshold_key": "acr_storage_high_gb",
+          "pillar": "cost"
+        },
+        {
+          "signal": "image_pull_count",
+          "label": "Image pull count",
+          "aggregation": "sum",
+          "period": "30d",
+          "unit": "pulls",
+          "threshold_key": "acr_pull_count_low",
+          "pillar": "performance"
+        }
+      ],
+      "exclude_inventory_facts": true
+    }
+  }
+}

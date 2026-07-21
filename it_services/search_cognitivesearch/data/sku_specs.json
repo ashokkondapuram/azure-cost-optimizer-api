@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "service_id": "search-cognitivesearch",
+  "canonical_type": "search/cognitivesearch",
+  "arm_type": "Microsoft.Search/searchServices",
+  "display_name": "Cognitive Search",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Free": {
+      "partitions": 1,
+      "replicas": 1,
+      "storage_gb": 50
+    },
+    "Basic": {
+      "partitions": 3,
+      "replicas": 3,
+      "storage_gb": 15
+    },
+    "Standard": {
+      "partitions": 12,
+      "replicas": 12
+    },
+    "StorageOptimized": {
+      "partitions": 12,
+      "replicas": 12,
+      "storage_optimized": true
+    }
+  },
+  "pricing": {
+    "billing_model": "search_unit",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.387652+00:00"
+}

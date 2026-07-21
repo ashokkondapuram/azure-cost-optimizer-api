@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "service": "Azure NSG Flow Logs",
+  "documentation": {
+    "overview": "https://learn.microsoft.com/en-us/azure/network-watcher/nsg-flow-logs-overview",
+    "retirement_note": "NSG Flow Logs transition to VNet flow logs — review by 2027.",
+    "pricing": "https://azure.microsoft.com/en-us/pricing/details/network-watcher/"
+  },
+  "pricing": {
+    "flow_log_ingestion_per_gb_usd": 0.50,
+    "storage_per_gb_month_usd": 0.02,
+    "retention_days_default": 30
+  },
+  "optimization_thresholds": {
+    "zero_traffic_days": 90,
+    "min_flow_log_gb_month": 1.0,
+    "evaluation_window_days": 90,
+    "min_monthly_savings_usd": 5.0
+  }
+}

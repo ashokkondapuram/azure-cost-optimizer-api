@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "service_id": "network-privateendpoint",
+  "canonical_type": "network/privateendpoint",
+  "arm_type": "Microsoft.Network/privateEndpoints",
+  "display_name": "Private endpoint",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard": {
+      "hourly_usd": 0.01,
+      "data_processed_per_gb_usd": 0.01
+    }
+  },
+  "pricing": {
+    "billing_model": "hourly_plus_data",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.341188+00:00"
+}

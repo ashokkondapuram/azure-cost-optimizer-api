@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://costoptimizer.zafin.com/schemas/kafka/payloads/pipeline-completed.v1.json",
+  "title": "SyncPipelineCompletedPayload",
+  "description": "Payload for sync.pipeline.completed terminal events.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status"],
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["completed", "failed", "cancelled"]
+    },
+    "error": {
+      "type": ["string", "null"]
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "service_id": "network-frontdoor",
+  "canonical_type": "network/frontdoor",
+  "arm_type": "Microsoft.Network/frontdoors",
+  "display_name": "Azure Front Door",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard_AzureFrontDoor": {
+      "waf": false
+    },
+    "Premium_AzureFrontDoor": {
+      "waf": true
+    }
+  },
+  "pricing": {
+    "billing_model": "request_and_egress",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.266848+00:00"
+}

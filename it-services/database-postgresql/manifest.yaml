@@ -1,0 +1,22 @@
+service_id: database-postgresql
+canonical_type: database/postgresql
+display_name: PostgreSQL flexible server
+api_path: /resources/postgresql
+arm_type: Microsoft.DBforPostgreSQL/flexibleServers
+component: PostgreSQL
+drawer_ui: false
+
+backend:
+  package: it_services/database_postgresql
+  modules:
+    - it_services/database_postgresql/resource_profile.py
+  related_app_modules:
+    - app/resources/database/postgresql.py
+    - app/optimizer/resource_engines/database/postgresql/
+
+frontend:
+  root: frontend/src/it-services/database-postgresql
+  entry: frontend/src/it-services/database-postgresql/index.js
+
+platform:
+  - frontend/src/it-services/registry.js

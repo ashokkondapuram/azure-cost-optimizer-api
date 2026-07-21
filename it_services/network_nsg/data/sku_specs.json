@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "service_id": "network-nsg",
+  "canonical_type": "network/nsg",
+  "arm_type": "Microsoft.Network/networkSecurityGroups",
+  "display_name": "Network security group",
+  "source": "azure_docs_and_legacy_data",
+  "documentation": {
+    "pricing": "https://prices.azure.com/api/retail/prices?api-version=2023-01-01-preview&$filter={filter}"
+  },
+  "skus": {
+    "Standard": {}
+  },
+  "pricing": {
+    "billing_model": "free",
+    "currency": "USD"
+  },
+  "optimization_thresholds": {},
+  "synced_at": "2026-07-10T17:49:10.336492+00:00"
+}
