@@ -1,1 +1,0 @@
-"""Monitoring resource definitions."""

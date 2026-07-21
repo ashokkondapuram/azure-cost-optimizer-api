@@ -1,3 +1,0 @@
-# CI and local development — not installed on App Service production deploy
--r requirements.txt
-pytest==8.3.4

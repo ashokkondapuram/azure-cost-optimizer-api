@@ -1,1 +1,0 @@
-"""App Service resource definitions."""

@@ -1,8 +1,0 @@
-{
-  "short_name": "AzureCost",
-  "name": "Azure Cost Optimizer",
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#0078d4",
-  "background_color": "#ffffff"
-}
